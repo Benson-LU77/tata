@@ -10,6 +10,7 @@ for (const [entry, name] of [
   ["app/lib/city/layout.ts", "layout"],
   ["app/lib/city/plan.ts", "plan"],
   ["app/lib/game/watts.ts", "watts"],
+  ["app/lib/city/residents.ts", "residents"],
 ]) {
   execSync(`npx esbuild ${entry} --bundle --format=esm --outfile=${join(out, name + ".js")}`, {
     stdio: "pipe",
@@ -78,5 +79,28 @@ const before = ew(metrics) + ob(metrics);
 const more = [...metrics, { file: "2026-08-04 Today.md", date: "2026-08-04", words: 200, mtime: NOW }];
 const after = ew(more) + ob(more);
 assert.ok(after >= before, "the city never shrinks overnight");
+
+// 8. nobody moonwalks: every moving creature faces its velocity,
+// whichever way it circles its block
+{
+  const { creaturesFor, poseAt } = await import(join(out, "residents.js"));
+  const plan = planCity(metrics, NOW);
+  const cast = creaturesFor(plan, metrics.length, { cats: 6, birds: 0, dogs: 2 });
+  const EPS = 0.05;
+  for (const c of cast) {
+    if (c.kind === "bird") continue;
+    for (let t = 0; t < 400; t += 7.3) {
+      const p0 = poseAt(c, plan, t);
+      const p1 = poseAt(c, plan, t + EPS);
+      if (!p0.moving || !p1.moving) continue;
+      const vx = p1.x - p0.x;
+      const vz = p1.z - p0.z;
+      const speed = Math.hypot(vx, vz);
+      if (speed < 1e-6) continue;
+      const dot = (Math.sin(p0.facing) * vx + Math.cos(p0.facing) * vz) / speed;
+      assert.ok(dot > 0.7, `${c.kind}#${c.id} walks the way it faces (dot=${dot.toFixed(2)} at t=${t})`);
+    }
+  }
+}
 
 console.log("city tests: all passed");

@@ -78,6 +78,9 @@ function loopPose(
   const perim = 4 * (halfX + halfZ);
   const loopTime = perim / speed / (1 - pauseFrac);
   let p = (t % loopTime) / loopTime; // 0..1 including pauses
+  // counter-clockwise walkers traverse the ring in reverse, so their
+  // velocity is opposite the segment direction — flip facing to match
+  const dir = clockwise ? 1 : -1;
   if (!clockwise) p = 1 - p;
   // four segments, each with a pause at its end
   const segTimes = [halfX * 2, halfZ * 2, halfX * 2, halfZ * 2].map(
@@ -104,7 +107,7 @@ function loopPose(
       const f = (p - acc) / seg;
       x = sx + (corner.x - sx) * f;
       z = sz + (corner.z - sz) * f;
-      facing = Math.atan2(corner.dx, corner.dz);
+      facing = Math.atan2(corner.dx * dir, corner.dz * dir);
       moving = true;
       return { x, z, facing, moving, dist: 0 };
     }
@@ -112,7 +115,7 @@ function loopPose(
     if (p < acc + pause) {
       x = corner.x;
       z = corner.z;
-      facing = Math.atan2(corner.dx, corner.dz);
+      facing = Math.atan2(corner.dx * dir, corner.dz * dir);
       moving = false;
       return { x, z, facing, moving, dist: 0 };
     }
