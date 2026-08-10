@@ -89,6 +89,19 @@ export default function Home() {
     };
   }, [resync]);
 
+  /* heartbeat: while configured but not live, retry every 10 s on our own —
+     opening Tata before Obsidian (or an Obsidian restart) heals itself */
+  useEffect(() => {
+    if (synced === "live") return;
+    const id = window.setInterval(() => {
+      if (document.hidden) return;
+      if (new URLSearchParams(window.location.search).get("demo")) return;
+      if (!loadConfig()) return;
+      resync();
+    }, 10000);
+    return () => window.clearInterval(id);
+  }, [synced, resync]);
+
   /* the notes panel just connected — adopt the client for the city too */
   const onConnected = useCallback(() => {
     const config = loadConfig();
@@ -537,7 +550,7 @@ export default function Home() {
             title={synced === "live" ? "Connected to Obsidian" : "Connect Obsidian"}
           >
             <i />
-            {synced === "live" ? "receiving" : "connect"}
+            {synced === "live" ? "receiving" : loadConfig() ? "reconnecting" : "connect"}
           </button>
         </div>
         <div className="topbar-actions">
