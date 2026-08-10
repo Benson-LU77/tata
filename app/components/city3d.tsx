@@ -222,6 +222,8 @@ type Handles = {
   lotOfInstance: Lot[];
   boxesPerInstance: { lot: Lot; box: { x: number; y: number; z: number; w: number; h: number; d: number } }[];
   creatureMesh: THREE.InstancedMesh | null;
+  outlineMesh: THREE.InstancedMesh | null;
+  outlineMat: THREE.MeshBasicMaterial | null;
   creatures: Creature[];
   weatherMesh: THREE.InstancedMesh | null;
   beam: THREE.Mesh | null;
@@ -257,7 +259,7 @@ void main() {
 `;
 
 /** boxes per creature kind — the whole cast is little box joints */
-const BASE_PARTS: Record<Creature["kind"], number> = { person: 7, cat: 5, bird: 3, dog: 6, you: 7 };
+const BASE_PARTS: Record<Creature["kind"], number> = { person: 10, cat: 9, bird: 3, dog: 9, you: 10 };
 
 function partsFor(kind: Creature["kind"], weather: CityWeather): number {
   const extra =
@@ -458,14 +460,25 @@ export function City3D({
     const t = now / 1000;
     const m = new THREE.Matrix4();
     let pi = 0;
-    const CS = 1.7; // chibi scale — the cast reads clearly from city height
+    const CS = 2.0; // chibi scale — the cast reads clearly from city height
+    const PAD = 0.05; // outline shell thickness, world units
     let ax = 0;
     let ay = 0;
     let az = 0;
-    const put = (x: number, y: number, z: number, w2: number, hh: number, d: number) => {
+    const put = (x: number, y: number, z: number, w2: number, hh: number, d: number, ol = false) => {
       m.makeScale(w2 * CS, hh * CS, d * CS);
       m.setPosition(ax + (x - ax) * CS, ay + (y - ay) * CS, az + (z - az) * CS);
       h.creatureMesh!.setMatrixAt(pi, m);
+      if (h.outlineMesh) {
+        if (ol) {
+          m.makeScale(w2 * CS + PAD, hh * CS + PAD, d * CS + PAD);
+          m.setPosition(ax + (x - ax) * CS, ay + (y - ay) * CS - PAD / 2, az + (z - az) * CS);
+        } else {
+          m.makeScale(0, 0, 0);
+          m.setPosition(0, -20, 0);
+        }
+        h.outlineMesh.setMatrixAt(pi, m);
+      }
       pi += 1;
     };
 
@@ -526,14 +539,14 @@ export function City3D({
         const nod = chat[i] ? Math.sin(t * 2.2 + i) * 0.012 : 0;
         const bob = p.moving ? Math.abs(Math.sin(p.phase)) * 0.02 : 0;
         const y = p.y + bob;
-        put(p.x, y + 0.14, p.z, 0.22, 0.22, 0.18); // body
-        put(p.x, y + 0.37 + nod, p.z, 0.19, 0.17, 0.19); // head
+        put(p.x, y + 0.14, p.z, 0.22, 0.22, 0.18, true); // body
+        put(p.x, y + 0.37 + nod, p.z, 0.19, 0.17, 0.19, true); // head
         if (c.kind === "you") {
-          put(p.x, y + 0.52 + nod, p.z, 0.15, 0.13, 0.15); // your little top hat
+          put(p.x, y + 0.52 + nod, p.z, 0.15, 0.13, 0.15, true); // your little top hat
         } else if (c.seed % 3 === 0) {
-          put(p.x, y + 0.52 + nod, p.z, 0.16, 0.1, 0.16); // a taller hat
+          put(p.x, y + 0.52 + nod, p.z, 0.16, 0.1, 0.16, true); // a taller hat
         } else {
-          put(p.x, y + 0.52 + nod, p.z, 0.2, 0.05, 0.2); // hair cap
+          put(p.x, y + 0.52 + nod, p.z, 0.2, 0.05, 0.2, true); // hair cap
         }
         const armSwing = -swing * 0.06; // arms counter the legs — a real gait
         put(p.x + lx * 0.145 + fx * armSwing, y + 0.16, p.z + lz * 0.145 + fz * armSwing, 0.06, 0.18, 0.06);
@@ -541,6 +554,10 @@ export function City3D({
         const step = swing * 0.05;
         put(p.x + lx * 0.055 + fx * step, p.y, p.z + lz * 0.055 + fz * step, 0.075, 0.15, 0.075);
         put(p.x - lx * 0.055 - fx * step, p.y, p.z - lz * 0.055 - fz * step, 0.075, 0.15, 0.075);
+        // face plate and two dark eyes on the facing side of the head
+        put(p.x + fx * 0.09, y + 0.345 + nod, p.z + fz * 0.09, alongX ? 0.035 : 0.15, 0.12, alongX ? 0.15 : 0.035);
+        put(p.x + fx * 0.105 + lx * 0.045, y + 0.395 + nod, p.z + fz * 0.105 + lz * 0.045, 0.035, 0.035, 0.035);
+        put(p.x + fx * 0.105 - lx * 0.045, y + 0.395 + nod, p.z + fz * 0.105 - lz * 0.045, 0.035, 0.035, 0.035);
         if (w === "rain") {
           // umbrella overhead
           put(p.x + lx * 0.12, y + 0.3, p.z + lz * 0.12, 0.03, 0.42, 0.03); // stick
@@ -558,40 +575,55 @@ export function City3D({
         const y = p.y + bob;
         if (!p.moving) {
           // sitting: upright body, head high, tail curled at the side
-          put(p.x, y, p.z, 0.13, 0.17, 0.13); // body upright
-          put(p.x + fx * 0.02, y + 0.17, p.z + fz * 0.02, 0.1, 0.09, 0.1); // head
+          put(p.x, y, p.z, 0.13, 0.17, 0.13, true); // body upright
+          put(p.x + fx * 0.02, y + 0.17, p.z + fz * 0.02, 0.1, 0.09, 0.1, true); // head
           put(p.x + fx * 0.02 + lx * 0.035, y + 0.26, p.z + fz * 0.02 + lz * 0.035, 0.028, 0.05, 0.028);
           put(p.x + fx * 0.02 - lx * 0.035, y + 0.26, p.z + fz * 0.02 - lz * 0.035, 0.028, 0.05, 0.028);
           const curl = Math.sin(t * 0.9 + c.seed) * 0.02;
           put(p.x - lx * 0.09 + curl, y + 0.01, p.z - lz * 0.09, 0.1, 0.035, 0.1); // curled tail
+          // white chest, bright eyes, a dark stripe down the back
+          put(p.x + fx * 0.065, y + 0.05, p.z + fz * 0.065, alongX ? 0.04 : 0.09, 0.09, alongX ? 0.09 : 0.04);
+          put(p.x + fx * 0.08 + lx * 0.028, y + 0.2, p.z + fz * 0.08 + lz * 0.028, 0.028, 0.028, 0.028);
+          put(p.x + fx * 0.08 - lx * 0.028, y + 0.2, p.z + fz * 0.08 - lz * 0.028, 0.028, 0.028, 0.028);
+          put(p.x - fx * 0.02, y + 0.155, p.z - fz * 0.02, alongX ? 0.05 : 0.1, 0.03, alongX ? 0.1 : 0.05);
         } else {
-          put(p.x, y + 0.03, p.z, alongX ? 0.3 : 0.12, 0.1, alongX ? 0.12 : 0.3);
-          put(p.x + fx * 0.17, y + 0.1, p.z + fz * 0.17, 0.1, 0.09, 0.1);
+          put(p.x, y + 0.03, p.z, alongX ? 0.3 : 0.12, 0.1, alongX ? 0.12 : 0.3, true);
+          put(p.x + fx * 0.17, y + 0.1, p.z + fz * 0.17, 0.1, 0.09, 0.1, true);
           put(p.x + fx * 0.17 + lx * 0.035, y + 0.19, p.z + fz * 0.17 + lz * 0.035, 0.028, 0.05, 0.028);
           put(p.x + fx * 0.17 - lx * 0.035, y + 0.19, p.z + fz * 0.17 - lz * 0.035, 0.028, 0.05, 0.028);
           const sway = Math.sin(p.phase * 1.4) * 0.03;
           put(p.x - fx * 0.18 + lx * sway, y + 0.1, p.z - fz * 0.18 + lz * sway, 0.035, 0.12, 0.035);
+          // chest under the chin, eyes forward, stripe along the spine
+          put(p.x + fx * 0.13, y + 0.045, p.z + fz * 0.13, 0.07, 0.07, 0.07);
+          put(p.x + fx * 0.23 + lx * 0.028, y + 0.135, p.z + fz * 0.23 + lz * 0.028, 0.028, 0.028, 0.028);
+          put(p.x + fx * 0.23 - lx * 0.028, y + 0.135, p.z + fz * 0.23 - lz * 0.028, 0.028, 0.028, 0.028);
+          put(p.x - fx * 0.02, y + 0.115, p.z - fz * 0.02, alongX ? 0.14 : 0.1, 0.03, alongX ? 0.1 : 0.14);
         }
       } else if (c.kind === "dog") {
         const bob = p.moving ? Math.abs(Math.sin(p.phase)) * 0.018 : 0;
         const y = p.y + bob;
-        put(p.x, y + 0.06, p.z, alongX ? 0.38 : 0.16, 0.15, alongX ? 0.16 : 0.38);
-        put(p.x + fx * 0.23, y + 0.17, p.z + fz * 0.23, 0.13, 0.12, 0.13);
-        put(p.x + fx * 0.31, y + 0.17, p.z + fz * 0.31, 0.07, 0.06, 0.07);
+        put(p.x, y + 0.06, p.z, alongX ? 0.38 : 0.16, 0.15, alongX ? 0.16 : 0.38, true);
+        put(p.x + fx * 0.23, y + 0.17, p.z + fz * 0.23, 0.13, 0.12, 0.13, true);
+        put(p.x + fx * 0.31, y + 0.17, p.z + fz * 0.31, 0.07, 0.06, 0.07, true);
         put(p.x + fx * 0.23 + lx * 0.05, y + 0.28, p.z + fz * 0.23 + lz * 0.05, 0.035, 0.05, 0.035);
         put(p.x + fx * 0.23 - lx * 0.05, y + 0.28, p.z + fz * 0.23 - lz * 0.05, 0.035, 0.05, 0.035);
         const wag = Math.sin(p.phase * 2.4) * 0.045;
         put(p.x - fx * 0.22 + lx * wag, y + 0.16, p.z - fz * 0.22 + lz * wag, 0.04, 0.11, 0.04);
+        // dark eyes above the snout, a dark collar at the neck
+        put(p.x + fx * 0.305 + lx * 0.034, y + 0.225, p.z + fz * 0.305 + lz * 0.034, 0.028, 0.028, 0.028);
+        put(p.x + fx * 0.305 - lx * 0.034, y + 0.225, p.z + fz * 0.305 - lz * 0.034, 0.028, 0.028, 0.028);
+        put(p.x + fx * 0.19, y + 0.11, p.z + fz * 0.19, alongX ? 0.05 : 0.18, 0.05, alongX ? 0.18 : 0.05);
       } else {
         const glideY = p.y + Math.sin(p.phase * 0.5) * 0.3;
         const gliding = Math.sin(p.phase * 0.13 + c.seed) > 0.25;
         const flap = gliding ? 0.06 : Math.sin(p.phase) * 0.5;
-        put(p.x, glideY, p.z, 0.1, 0.06, 0.14);
+        put(p.x, glideY, p.z, 0.1, 0.06, 0.14, true);
         put(p.x + lx * 0.1, glideY + 0.03 + flap * 0.05, p.z + lz * 0.1, 0.12, 0.03, 0.09);
         put(p.x - lx * 0.1, glideY + 0.03 + flap * 0.05, p.z - lz * 0.1, 0.12, 0.03, 0.09);
       }
     }
     h.creatureMesh.instanceMatrix.needsUpdate = true;
+    if (h.outlineMesh) h.outlineMesh.instanceMatrix.needsUpdate = true;
     return true;
   }, []);
 
@@ -820,6 +852,10 @@ export function City3D({
       lotOfInstance: [],
       boxesPerInstance: [],
       creatureMesh: null,
+      outlineMesh: null,
+      // inverted-hull shell: back faces of a slightly fatter box read as a
+      // pixel outline after quantization — the sprite-sheet trick, in 3D
+      outlineMat: new THREE.MeshBasicMaterial({ color: 0x07070a, side: THREE.BackSide }),
       creatures: [],
       weatherMesh: null,
       beam: null,
@@ -986,7 +1022,10 @@ export function City3D({
         ];
         for (const [lx, lz] of corners) {
           entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 0, z: lz, w: 0.09, h: 1.5, d: 0.09 } });
+          entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 0, z: lz, w: 0.2, h: 0.12, d: 0.2 } }); // pedestal
+          entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 1.42, z: lz, w: 0.3, h: 0.05, d: 0.3 } }); // bracket
           entries.push({ lot: { ...decorLot(lx, lz), seed: 3 }, box: { x: lx, y: 1.5, z: lz, w: 0.22, h: 0.18, d: 0.22 } });
+          entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 1.68, z: lz, w: 0.12, h: 0.06, d: 0.12 } }); // cap
           entries.push({ lot: { ...decorLot(lx, lz), seed: 7 }, box: { x: lx, y: -0.015, z: lz, w: 0.85, h: 0.02, d: 0.85 } }); // light pool
         }
       }
@@ -997,10 +1036,12 @@ export function City3D({
         for (let t = 0; t < 5; t += 1) {
           const tx = block.x + rand() * 7 * CELL;
           const tz = block.z + 6 * CELL + CELL * 0.42;
+          entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.18, h: 0.08, d: 0.18 } }); // root flare
           entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.1, h: 0.4, d: 0.1 } });
           const cw2 = 0.5 + rand() * 0.2;
           entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.4, z: tz, w: cw2, h: 0.42, d: cw2 } });
           entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.82, z: tz, w: cw2 * 0.6, h: 0.3, d: cw2 * 0.6 } }); // crown
+          entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 1.12, z: tz, w: cw2 * 0.28, h: 0.16, d: cw2 * 0.28 } }); // tip
         }
       }
     }
@@ -1094,6 +1135,10 @@ export function City3D({
       h.scene.remove(h.creatureMesh);
       h.creatureMesh.geometry.dispose(); // material is shared and lives on
     }
+    if (h.outlineMesh) {
+      h.scene.remove(h.outlineMesh);
+      h.outlineMesh.geometry.dispose();
+    }
     const creatures = creaturesFor(plan, plan.lots.length, extras);
     const partCount = creatures.reduce((s, c) => s + partsFor(c.kind, weather), 0);
     if (partCount > 0) {
@@ -1104,11 +1149,14 @@ export function City3D({
       cMesh.frustumCulled = false;
       const cTints = new Float32Array(partCount * 3);
       const MULS: Record<Creature["kind"], number[]> = {
-        person: [1, 1.15, 0.55, 0.88, 0.88, 0.6, 0.6], // body head hair armL armR legL legR
-        cat: [1, 1.12, 0.68, 0.68, 0.8], // body head earL earR tail
-        dog: [1, 1.1, 1.28, 0.62, 0.62, 0.85], // body head snout earL earR tail
+        // body head hat armL armR legL legR face eyeL eyeR
+        person: [1, 1.15, 0.55, 0.88, 0.88, 0.6, 0.6, 1.34, 0.16, 0.16],
+        // body head earL earR tail chest eyeL eyeR stripe — cat eyes glow at night
+        cat: [1, 1.12, 0.68, 0.68, 0.8, 1.42, 1.55, 1.55, 0.55],
+        // body head snout earL earR tail eyeL eyeR collar
+        dog: [1, 1.1, 1.28, 0.62, 0.62, 0.85, 0.16, 0.16, 0.45],
         bird: [1, 1.18, 1.18], // body wingL wingR
-        you: [1, 1, 1, 1, 1, 1, 1],
+        you: [1, 1, 1, 1, 1, 1, 1, 1, 0.16, 0.16], // amber, but your eyes are dark
       };
       let pi = 0;
       for (const c of creatures) {
@@ -1116,7 +1164,7 @@ export function City3D({
         const total = partsFor(c.kind, weather);
         for (let p = 0; p < total; p += 1) {
           const isExtra = p >= BASE_PARTS[c.kind];
-          if (c.kind === "you" && !isExtra) {
+          if (c.kind === "you" && !isExtra && (MULS.you[p] ?? 1) > 0.5) {
             cTints[pi * 3] = 2.0; // amber flag — the shader paints you warm
             cTints[pi * 3 + 1] = 2.0;
             cTints[pi * 3 + 2] = 2.0;
@@ -1138,9 +1186,18 @@ export function City3D({
       cGeo.setAttribute("aTint", new THREE.InstancedBufferAttribute(cTints, 3));
       h.scene.add(cMesh);
       h.creatureMesh = cMesh;
+      // the outline shell shares the box geometry; its own matrices, back faces only
+      const oGeo = new THREE.BoxGeometry(1, 1, 1);
+      oGeo.translate(0, 0.5, 0);
+      const oMesh = new THREE.InstancedMesh(oGeo, h.outlineMat!, partCount);
+      oMesh.count = partCount;
+      oMesh.frustumCulled = false;
+      h.scene.add(oMesh);
+      h.outlineMesh = oMesh;
       h.creatures = creatures;
     } else {
       h.creatureMesh = null;
+      h.outlineMesh = null;
       h.creatures = [];
     }
 
