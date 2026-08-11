@@ -1,0 +1,402 @@
+/**
+ * UI language — English / 繁體中文. Only interface chrome is translated;
+ * vault content, filenames, resident names and the Tata brand never are.
+ */
+
+export type Lang = "en" | "zh";
+
+export const LANG_KEY = "tata.lang";
+
+export function loadLang(): Lang {
+  if (typeof window === "undefined") return "en";
+  try {
+    const saved = window.localStorage.getItem(LANG_KEY);
+    return saved === "zh" ? "zh" : "en";
+  } catch {
+    return "en";
+  }
+}
+
+export function saveLang(lang: Lang): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LANG_KEY, lang);
+  } catch {}
+}
+
+export const STRINGS: Record<Lang, Record<string, string>> = {
+  en: {
+    /* topbar */
+    "topbar.hum.on": "City hum",
+    "topbar.hum.mute": "Mute hum",
+    "topbar.search": "Search",
+    "topbar.depot": "Depot",
+    "topbar.settings": "Settings",
+    "topbar.fullscreen.enter": "Fullscreen",
+    "topbar.fullscreen.exit": "Exit fullscreen",
+
+    /* signal chip */
+    "signal.title.connected": "Connected to Obsidian",
+    "signal.title.connect": "Connect Obsidian",
+    "signal.receiving": "receiving",
+    "signal.reconnecting": "reconnecting",
+    "signal.connect": "connect",
+
+    /* search */
+    "search.placeholder": "light up the city…",
+    "search.aria": "Search notes",
+
+    /* today */
+    "notes.today": "Today",
+    "today.title": "Write today's page — N",
+
+    /* months */
+    "months.aria": "Months",
+    "months.earlier": "Earlier month",
+    "months.later": "Later month",
+
+    /* no-webgl card */
+    "nogl.title": "This city needs WebGL.",
+    "nogl.body": "Your notes and the editor still work — press N to write.",
+
+    /* first structure */
+    "city.first": "the first structure",
+
+    /* registry */
+    "registry.title": "Registry",
+    "registry.neighbours": "Neighbours",
+    "registry.notbuilt": "not yet built",
+    "registry.standing": "standing: ",
+    "registry.unknown": "?????",
+    "registry.footer": "The city remembers how each page was written.",
+
+    /* depot */
+    "depot.balance.watts": "watts",
+    "dex.lighthouse.name": "Lighthouse",
+    "dex.lighthouse.line": "The first page after seven days away.",
+    "dex.arch.name": "Arch",
+    "dex.arch.line": "A page written for a past empty day.",
+    "dex.chapel.name": "Chapel",
+    "dex.chapel.line": "Written in the smallest hours, 2-4 am.",
+    "order.write": "Write tonight",
+    "order.w300": "Reach 300 words",
+    "order.second": "A second page",
+    "order.small": "A page in the smallest hours",
+    "order.brief": "A brief page, under 100 words",
+    "order.twonights": "Two nights in a row",
+    "order.backfill": "Fill a past empty day",
+    "order.settle": "Reach 150 words",
+    "order.third": "A third page",
+    "depot.balance.level": "level",
+    "depot.balance.skyline": "skyline",
+    "depot.balance.floors": "floors",
+    "orders.aria": "Tonight's work orders",
+    "depot.state.tonight": "tonight",
+    "depot.state.owned": "in the city",
+    "depot.unit.w": "W",
+    "depot.footer": "Everything here is earned. Amber is not for sale.",
+
+    /* settings */
+    "settings.chime": "Settle chime",
+    "settings.language": "Language",
+    "shortcuts.pan": "pan the city",
+    "shortcuts.search": "search",
+    "shortcuts.write": "write",
+    "shortcuts.close": "close",
+
+    /* common */
+    "common.close": "Close",
+
+    /* notes panel */
+    "notes.vault.title": "Vault",
+    "notes.newpage": "New page",
+    "notes.settings.aria": "Obsidian settings",
+    "notes.back": "Back to writing",
+    "notes.setup.help":
+      "Notes are saved into your Obsidian vault through the Local REST API plugin. Enable its HTTP server, then paste the key below.",
+    "notes.setup.apikey": "Api key",
+    "notes.setup.url": "Url",
+    "notes.setup.folder": "Folder",
+    "notes.setup.folder.placeholder": "(vault root)",
+    "notes.setup.connect": "Connect",
+    "notes.setup.advanced": "Advanced…",
+    "notes.setup.hideadvanced": "Hide advanced",
+    "notes.error.nokey": "Paste the API key from the Local REST API plugin.",
+    "notes.error.connect": "Can't reach Obsidian — check the plugin, HTTP port and key.",
+    "notes.error.keymismatch": "Obsidian is running, but the key doesn't match — paste it again.",
+    "notes.error.safari":
+      "Safari blocks the http port. In the plugin, enable the encrypted server, open https://127.0.0.1:27124/ once and trust its certificate, then set the Url here to https://127.0.0.1:27124.",
+    "notes.error.open": "Couldn't open that note.",
+    "notes.status.saving": "saving",
+    "notes.status.saved": "saved",
+    "notes.status.offline": "saved locally",
+    "notes.status.loading": "…",
+    "notes.recent.aria": "Recent pages",
+    "notes.editor.placeholder": "Write something small.",
+    "notes.tool.list": "Bullet list",
+    "notes.tool.todo": "To-do",
+    "notes.tool.heading": "Heading",
+    "notes.tool.hint": "/ for commands",
+    "notes.tool.size": "Text size",
+    "notes.openinobsidian": "Open in Obsidian",
+    "notes.wordunit": "w",
+    "notes.conflict.message": "This page also changed in Obsidian.",
+    "notes.conflict.theirs": "Use theirs",
+    "notes.conflict.mine": "Keep mine",
+    "notes.conflict.both": "Keep both",
+    "notes.connectcta": "Notes stay in this browser — connect Obsidian to keep them forever →",
+
+    /* mirror */
+    "mirror.title": "Mirror",
+    "mirror.slot.hat": "Hat",
+    "mirror.slot.hair": "Hair",
+    "mirror.slot.acc": "Extra",
+    "mirror.slot.amber": "Amber",
+    "mirror.tone.aria": "Amber tone",
+    "mirror.wear": "Wear it",
+    "mirror.footer": "Silhouettes may cost Watts. Amber itself is never for sale.",
+
+    /* mirror parts */
+    "part.hat.none.name": "Bare head",
+    "part.hat.none.line": "The stars can see you thinking.",
+    "part.hat.tophat.name": "Top hat",
+    "part.hat.tophat.line": "The classic. The city knew you by it.",
+    "part.hat.beanie.name": "Beanie",
+    "part.hat.beanie.line": "Space is cold. Ears first.",
+    "part.hat.cap.name": "Field cap",
+    "part.hat.cap.line": "Brim forward. Deadlines behind.",
+    "part.hat.hood.name": "Hood",
+    "part.hat.hood.line": "For nights that ask for fewer edges.",
+    "part.hair.short.name": "Short crop",
+    "part.hair.short.line": "Low maintenance. High output.",
+    "part.hair.fringe.name": "Fringe",
+    "part.hair.fringe.line": "A line of night over the eyes.",
+    "part.hair.bob.name": "Bob",
+    "part.hair.bob.line": "Frames the face; the face frames the city.",
+    "part.hair.long.name": "Long",
+    "part.hair.long.line": "It remembers every gust you walked through.",
+    "part.acc.none.name": "Nothing extra",
+    "part.acc.none.line": "You, undecorated.",
+    "part.acc.scarf.name": "Scarf",
+    "part.acc.scarf.line": "One loop for warmth, one for style.",
+
+    /* depot catalog */
+    "shop.cats.name": "Alley cats",
+    "shop.cats.line": "Four more cats take the kerbs.",
+    "shop.birds.name": "A flock",
+    "shop.birds.line": "Six more birds cross the sky.",
+    "shop.dog.name": "A dog",
+    "shop.dog.line": "One good dog. It patrols.",
+    "shop.lamps.name": "Street lamps",
+    "shop.lamps.line": "Cold light at every corner.",
+    "shop.trees.name": "Pocket groves",
+    "shop.trees.line": "Grey trees between the towers.",
+    "shop.fountain.name": "Old fountain",
+    "shop.fountain.line": "A plaza in your first month.",
+    "shop.chalk.name": "Chalk district",
+    "shop.chalk.line": "The city, one shade lighter.",
+    "shop.ink.name": "Ink district",
+    "shop.ink.line": "The city, one shade deeper.",
+    "shop.harbor.name": "The harbor",
+    "shop.harbor.line": "A dock on the island's edge.",
+    "shop.viaduct.name": "The viaduct",
+    "shop.viaduct.line": "A high road between months.",
+    "shop.observatory.name": "The observatory",
+    "shop.observatory.line": "A dome watching the galaxy.",
+    "shop.rain.name": "Night rain",
+    "shop.rain.line": "Thin rain over the rooftops.",
+    "shop.snow.name": "First snow",
+    "shop.snow.line": "Slow flakes, soft streets.",
+    "shop.fog.name": "Sea fog",
+    "shop.fog.line": "The far blocks half-dissolve.",
+  },
+  zh: {
+    /* topbar */
+    "topbar.hum.on": "城市嗡鳴",
+    "topbar.hum.mute": "靜音嗡鳴",
+    "topbar.search": "搜尋",
+    "topbar.depot": "補給站",
+    "topbar.settings": "設定",
+    "topbar.fullscreen.enter": "全螢幕",
+    "topbar.fullscreen.exit": "退出全螢幕",
+
+    /* signal chip */
+    "signal.title.connected": "已連接 Obsidian",
+    "signal.title.connect": "連接 Obsidian",
+    "signal.receiving": "接收中",
+    "signal.reconnecting": "重新連接中",
+    "signal.connect": "連接",
+
+    /* search */
+    "search.placeholder": "點亮這座城市…",
+    "search.aria": "搜尋筆記",
+
+    /* today */
+    "notes.today": "今天",
+    "today.title": "寫下今天的頁面 — N",
+
+    /* months */
+    "months.aria": "月份",
+    "months.earlier": "上個月",
+    "months.later": "下個月",
+
+    /* no-webgl card */
+    "nogl.title": "這座城市需要 WebGL。",
+    "nogl.body": "筆記與編輯器仍可使用 — 按 N 開始書寫。",
+
+    /* first structure */
+    "city.first": "第一座建築",
+
+    /* registry */
+    "registry.title": "名冊",
+    "registry.neighbours": "鄰居",
+    "registry.notbuilt": "尚未建成",
+    "registry.standing": "已駐紮：",
+    "registry.unknown": "?????",
+    "registry.footer": "這座城市記得每一頁是怎麼寫下的。",
+
+    /* depot */
+    "depot.balance.watts": "瓦特",
+    "dex.lighthouse.name": "燈塔",
+    "dex.lighthouse.line": "離開七天後的第一頁。",
+    "dex.arch.name": "拱橋",
+    "dex.arch.line": "為過去某個空白的日子補寫的一頁。",
+    "dex.chapel.name": "教堂",
+    "dex.chapel.line": "寫於最深的凌晨，兩點到四點。",
+    "order.write": "今晚寫點什麼",
+    "order.w300": "寫滿三百字",
+    "order.second": "第二頁",
+    "order.small": "在最深的凌晨寫一頁",
+    "order.brief": "一頁短短的，一百字以內",
+    "order.twonights": "連續兩晚",
+    "order.backfill": "補上一個空白的日子",
+    "order.settle": "寫滿一百五十字",
+    "order.third": "第三頁",
+    "depot.balance.level": "等級",
+    "depot.balance.skyline": "天際線",
+    "depot.balance.floors": "層",
+    "orders.aria": "今晚的工單",
+    "depot.state.tonight": "今晚生效",
+    "depot.state.owned": "已擁有",
+    "depot.unit.w": "W",
+    "depot.footer": "這裡的一切都是靠自己掙來的。琥珀色不作販售。",
+
+    /* settings */
+    "settings.chime": "沉降提示音",
+    "settings.language": "語言",
+    "shortcuts.pan": "移動城市",
+    "shortcuts.search": "搜尋",
+    "shortcuts.write": "書寫",
+    "shortcuts.close": "關閉",
+
+    /* common */
+    "common.close": "關閉",
+
+    /* notes panel */
+    "notes.vault.title": "保管庫",
+    "notes.newpage": "新頁面",
+    "notes.settings.aria": "Obsidian 設定",
+    "notes.back": "回到書寫",
+    "notes.setup.help":
+      "筆記會透過 Local REST API 外掛存入你的 Obsidian 保管庫。請先啟用它的 HTTP 伺服器，再貼上下方的金鑰。",
+    "notes.setup.apikey": "API 金鑰",
+    "notes.setup.url": "網址",
+    "notes.setup.folder": "資料夾",
+    "notes.setup.folder.placeholder": "（保管庫根目錄）",
+    "notes.setup.connect": "連接",
+    "notes.setup.advanced": "進階…",
+    "notes.setup.hideadvanced": "隱藏進階選項",
+    "notes.error.nokey": "請貼上 Local REST API 外掛提供的金鑰。",
+    "notes.error.connect": "無法連接 Obsidian — 請檢查外掛、HTTP 連接埠與金鑰。",
+    "notes.error.keymismatch": "Obsidian 正在執行，但金鑰不符 — 請重新貼上一次。",
+    "notes.error.safari":
+      "Safari 封鎖了 http 連接埠。請在外掛中啟用加密伺服器，開啟一次 https://127.0.0.1:27124/ 並信任其憑證，再把這裡的網址設為 https://127.0.0.1:27124。",
+    "notes.error.open": "無法開啟這則筆記。",
+    "notes.status.saving": "儲存中",
+    "notes.status.saved": "已儲存",
+    "notes.status.offline": "已儲存在本機",
+    "notes.status.loading": "…",
+    "notes.recent.aria": "最近的頁面",
+    "notes.editor.placeholder": "寫點小東西吧。",
+    "notes.tool.list": "項目清單",
+    "notes.tool.todo": "待辦事項",
+    "notes.tool.heading": "標題",
+    "notes.tool.hint": "輸入 / 叫出指令",
+    "notes.tool.size": "文字大小",
+    "notes.openinobsidian": "在 Obsidian 中開啟",
+    "notes.wordunit": " 字",
+    "notes.conflict.message": "這則筆記在 Obsidian 中也被修改了。",
+    "notes.conflict.theirs": "使用對方版本",
+    "notes.conflict.mine": "保留我的版本",
+    "notes.conflict.both": "兩者都保留",
+    "notes.connectcta": "筆記目前只存在這個瀏覽器 — 連接 Obsidian 才能永久保存 →",
+
+    /* mirror */
+    "mirror.title": "鏡子",
+    "mirror.slot.hat": "帽子",
+    "mirror.slot.hair": "頭髮",
+    "mirror.slot.acc": "配件",
+    "mirror.slot.amber": "琥珀色",
+    "mirror.tone.aria": "琥珀色調",
+    "mirror.wear": "穿上它",
+    "mirror.footer": "服飾輪廓可能需要瓦特購買。琥珀色本身永不販售。",
+
+    /* mirror parts */
+    "part.hat.none.name": "無帽",
+    "part.hat.none.line": "星星看得見你在想什麼。",
+    "part.hat.tophat.name": "高禮帽",
+    "part.hat.tophat.line": "經典款。這座城市早就認得它。",
+    "part.hat.beanie.name": "毛帽",
+    "part.hat.beanie.line": "太空很冷，耳朵要先顧好。",
+    "part.hat.cap.name": "鴨舌帽",
+    "part.hat.cap.line": "帽簷向前，截止日期拋在腦後。",
+    "part.hat.hood.name": "兜帽",
+    "part.hat.hood.line": "有些夜晚，需要少一點稜角。",
+    "part.hair.short.name": "俐落短髮",
+    "part.hair.short.line": "不費心打理，效率卻很高。",
+    "part.hair.fringe.name": "瀏海",
+    "part.hair.fringe.line": "眼前垂著一道夜色。",
+    "part.hair.bob.name": "鮑伯頭",
+    "part.hair.bob.line": "襯托臉龐；臉龐襯托整座城市。",
+    "part.hair.long.name": "長髮",
+    "part.hair.long.line": "它記得你走過的每一陣風。",
+    "part.acc.none.name": "什麼都不加",
+    "part.acc.none.line": "你，未經裝飾。",
+    "part.acc.scarf.name": "圍巾",
+    "part.acc.scarf.line": "一圈保暖，一圈風格。",
+
+    /* depot catalog */
+    "shop.cats.name": "巷貓",
+    "shop.cats.line": "四隻貓接管路緣。",
+    "shop.birds.name": "鳥群",
+    "shop.birds.line": "六隻鳥掠過夜空。",
+    "shop.dog.name": "一隻狗",
+    "shop.dog.line": "一隻好狗，牠會巡邏。",
+    "shop.lamps.name": "街燈",
+    "shop.lamps.line": "每個轉角都有冷冷的光。",
+    "shop.trees.name": "口袋林地",
+    "shop.trees.line": "高樓之間，幾棵灰色的樹。",
+    "shop.fountain.name": "老噴泉",
+    "shop.fountain.line": "屬於你第一個月的廣場。",
+    "shop.chalk.name": "粉筆街區",
+    "shop.chalk.line": "這座城市，淺了一階。",
+    "shop.ink.name": "墨色街區",
+    "shop.ink.line": "這座城市，深了一階。",
+    "shop.harbor.name": "港口",
+    "shop.harbor.line": "小島邊緣的一座碼頭。",
+    "shop.viaduct.name": "高架橋",
+    "shop.viaduct.line": "橫跨月份之間的高路。",
+    "shop.observatory.name": "天文台",
+    "shop.observatory.line": "一座圓頂，看著銀河。",
+    "shop.rain.name": "夜雨",
+    "shop.rain.line": "細雨落在屋頂上。",
+    "shop.snow.name": "初雪",
+    "shop.snow.line": "緩緩飄落的雪花，柔軟的街道。",
+    "shop.fog.name": "海霧",
+    "shop.fog.line": "遠處的街區，半隱半現。",
+  },
+};
+
+export function makeT(lang: Lang): (key: string) => string {
+  return (key: string) => STRINGS[lang]?.[key] ?? STRINGS.en[key] ?? key;
+}

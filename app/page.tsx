@@ -13,10 +13,12 @@ import { earnedWatts, levelFromWatts, orderBonus, skylineCap, streakOf, workOrde
 import { floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
-import { greet, tierOf, nameOf, lineFor, TIER_NAMES } from "./lib/game/bonds";
+import { greet, tierOf, nameOf, lineFor, tierName } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
 import { hash32 } from "./lib/city/layout";
 import { MirrorPanel } from "./components/mirror";
+import { loadLang, saveLang, makeT } from "./lib/i18n";
+import type { Lang } from "./lib/i18n";
 
 const HUM_KEY = "yeyufm.hum";
 const CHIME_KEY = "yeyufm.chime";
@@ -51,6 +53,8 @@ export default function Home() {
   const [mirrorOpen, setMirrorOpen] = useState(false);
   const [bubble, setBubble] = useState<{ key: string; name: string; text: string; until: number } | null>(null);
   const [emote, setEmote] = useState<{ key: string; icon: string; until: number } | null>(null);
+  const [lang, setLang] = useState<Lang>("en");
+  const t = useMemo(() => makeT(lang), [lang]);
 
   const humRef = useRef<Hum | null>(null);
   const clientRef = useRef<ObsidianClient | null>(null);
@@ -174,11 +178,11 @@ export default function Home() {
   const dex = useMemo(() => {
     const count = (a: number) => cityPlan.lots.filter((l) => l.arch === a).length;
     return [
-      { id: 10, name: "Lighthouse", line: "The first page after seven days away.", n: count(10) },
-      { id: 11, name: "Arch", line: "A page written for a past empty day.", n: count(11) },
-      { id: 12, name: "Chapel", line: "Written in the smallest hours, 2-4 am.", n: count(12) },
+      { id: 10, name: t("dex.lighthouse.name"), line: t("dex.lighthouse.line"), n: count(10) },
+      { id: 11, name: t("dex.arch.name"), line: t("dex.arch.line"), n: count(11) },
+      { id: 12, name: t("dex.chapel.name"), line: t("dex.chapel.line"), n: count(12) },
     ];
-  }, [cityPlan.lots]);
+  }, [cityPlan.lots, t]);
 
   const buy = useCallback(
     (id: string) => {
@@ -259,6 +263,7 @@ export default function Home() {
           firstMeet: !had,
         },
         Math.random(),
+        lang,
       );
       setBubble({ key: hit.key, name: had ? name : "someone", text: line, until: now + 4200 });
       setEmote({
@@ -268,7 +273,7 @@ export default function Home() {
       });
       if (tierAfter > tierBefore && chimeOn) hum().settle();
     },
-    [game, chimeOn, hum, scheduleBondSave],
+    [game, chimeOn, hum, scheduleBondSave, lang],
   );
 
   /* bubbles and emotes fade on their own clock */
@@ -403,6 +408,18 @@ export default function Home() {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
+  }, []);
+
+  /* ---------- language ---------- */
+
+  useEffect(() => {
+    const saved = loadLang();
+    if (saved !== "en") window.setTimeout(() => setLang(saved), 0);
+  }, []);
+
+  const changeLang = useCallback((next: Lang) => {
+    saveLang(next);
+    setLang(next);
   }, []);
 
   /* ---------- sound prefs ---------- */
@@ -626,8 +643,8 @@ export default function Home() {
           />
         ) : (
           <div className="no-gl">
-            <strong>This city needs WebGL.</strong>
-            <span>Your notes and the editor still work — press N to write.</span>
+            <strong>{t("nogl.title")}</strong>
+            <span>{t("nogl.body")}</span>
           </div>
         )}
         {bubble && (
@@ -648,7 +665,7 @@ export default function Home() {
         {empty && introDone && (
           <button type="button" className="city-first" onClick={() => openWrite()}>
             <span className="first-foundation" aria-hidden="true" />
-            the first structure
+            {t("city.first")}
           </button>
         )}
       </div>
@@ -672,10 +689,10 @@ export default function Home() {
                 setRequestSetup(Date.now());
               }
             }}
-            title={synced === "live" ? "Connected to Obsidian" : "Connect Obsidian"}
+            title={synced === "live" ? t("signal.title.connected") : t("signal.title.connect")}
           >
             <i />
-            {synced === "live" ? "receiving" : loadConfig() ? "reconnecting" : "connect"}
+            {synced === "live" ? t("signal.receiving") : loadConfig() ? t("signal.reconnecting") : t("signal.connect")}
           </button>
         </div>
         <div className="topbar-actions">
@@ -683,7 +700,7 @@ export default function Home() {
             type="button"
             onClick={toggleHum}
             className={humOn ? "active" : ""}
-            aria-label={humOn ? "Mute hum" : "City hum"}
+            aria-label={humOn ? t("topbar.hum.mute") : t("topbar.hum.on")}
             aria-pressed={humOn}
           >
             <span className="icon-hum" aria-hidden="true">
@@ -704,7 +721,7 @@ export default function Home() {
               }
             }}
             className={searchOpen ? "active" : ""}
-            aria-label="Search"
+            aria-label={t("topbar.search")}
           >
             <span className="icon-search" aria-hidden="true" />
           </button>
@@ -712,7 +729,7 @@ export default function Home() {
             type="button"
             onClick={() => setShopOpen(!shopOpen)}
             className={shopOpen ? "active" : ""}
-            aria-label="Depot"
+            aria-label={t("topbar.depot")}
             aria-expanded={shopOpen}
           >
             <span className="icon-depot" aria-hidden="true">
@@ -723,7 +740,7 @@ export default function Home() {
             type="button"
             onClick={() => setSettingsOpen(!settingsOpen)}
             className={settingsOpen ? "active" : ""}
-            aria-label="Settings"
+            aria-label={t("topbar.settings")}
             aria-expanded={settingsOpen}
           >
             <span className="icon-dots" aria-hidden="true">
@@ -736,7 +753,7 @@ export default function Home() {
             type="button"
             onClick={toggleFullscreen}
             className={isFullscreen ? "active" : ""}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            aria-label={isFullscreen ? t("topbar.fullscreen.exit") : t("topbar.fullscreen.enter")}
           >
             <span className="icon-fullscreen" aria-hidden="true" />
           </button>
@@ -769,9 +786,9 @@ export default function Home() {
                 }
               }
             }}
-            placeholder="light up the city…"
+            placeholder={t("search.placeholder")}
             spellCheck={false}
-            aria-label="Search notes"
+            aria-label={t("search.aria")}
           />
         </div>
       )}
@@ -781,19 +798,19 @@ export default function Home() {
           type="button"
           className="tonight-cta immersion-ui"
           onClick={() => openWrite()}
-          title="Write today's page — N"
+          title={t("today.title")}
         >
-          Today
+          {t("notes.today")}
         </button>
       )}
 
       {gl3d && !empty && !writeOpen && cityPlan.blocks.length > 0 && (
-        <div className="month-dock immersion-ui" aria-label="Months">
-          <button type="button" onClick={() => jumpMonth(-1)} aria-label="Earlier month">
+        <div className="month-dock immersion-ui" aria-label={t("months.aria")}>
+          <button type="button" onClick={() => jumpMonth(-1)} aria-label={t("months.earlier")}>
             ◀
           </button>
           <span>{cityPlan.blocks[Math.max(0, monthIx)]?.month ?? ""}</span>
-          <button type="button" onClick={() => jumpMonth(1)} aria-label="Later month">
+          <button type="button" onClick={() => jumpMonth(1)} aria-label={t("months.later")}>
             ▶
           </button>
         </div>
@@ -813,33 +830,34 @@ export default function Home() {
         onWords={onWords}
         onSaved={onSaved}
         onActiveFile={setFocusFile}
+        t={t}
       />
 
       <aside
         className="settings-panel dex-panel"
-        aria-label="Registry"
+        aria-label={t("registry.title")}
         aria-hidden={!dexOpen}
         inert={!dexOpen}
       >
         <div className="panel-heading">
-          <span>Registry</span>
-          <button type="button" onClick={() => setDexOpen(false)} aria-label="Close">
+          <span>{t("registry.title")}</span>
+          <button type="button" onClick={() => setDexOpen(false)} aria-label={t("common.close")}>
             ×
           </button>
         </div>
         <div className="dex-items">
           {dex.map((d) => (
             <div key={d.id} className={"dex-item" + (d.n > 0 ? " found" : "")}>
-              <strong>{d.n > 0 ? d.name : "?????"}</strong>
+              <strong>{d.n > 0 ? d.name : t("registry.unknown")}</strong>
               <em>{d.line}</em>
-              <span>{d.n > 0 ? `standing: ${d.n}` : "not yet built"}</span>
+              <span>{d.n > 0 ? `${t("registry.standing")}${d.n}` : t("registry.notbuilt")}</span>
             </div>
           ))}
         </div>
         {knownResidents.length > 0 && (
           <>
             <div className="panel-heading dex-sub">
-              <span>Neighbours</span>
+              <span>{t("registry.neighbours")}</span>
             </div>
             <div className="dex-items">
               {knownResidents.map((r) => (
@@ -847,14 +865,14 @@ export default function Home() {
                   <strong>{r.name}</strong>
                   <em>
                     {"\u25a0".repeat(r.tier)}
-                    {"\u25a1".repeat(4 - r.tier)} {TIER_NAMES[r.tier]}
+                    {"\u25a1".repeat(4 - r.tier)} {tierName(r.tier, lang)}
                   </em>
                 </div>
               ))}
             </div>
           </>
         )}
-        <p className="depot-note">The city remembers how each page was written.</p>
+        <p className="depot-note">{t("registry.footer")}</p>
       </aside>
 
       <MirrorPanel
@@ -865,30 +883,32 @@ export default function Home() {
         onClose={() => setMirrorOpen(false)}
         onUnlock={unlockPart}
         onWear={wearLook}
+        t={t}
       />
 
       <aside
         className="settings-panel shop-panel"
-        aria-label="Depot"
+        aria-label={t("topbar.depot")}
         aria-hidden={!shopOpen}
         inert={!shopOpen}
       >
         <div className="panel-heading">
-          <span>Depot</span>
-          <button type="button" onClick={() => setShopOpen(false)} aria-label="Close">
+          <span>{t("topbar.depot")}</span>
+          <button type="button" onClick={() => setShopOpen(false)} aria-label={t("common.close")}>
             ×
           </button>
         </div>
         <div className="depot-balance">
           <b>{balance}</b>
           <span>
-            watts · level {level} · skyline {levelCap} floors
+            {t("depot.balance.watts")} · {t("depot.balance.level")} {level} · {t("depot.balance.skyline")} {levelCap} {t("depot.balance.floors")}
           </span>
         </div>
-        <div className="depot-orders" aria-label="Tonight's work orders">
+        <div className="depot-orders" aria-label={t("orders.aria")}>
           {orders.map((o) => (
             <span key={o.id} className={o.done ? "done" : ""}>
-              {o.done ? "■" : "□"} {o.name} <b>+{o.bonus}</b>
+              {o.done ? "■" : "□"} {t("order." + o.id) !== "order." + o.id ? t("order." + o.id) : o.name}{" "}
+              <b>+{o.bonus}</b>
             </span>
           ))}
         </div>
@@ -903,6 +923,14 @@ export default function Home() {
             const clickable = owned
               ? item.kind === "weather" || (item.kind === "skin" && !active)
               : affordable && !locked;
+            const itemName =
+              t("shop." + item.id + ".name") !== "shop." + item.id + ".name"
+                ? t("shop." + item.id + ".name")
+                : item.name;
+            const itemLine =
+              t("shop." + item.id + ".line") !== "shop." + item.id + ".line"
+                ? t("shop." + item.id + ".line")
+                : item.line;
             return (
               <button
                 key={item.id}
@@ -911,39 +939,39 @@ export default function Home() {
                 disabled={!clickable}
                 onClick={() => buy(item.id)}
               >
-                <strong>{item.name}</strong>
-                <em>{item.line}</em>
+                <strong>{itemName}</strong>
+                <em>{itemLine}</em>
                 <span>
                   {active
-                    ? "tonight"
+                    ? t("depot.state.tonight")
                     : owned
-                      ? "in the city"
+                      ? t("depot.state.owned")
                       : locked
-                        ? `level ${item.minLevel}`
-                        : `${item.cost} W`}
+                        ? `${t("depot.balance.level")} ${item.minLevel}`
+                        : `${item.cost} ${t("depot.unit.w")}`}
                 </span>
               </button>
             );
           })}
         </div>
-        <p className="depot-note">Everything here is earned. Amber is not for sale.</p>
+        <p className="depot-note">{t("depot.footer")}</p>
       </aside>
 
       <aside
         className="settings-panel"
-        aria-label="Settings"
+        aria-label={t("topbar.settings")}
         aria-hidden={!settingsOpen}
         inert={!settingsOpen}
       >
         <div className="panel-heading">
-          <span>Settings</span>
-          <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Close">
+          <span>{t("topbar.settings")}</span>
+          <button type="button" onClick={() => setSettingsOpen(false)} aria-label={t("common.close")}>
             ×
           </button>
         </div>
         <div className="panel-toggles">
           <label>
-            <span>City hum</span>
+            <span>{t("topbar.hum.on")}</span>
             <button
               type="button"
               className={"toggle" + (humOn ? " on" : "")}
@@ -954,7 +982,7 @@ export default function Home() {
             </button>
           </label>
           <label>
-            <span>Settle chime</span>
+            <span>{t("settings.chime")}</span>
             <button
               type="button"
               className={"toggle" + (chimeOn ? " on" : "")}
@@ -964,12 +992,33 @@ export default function Home() {
               <i />
             </button>
           </label>
+          <label>
+            <span>{t("settings.language")}</span>
+            <span className="lang-switch">
+              <button
+                type="button"
+                className={"mirror-opt" + (lang === "en" ? " active" : "")}
+                aria-pressed={lang === "en"}
+                onClick={() => changeLang("en")}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={"mirror-opt" + (lang === "zh" ? " active" : "")}
+                aria-pressed={lang === "zh"}
+                onClick={() => changeLang("zh")}
+              >
+                中文
+              </button>
+            </span>
+          </label>
         </div>
         <div className="panel-shortcuts">
-          <span><b>← → ↑ ↓</b> pan the city</span>
-          <span><b>/</b> search</span>
-          <span><b>N</b> write</span>
-          <span><b>Esc</b> close</span>
+          <span><b>← → ↑ ↓</b> {t("shortcuts.pan")}</span>
+          <span><b>/</b> {t("shortcuts.search")}</span>
+          <span><b>N</b> {t("shortcuts.write")}</span>
+          <span><b>Esc</b> {t("shortcuts.close")}</span>
         </div>
       </aside>
     </main>

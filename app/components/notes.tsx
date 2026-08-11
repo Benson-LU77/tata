@@ -84,6 +84,7 @@ export function NotesPanel({
   onWords,
   onSaved,
   onActiveFile,
+  t,
 }: {
   open: boolean;
   onClose: () => void;
@@ -104,6 +105,7 @@ export function NotesPanel({
   /** a save landed in the vault; isNew = the structure just settled */
   onSaved: (file: string, isNew: boolean) => void;
   onActiveFile: (file: string | null) => void;
+  t: (key: string) => string;
 }) {
   const [view, setView] = useState<View>("edit");
   const [connected, setConnected] = useState(false);
@@ -182,22 +184,21 @@ export function NotesPanel({
       }
       setStatus("error");
       setConnected(false);
-      let message = "Can't reach Obsidian — check the plugin, HTTP port and key.";
+      let message = t("notes.error.connect");
       try {
         const h = await client.health();
         if (h.ok && !h.authenticated) {
-          message = "Obsidian is running, but the key doesn't match — paste it again.";
+          message = t("notes.error.keymismatch");
         }
       } catch {
         if (isSafari) {
-          message =
-            "Safari blocks the http port. In the plugin, enable the encrypted server, open https://127.0.0.1:27124/ once and trust its certificate, then set the Url here to https://127.0.0.1:27124.";
+          message = t("notes.error.safari");
         }
       }
       setError(message);
       return false;
     }
-  }, []);
+  }, [t]);
 
   /* every open re-checks the connection — a PWA quit/relaunch or an
      Obsidian restart otherwise leaves us silently "connected" */
@@ -331,9 +332,9 @@ export function NotesPanel({
       setStatus("idle");
     } catch {
       setStatus("error");
-      setError("Couldn't open that note.");
+      setError(t("notes.error.open"));
     }
-  }, []);
+  }, [t]);
 
   /* first open: resume the freshest unsent draft, else tonight */
   useEffect(() => {
@@ -393,7 +394,7 @@ export function NotesPanel({
       folder: folder.trim(),
     };
     if (!config.key) {
-      setError("Paste the API key from the Local REST API plugin.");
+      setError(t("notes.error.nokey"));
       return;
     }
     saveConfig(config);
@@ -407,7 +408,7 @@ export function NotesPanel({
         void openTonight();
       }
     });
-  }, [url, key, folder, content, makeClient, checkConnection, onConnected, openTonight]);
+  }, [url, key, folder, content, makeClient, checkConnection, onConnected, openTonight, t]);
 
   const flushSave = useCallback(async () => {
     const client = clientRef.current;
@@ -595,22 +596,22 @@ export function NotesPanel({
 
   const statusLabel =
     status === "saving"
-      ? "saving"
+      ? t("notes.status.saving")
       : status === "saved"
-        ? "saved"
+        ? t("notes.status.saved")
         : status === "offline"
-          ? "saved locally"
+          ? t("notes.status.offline")
           : status === "loading"
-            ? "…"
+            ? t("notes.status.loading")
             : "";
 
   return (
     <aside className="notes-panel" aria-label="Notes" aria-hidden={!open} inert={!open}>
       <div className="panel-heading">
-        <span>{view === "setup" ? "Vault" : ""}</span>
+        <span>{view === "setup" ? t("notes.vault.title") : ""}</span>
         <div className="notes-heading-actions">
           {view !== "setup" && (
-            <button type="button" className="notes-gear" onClick={newPage} aria-label="New page" title="New page">
+            <button type="button" className="notes-gear" onClick={newPage} aria-label={t("notes.newpage")} title={t("notes.newpage")}>
               +
             </button>
           )}
@@ -619,7 +620,7 @@ export function NotesPanel({
               type="button"
               className="notes-gear"
               onClick={() => setView("setup")}
-              aria-label="Obsidian settings"
+              aria-label={t("notes.settings.aria")}
             >
               ⚙
             </button>
@@ -629,12 +630,12 @@ export function NotesPanel({
               type="button"
               className="notes-gear"
               onClick={() => setView("edit")}
-              aria-label="Back to writing"
+              aria-label={t("notes.back")}
             >
               ←
             </button>
           )}
-          <button type="button" onClick={handleClose} aria-label="Close">
+          <button type="button" onClick={handleClose} aria-label={t("common.close")}>
             ×
           </button>
         </div>
@@ -642,12 +643,9 @@ export function NotesPanel({
 
       {view === "setup" && (
         <div className="notes-setup">
-          <p className="notes-help">
-            Notes are saved into your Obsidian vault through the Local REST API plugin.
-            Enable its HTTP server, then paste the key below.
-          </p>
+          <p className="notes-help">{t("notes.setup.help")}</p>
           <label>
-            <span>Api key</span>
+            <span>{t("notes.setup.apikey")}</span>
             <input
               type="password"
               value={key}
@@ -658,7 +656,7 @@ export function NotesPanel({
           {advanced && (
             <>
               <label>
-                <span>Url</span>
+                <span>{t("notes.setup.url")}</span>
                 <input
                   type="text"
                   value={url}
@@ -668,12 +666,12 @@ export function NotesPanel({
                 />
               </label>
               <label>
-                <span>Folder</span>
+                <span>{t("notes.setup.folder")}</span>
                 <input
                   type="text"
                   value={folder}
                   onChange={(event) => setFolder(event.target.value)}
-                  placeholder="(vault root)"
+                  placeholder={t("notes.setup.folder.placeholder")}
                   spellCheck={false}
                 />
               </label>
@@ -681,10 +679,10 @@ export function NotesPanel({
           )}
           {error && <p className="notes-error">{error}</p>}
           <button type="button" className="notes-primary" onClick={connect}>
-            Connect
+            {t("notes.setup.connect")}
           </button>
           <button type="button" className="notes-plain" onClick={() => setAdvanced((v) => !v)}>
-            {advanced ? "Hide advanced" : "Advanced…"}
+            {advanced ? t("notes.setup.hideadvanced") : t("notes.setup.advanced")}
           </button>
         </div>
       )}
@@ -692,7 +690,7 @@ export function NotesPanel({
       {view === "edit" && (
         <div className={"notes-editor size-" + fontSize}>
           {recent && recent.length > 1 && (
-            <div className="notes-recent" aria-label="Recent pages">
+            <div className="notes-recent" aria-label={t("notes.recent.aria")}>
               {recent.map((f) => (
                 <button
                   key={f}
@@ -706,10 +704,10 @@ export function NotesPanel({
             </div>
           )}
           <div className="notes-editor-bar">
-            <strong>{activeFile ? prettyName(activeFile) : "Today"}</strong>
+            <strong>{activeFile ? prettyName(activeFile) : t("notes.today")}</strong>
             <span className="bar-side">
               <em>
-                {countWords(content) > 0 ? `${countWords(content)}w · ` : ""}
+                {countWords(content) > 0 ? `${countWords(content)}${t("notes.wordunit")} · ` : ""}
                 {statusLabel}
               </em>
               {connected && activeFile && (
@@ -725,8 +723,8 @@ export function NotesPanel({
                       window.location.href = "obsidian://open";
                     }, 150);
                   }}
-                  aria-label="Open in Obsidian"
-                  title="Open in Obsidian"
+                  aria-label={t("notes.openinobsidian")}
+                  title={t("notes.openinobsidian")}
                 >
                   ↗
                 </button>
@@ -735,16 +733,16 @@ export function NotesPanel({
           </div>
           {conflict && (
             <div className="notes-conflict" role="alert">
-              <span>This page also changed in Obsidian.</span>
+              <span>{t("notes.conflict.message")}</span>
               <span className="conflict-actions">
                 <button type="button" onClick={resolveTheirs}>
-                  Use theirs
+                  {t("notes.conflict.theirs")}
                 </button>
                 <button type="button" onClick={() => void resolveMine()}>
-                  Keep mine
+                  {t("notes.conflict.mine")}
                 </button>
                 <button type="button" onClick={() => void resolveBoth()}>
-                  Keep both
+                  {t("notes.conflict.both")}
                 </button>
               </span>
             </div>
@@ -753,27 +751,27 @@ export function NotesPanel({
             <button
               type="button"
               onClick={() => editorRef.current?.toggle("list")}
-              aria-label="Bullet list"
+              aria-label={t("notes.tool.list")}
             >
               •–
             </button>
             <button
               type="button"
               onClick={() => editorRef.current?.toggle("todo")}
-              aria-label="To-do"
+              aria-label={t("notes.tool.todo")}
             >
               ☑
             </button>
             <button
               type="button"
               onClick={() => editorRef.current?.toggle("heading")}
-              aria-label="Heading"
+              aria-label={t("notes.tool.heading")}
             >
               H
             </button>
-            <span className="tools-hint">/ for commands</span>
+            <span className="tools-hint">{t("notes.tool.hint")}</span>
             <span className="tools-gap" />
-            <button type="button" onClick={cycleFontSize} aria-label="Text size">
+            <button type="button" onClick={cycleFontSize} aria-label={t("notes.tool.size")}>
               aA
             </button>
           </div>
@@ -781,7 +779,7 @@ export function NotesPanel({
             value={content}
             channelName=""
             pages={pages}
-            placeholder="Write something small."
+            placeholder={t("notes.editor.placeholder")}
             onChange={handleChange}
             onBlur={() => void flushSave()}
             onReady={(api) => {
@@ -795,7 +793,7 @@ export function NotesPanel({
               className="notes-plain notes-connect"
               onClick={() => setView("setup")}
             >
-              Notes stay in this browser — connect Obsidian to keep them forever →
+              {t("notes.connectcta")}
             </button>
           )}
         </div>

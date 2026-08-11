@@ -37,6 +37,12 @@ export function tierOf(b: Bond | undefined): Tier {
 }
 
 export const TIER_NAMES = ["someone", "familiar", "acquainted", "friend", "family"] as const;
+const TIER_NAMES_ZH = ["陌生人", "面熟", "相識", "朋友", "家人"] as const;
+
+/** tier label in the given UI language — English keeps the legacy TIER_NAMES export */
+export function tierName(tier: Tier, lang: "en" | "zh" = "en"): string {
+  return lang === "zh" ? TIER_NAMES_ZH[tier] : TIER_NAMES[tier];
+}
 
 /** greet once; same-day repeats change nothing but the conversation */
 export function greet(bonds: Bonds, key: string, today: string): Bonds {
@@ -162,16 +168,90 @@ const SNOW = [
 const CAT_LINES = ["...", "mrr.", "(slow blink)", "(watches you, approves)"];
 const DOG_LINES = ["(tail thumps)", "woof.", "(spins once)", "(presents nothing, proudly)"];
 
-export function lineFor(ctx: LineCtx, roll: number): string {
+/* ---------------- zh line pools — same counts, not literal translations */
+
+const FIRST_MEET_ZH = [
+  "喔——你好。我們好像沒見過。",
+  "新面孔。呃，比我新一點。",
+  "嗯？喔，你好。",
+];
+
+const T1_ZH = [
+  "晚安。",
+  "今晚很適合走走。",
+  "高樓又長高了，你看見了嗎。",
+  "小心路緣。",
+  "你就是那個琥珀色的吧。",
+  "今晚很安靜。",
+];
+
+const T2_ZH = [
+  "又是你！真好。",
+  "我幫你留了位子。其實沒有長椅。沒關係。",
+  "昨晚的燈光很美。",
+  "我數過路燈，數到一半就忘了。",
+  "聽見一棟新建築落成的聲音，聽起來像是你的。",
+  "那隻狗又追著 Mochi 跑了，誰也沒贏。",
+];
+
+const T3_ZH = [
+  "你來了。我開始擔心了。",
+  "我跟鄰居提過你，都是好話。",
+  "有些夜晚，我只是看著銀河緩緩轉動。",
+  "你那扇窗亮到很晚，寫了什麼好東西嗎。",
+  "要是哪天你不再走這條街，會覺得不對勁。",
+  "我最喜歡你到來前一刻的這座城市。",
+];
+
+const T4_ZH = [
+  "歡迎回家。",
+  "什麼都不用說，沒關係的。",
+  "我還記得這個街區只有兩棟樓的時候。",
+  "不管你今晚寫了什麼，我都替你高興。",
+  "這座城市為你留著燈，我也是。",
+];
+
+const LATE_ZH = [
+  "還沒睡？我也是，廢話。",
+  "凌晨的時刻，總是最誠實的。",
+];
+const RAIN_ZH = [
+  "雨聲在這麼高的地方，聽起來比較薄。",
+  "別生鏽。",
+];
+const SNOW_ZH = [
+  "太空竟然下雪，別問我怎麼回事，好好享受吧。",
+  "今晚每個腳印，都是你的。",
+];
+
+const CAT_LINES_ZH = ["……", "喵。", "（緩緩眨眼）", "（盯著你，一副認可的樣子）"];
+const DOG_LINES_ZH = ["（尾巴用力搖）", "汪。", "（原地轉一圈）", "（驕傲地叼來什麼都沒有的東西）"];
+
+export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): string {
+  const zh = lang === "zh";
   const pick = (pool: string[]) => pool[Math.floor(Math.abs(roll) * 7919) % pool.length];
-  if (ctx.kind === "cat") return pick(CAT_LINES);
-  if (ctx.kind === "dog") return pick(DOG_LINES);
-  if (ctx.firstMeet) return pick(FIRST_MEET);
+  if (ctx.kind === "cat") return pick(zh ? CAT_LINES_ZH : CAT_LINES);
+  if (ctx.kind === "dog") return pick(zh ? DOG_LINES_ZH : DOG_LINES);
+  if (ctx.firstMeet) return pick(zh ? FIRST_MEET_ZH : FIRST_MEET);
   // a slice of the pool leans situational
   const r = Math.abs(roll * 31) % 1;
-  if (ctx.weather === "rain" && r < 0.3) return pick(RAIN);
-  if (ctx.weather === "snow" && r < 0.3) return pick(SNOW);
-  if ((ctx.hour >= 1 && ctx.hour < 5) && r < 0.45) return pick(LATE);
-  const base = ctx.tier >= 4 ? T4 : ctx.tier === 3 ? T3 : ctx.tier === 2 ? T2 : T1;
+  if (ctx.weather === "rain" && r < 0.3) return pick(zh ? RAIN_ZH : RAIN);
+  if (ctx.weather === "snow" && r < 0.3) return pick(zh ? SNOW_ZH : SNOW);
+  if ((ctx.hour >= 1 && ctx.hour < 5) && r < 0.45) return pick(zh ? LATE_ZH : LATE);
+  const base = zh
+    ? ctx.tier >= 4
+      ? T4_ZH
+      : ctx.tier === 3
+        ? T3_ZH
+        : ctx.tier === 2
+          ? T2_ZH
+          : T1_ZH
+    : ctx.tier >= 4
+      ? T4
+      : ctx.tier === 3
+        ? T3
+        : ctx.tier === 2
+          ? T2
+          : T1;
   return pick(base);
 }

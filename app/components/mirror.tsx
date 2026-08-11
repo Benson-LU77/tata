@@ -25,11 +25,7 @@ function pixelColor(ch: string): string | null {
   return "#ffcd82";
 }
 
-const SLOTS: { slot: PartSlot; title: string }[] = [
-  { slot: "hat", title: "Hat" },
-  { slot: "hair", title: "Hair" },
-  { slot: "acc", title: "Extra" },
-];
+const SLOTS: PartSlot[] = ["hat", "hair", "acc"];
 
 export function MirrorPanel({
   open,
@@ -39,6 +35,7 @@ export function MirrorPanel({
   onClose,
   onUnlock,
   onWear,
+  t,
 }: {
   open: boolean;
   look: YouLook;
@@ -47,6 +44,7 @@ export function MirrorPanel({
   onClose: () => void;
   onUnlock: (id: string, cost: number) => void;
   onWear: (look: YouLook) => void;
+  t: (key: string) => string;
 }) {
   const [draft, setDraft] = useState<YouLook>(look);
   // reset the draft each time the Mirror opens (setState-during-render
@@ -92,29 +90,31 @@ export function MirrorPanel({
   const pick = (slot: PartSlot, id: string) => setDraft((d) => ({ ...d, [slot]: id }));
 
   return (
-    <aside className="settings-panel mirror-panel" aria-label="Mirror" aria-hidden={!open} inert={!open}>
+    <aside className="settings-panel mirror-panel" aria-label={t("mirror.title")} aria-hidden={!open} inert={!open}>
       <div className="panel-heading">
-        <span>Mirror</span>
-        <button type="button" onClick={onClose} aria-label="Close">
+        <span>{t("mirror.title")}</span>
+        <button type="button" onClick={onClose} aria-label={t("common.close")}>
           ×
         </button>
       </div>
       <div className="mirror-body">
         <canvas ref={canvasRef} className="mirror-preview" width={96} height={156} aria-label="Your figure" />
         <div className="mirror-controls">
-          {SLOTS.map(({ slot, title }) => (
+          {SLOTS.map((slot) => (
             <div key={slot} className="mirror-row">
-              <span className="mirror-row-title">{title}</span>
+              <span className="mirror-row-title">{t("mirror.slot." + slot)}</span>
               <div className="mirror-options">
                 {PARTS.filter((p) => p.slot === slot).map((p) => {
                   const unlocked = isOwned(p.id, p.cost);
                   const active = draft[slot] === p.id;
+                  const name = t("part." + p.id + ".name") !== "part." + p.id + ".name" ? t("part." + p.id + ".name") : p.name;
+                  const line = t("part." + p.id + ".line") !== "part." + p.id + ".line" ? t("part." + p.id + ".line") : p.line;
                   return (
                     <button
                       key={p.id}
                       type="button"
                       className={"mirror-opt" + (active ? " active" : "") + (unlocked ? "" : " locked")}
-                      title={p.line}
+                      title={line}
                       onClick={() => {
                         if (unlocked) pick(slot, p.id);
                         else if (watts >= p.cost) {
@@ -123,7 +123,7 @@ export function MirrorPanel({
                         }
                       }}
                     >
-                      {p.name}
+                      {name}
                       {!unlocked && <em> {p.cost}W</em>}
                     </button>
                   );
@@ -132,30 +132,30 @@ export function MirrorPanel({
             </div>
           ))}
           <div className="mirror-row">
-            <span className="mirror-row-title">Amber</span>
+            <span className="mirror-row-title">{t("mirror.slot.amber")}</span>
             <div className="mirror-options">
-              {[0, 1, 2, 3].map((t) => (
+              {[0, 1, 2, 3].map((tone) => (
                 <button
-                  key={t}
+                  key={tone}
                   type="button"
-                  className={"mirror-opt tone" + (draft.tone === t ? " active" : "")}
-                  aria-label={`Amber tone ${t + 1}`}
-                  onClick={() => setDraft((d) => ({ ...d, tone: t as YouLook["tone"] }))}
+                  className={"mirror-opt tone" + (draft.tone === tone ? " active" : "")}
+                  aria-label={`${t("mirror.tone.aria")} ${tone + 1}`}
+                  onClick={() => setDraft((d) => ({ ...d, tone: tone as YouLook["tone"] }))}
                 >
                   <span
                     className="tone-chip"
-                    style={{ background: ["#8a6c3c", "#be9050", PALETTE.amber, "#ffcd82"][t] }}
+                    style={{ background: ["#8a6c3c", "#be9050", PALETTE.amber, "#ffcd82"][tone] }}
                   />
                 </button>
               ))}
             </div>
           </div>
           <button type="button" className="mirror-wear" onClick={() => onWear(draft)}>
-            Wear it
+            {t("mirror.wear")}
           </button>
         </div>
       </div>
-      <p className="depot-note">Silhouettes may cost Watts. Amber itself is never for sale.</p>
+      <p className="depot-note">{t("mirror.footer")}</p>
     </aside>
   );
 }

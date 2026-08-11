@@ -1385,6 +1385,8 @@ button:focus-visible, input:focus-visible {
 .mirror-opt.tone { padding: 5px; }
 .tone-chip { display: block; width: 14px; height: 14px; }
 
+.lang-switch { display: flex; gap: 6px; }
+
 .mirror-wear {
   align-self: flex-start;
   margin-top: 4px;
