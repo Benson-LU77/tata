@@ -9,7 +9,7 @@ import { demoMetrics, loadCityMetrics, dateOf } from "./lib/city/metrics";
 import type { NoteMetric } from "./lib/city/metrics";
 import { ObsidianClient, loadConfig } from "./lib/obsidian";
 import { cityCache } from "./lib/drafts";
-import { earnedWatts, levelFromWatts, orderBonus, skylineCap, streakOf, workOrders } from "./lib/game/watts";
+import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, workOrders } from "./lib/game/watts";
 import { floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
@@ -37,6 +37,7 @@ export default function Home() {
   const [requestOpen, setRequestOpen] = useState<{ file: string; n: number } | null>(null);
   const [uiVisible, setUiVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [canFullscreen, setCanFullscreen] = useState(true);
   const [humOn, setHumOn] = useState(false);
   const [chimeOn, setChimeOn] = useState(true);
   const [synced, setSynced] = useState<"live" | "cached" | "local">("local");
@@ -164,11 +165,14 @@ export default function Home() {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }, [nowTs]);
-  const earned = useMemo(() => earnedWatts(metrics) + orderBonus(metrics), [metrics]);
-  const balance = earned - game.spent;
+  const earnedDerived = useMemo(() => earnedWatts(metrics) + orderBonus(metrics), [metrics]);
+  // the iron rule, enforced: deleting notes in the vault never shrinks the
+  // city — the floor only ever rises, and it lives in tata.json
+  const earned = Math.max(earnedDerived, game.earnedFloor);
+  const balance = Math.max(0, earned - game.spent);
   const level = useMemo(() => levelFromWatts(earned), [earned]);
   const levelCap = skylineCap(level);
-  const streak = useMemo(() => streakOf(metrics, today), [metrics, today]);
+  const bestStreak = useMemo(() => bestStreakOf(metrics), [metrics]);
   const orders = useMemo(() => workOrders(metrics, today), [metrics, today]);
   const allPages = useMemo(() => metrics.map((m) => m.file), [metrics]);
   const recent = useMemo(
@@ -233,6 +237,20 @@ export default function Home() {
       if (bondSaveStateRef.current) void saveGameState(bondSaveStateRef.current, clientRef.current);
     }, 5000);
   }, []);
+
+  useEffect(() => {
+    if (metrics.length === 0 || earnedDerived <= game.earnedFloor) return;
+    // deferred so the floor raise never cascades into the same render pass
+    const id = window.setTimeout(() => {
+      setGame((prev) => {
+        if (earnedDerived <= prev.earnedFloor) return prev;
+        const next = { ...prev, earnedFloor: earnedDerived, updatedAt: Date.now() };
+        scheduleBondSave(next);
+        return next;
+      });
+    }, 400);
+    return () => window.clearTimeout(id);
+  }, [earnedDerived, game.earnedFloor, metrics.length, scheduleBondSave]);
 
   const onCreatureTap = useCallback(
     (hit: { key: string; kind: string; seed: number; x: number; y: number }) => {
@@ -402,8 +420,10 @@ export default function Home() {
   /* ---------- intro ---------- */
 
   useEffect(() => {
-    const t1 = window.setTimeout(() => setIntro(true), 150);
-    const t2 = window.setTimeout(() => setIntroDone(true), 2100);
+    const seen = window.localStorage.getItem("tata.visited");
+    window.localStorage.setItem("tata.visited", "1");
+    const t1 = window.setTimeout(() => setIntro(true), seen ? 40 : 150);
+    const t2 = window.setTimeout(() => setIntroDone(true), seen ? 420 : 2100);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
@@ -543,9 +563,14 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // deferred: probing the fullscreen API is a one-time external read
+    const id = window.setTimeout(() => setCanFullscreen(Boolean(document.fullscreenEnabled)), 0);
     const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener("fullscreenchange", onChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -631,7 +656,7 @@ export default function Home() {
             goMonth={goMonth}
             ceremony={ceremony}
             levelCap={levelCap}
-            streak={streak}
+            streak={bestStreak}
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
             onOpen={(file) => openWrite(file)}
             onCreatureTap={onCreatureTap}
@@ -738,6 +763,18 @@ export default function Home() {
           </button>
           <button
             type="button"
+            onClick={() => setDexOpen(!dexOpen)}
+            className={dexOpen ? "active" : ""}
+            aria-label={t("topbar.registry")}
+            aria-expanded={dexOpen}
+          >
+            <span className="icon-registry" aria-hidden="true">
+              <i />
+              <i />
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={() => setSettingsOpen(!settingsOpen)}
             className={settingsOpen ? "active" : ""}
             aria-label={t("topbar.settings")}
@@ -749,14 +786,16 @@ export default function Home() {
               <i />
             </span>
           </button>
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className={isFullscreen ? "active" : ""}
-            aria-label={isFullscreen ? t("topbar.fullscreen.exit") : t("topbar.fullscreen.enter")}
-          >
-            <span className="icon-fullscreen" aria-hidden="true" />
-          </button>
+          {canFullscreen && (
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className={isFullscreen ? "active" : ""}
+              aria-label={isFullscreen ? t("topbar.fullscreen.exit") : t("topbar.fullscreen.enter")}
+            >
+              <span className="icon-fullscreen" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -1016,8 +1055,14 @@ export default function Home() {
         </div>
         <div className="panel-shortcuts">
           <span><b>← → ↑ ↓</b> {t("shortcuts.pan")}</span>
+          <span><b>Q E</b> {t("shortcuts.rotate")}</span>
+          <span><b>[ ]</b> {t("shortcuts.months")}</span>
           <span><b>/</b> {t("shortcuts.search")}</span>
           <span><b>N</b> {t("shortcuts.write")}</span>
+          <span><b>B</b> {t("shortcuts.depot")}</span>
+          <span><b>C</b> {t("shortcuts.registry")}</span>
+          <span><b>M</b> {t("shortcuts.mirror")}</span>
+          <span><b>Z</b> {t("shortcuts.zen")}</span>
           <span><b>Esc</b> {t("shortcuts.close")}</span>
         </div>
       </aside>

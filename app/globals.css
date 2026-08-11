@@ -1399,3 +1399,17 @@ button:focus-visible, input:focus-visible {
   color: var(--amber);
   cursor: pointer;
 }
+
+/* registry topbar icon: two little ledger lines */
+.icon-registry {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 14px;
+}
+.icon-registry i {
+  display: block;
+  height: 2px;
+  background: currentColor;
+}
+.icon-registry i:last-child { width: 60%; }

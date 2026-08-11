@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-web --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "build:web": "vite build --config web/vite.config.ts",
-    "deploy": "npm run build:web && gh-pages -d dist-web -m \"deploy \u591c\u96e8 FM\"",
+    "deploy": "npm run build:web && gh-pages -d dist-web -m \"deploy 夜雨 FM\"",
     "test:city": "node scripts/test-city.mjs"
   },
   "dependencies": {
@@ -54,6 +54,7 @@
     "typescript": "5.9.3",
     "vinext": "0.0.50",
     "vite": "8.0.13",
+    "vite-plugin-pwa": "^1.3.0",
     "wrangler": "4.92.0"
   },
   "type": "module"

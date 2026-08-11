@@ -640,6 +640,8 @@ export function City3D({
         tintAttr.setXYZ(i, 2.0, 2.0, 2.0); // flag: amber path in shader
       } else if (dimmed) {
         tintAttr.setXYZ(i, grey * 0.28, grey * 0.28, grey * 0.3);
+      } else if (lot.file === hoverRef.current) {
+        tintAttr.setXYZ(i, grey * 1.22, grey * 1.22, grey * 1.26);
       } else {
         tintAttr.setXYZ(i, grey, grey, grey * 1.04);
       }
@@ -1584,6 +1586,8 @@ export function City3D({
       const hit = raycast(event.clientX, event.clientY);
       if (hit !== hoverRef.current) {
         hoverRef.current = hit;
+        buildingsDirtyRef.current = true;
+        loop();
         onHover(hit, event.clientX, event.clientY);
       } else if (hit) {
         onHover(hit, event.clientX, event.clientY);

@@ -121,6 +121,22 @@ export function orderBonus(metrics: NoteMetric[]): number {
   return total;
 }
 
+/** the longest run of consecutive days ever written — lamps never go out */
+export function bestStreakOf(metrics: NoteMetric[]): number {
+  const days = [...new Set(metrics.map((m) => m.date))].sort();
+  const DAY = 86400000;
+  let best = 0;
+  let run = 0;
+  let prev = 0;
+  for (const d of days) {
+    const t = new Date(d + "T00:00:00Z").getTime();
+    run = t - prev === DAY ? run + 1 : 1;
+    prev = t;
+    if (run > best) best = run;
+  }
+  return best;
+}
+
 /** consecutive days written, ending today or yesterday — never punished */
 export function streakOf(metrics: NoteMetric[], today: string): number {
   const days = new Set(metrics.map((m) => m.date));

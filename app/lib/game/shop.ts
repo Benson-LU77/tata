@@ -47,6 +47,8 @@ export type GameState = {
   look: YouLook;
   /** who you know, keyed by stable creature key */
   bonds: Bonds;
+  /** highest Watts total ever derived — deleting notes never shrinks the city */
+  earnedFloor: number;
   updatedAt: number;
 };
 
@@ -57,6 +59,7 @@ export const EMPTY_STATE: GameState = {
   weather: "none",
   look: DEFAULT_LOOK,
   bonds: {},
+  earnedFloor: 0,
   updatedAt: 0,
 };
 
@@ -77,6 +80,7 @@ function mergeStates(a: GameState, b: GameState): GameState {
     weather: newer.weather,
     look: newer.look, // an outfit is one decision, not a union of parts
     bonds: mergeBonds(a.bonds, b.bonds),
+    earnedFloor: Math.max(a.earnedFloor ?? 0, b.earnedFloor ?? 0),
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }
@@ -109,6 +113,7 @@ async function loadLocalState(): Promise<GameState> {
                 weather: raw.weather ?? "none",
                 look: raw.look ?? DEFAULT_LOOK,
                 bonds: raw.bonds ?? {},
+                earnedFloor: raw.earnedFloor ?? 0,
                 updatedAt: raw.updatedAt ?? 0,
               }
             : EMPTY_STATE,
@@ -137,6 +142,7 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
       weather: remote.weather ?? "none",
       look: remote.look ?? DEFAULT_LOOK,
       bonds: remote.bonds ?? {},
+      earnedFloor: remote.earnedFloor ?? 0,
       updatedAt: remote.updatedAt ?? 0,
     });
     void saveGameState(merged); // heal the local copy
