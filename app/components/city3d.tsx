@@ -39,9 +39,19 @@ function prefersReducedMotion(): boolean {
   }
   return reducedMotionCache;
 }
-const VIRTUAL_H = 270;
+const VIRTUAL_H = 324;
 const INTRO_MS = 1600;
 const YAW_DETENT = Math.PI / 4;
+
+/**
+ * Zoom detents defined by the resident's on-screen pixel height
+ * (view = personWorld · cos(elevation) · VIRTUAL_H / px ≈ 342.9 / px).
+ * Every stop lands sprites on an exact integer texel scale; the default
+ * frames one month block with residents 12 px tall.
+ */
+const VIEW_STOPS = [64, 42.9, 28.6, 21.4, 14.3, 10.7, 7.1];
+const VIEW_DEFAULT = VIEW_STOPS[2];
+const VIEW_MIN = VIEW_STOPS[VIEW_STOPS.length - 1];
 
 const QUANT_FRAG = `
 precision mediump float;
@@ -75,7 +85,22 @@ float hash21(vec2 p) {
 }
 
 void main() {
-  vec3 c = texture2D(uScene, vUv).rgb;
+  vec4 src = texture2D(uScene, vUv);
+  vec3 c = src.rgb;
+  // alpha-tag channel: hand-drawn pixels carry their palette index in
+  // alpha ((i+0.5)/16, i 0..7 grey, 8..11 amber ramp) and skip the whole
+  // tone pipeline — no pow remap, no dither, colours land exactly
+  if (src.a < 0.94) {
+    int ti = int(src.a * 16.0);
+    vec3 outc = uPal[0];
+    for (int i = 0; i < STEPS; i++) { if (i == ti) outc = uPal[i]; }
+    if (ti == 8) outc = uAmberDim;
+    if (ti == 9) outc = mix(uAmberDim, uAmber, 0.45);
+    if (ti == 10) outc = uAmber;
+    if (ti == 11) outc = uAmber * 1.16;
+    gl_FragColor = vec4(outc, 1.0);
+    return;
+  }
   float warm = c.r - c.b;
   float lum = dot(c, vec3(0.299, 0.587, 0.114));
   if (warm > 0.08) {
@@ -326,8 +351,9 @@ export function City3D({
   const hRef = useRef<Handles | null>(null);
   const yawRef = useRef(Math.PI / 4);
   const yawTargetRef = useRef(Math.PI / 4);
-  const zoomRef = useRef(1);
-  const zoomInitRef = useRef(false);
+  const viewRef = useRef(VIEW_DEFAULT);
+  const viewGoalRef = useRef<number | null>(null);
+  const viewSnapTimerRef = useRef<number | null>(null);
   const centerRef = useRef(new THREE.Vector3());
   const panRef = useRef({ x: 0, z: 0 });
   const panTargetRef = useRef<{ x: number; z: number } | null>(null);
@@ -336,7 +362,7 @@ export function City3D({
   const lastDrawRef = useRef(0);
   const dragRef = useRef<{ x: number; y: number; yaw: number; moved: boolean; pan: boolean; px: number; pz: number } | null>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
-  const pinchRef = useRef<{ dist: number; zoom: number } | null>(null);
+  const pinchRef = useRef<{ dist: number; view: number } | null>(null);
   /** per-file eased floor count — new buildings rise, edits grow smoothly */
   const growRef = useRef(new Map<string, number>());
   const knownFilesRef = useRef<Set<string> | null>(null);
@@ -737,13 +763,13 @@ export function City3D({
         applyWeather(0);
       }
 
-      // sizing: integer pixel scale in device pixels
+      // sizing: integer pixel scale in device pixels, exact letterbox
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const dw = Math.max(1, Math.floor(canvas.clientWidth * dpr));
       const dh = Math.max(1, Math.floor(canvas.clientHeight * dpr));
       const S = Math.max(2, Math.floor(dh / VIRTUAL_H));
-      const vw = Math.ceil(dw / S);
-      const vh = Math.floor(dh / S);
+      const vw = Math.max(1, Math.floor(dw / S));
+      const vh = Math.max(1, Math.floor(dh / S));
       if (h.rt.width !== vw || h.rt.height !== vh) {
         h.rt.setSize(vw, vh);
         (h.quantMat.uniforms.uRes.value as THREE.Vector2).set(vw, vh);
@@ -754,12 +780,20 @@ export function City3D({
         h.renderer.setSize(dw, dh, false);
       }
 
-      // camera from yaw/zoom/pan around city centre
-      const b = stateRef.current.plan.bounds;
-      const span = Math.max(b.maxX - b.minX, b.maxZ - b.minZ, 20);
+      // camera from yaw/view/pan around city centre — the view height is
+      // decoupled from city size (an endless city must not shrink its cast)
       const writing = stateRef.current.writeMode;
+      if (viewGoalRef.current !== null) {
+        const goal = viewGoalRef.current;
+        viewRef.current += (goal - viewRef.current) * Math.min(1, dt / 110);
+        if (Math.abs(viewRef.current - goal) < goal * 0.004) {
+          viewRef.current = goal;
+          viewGoalRef.current = null;
+        }
+        animating = true;
+      }
       // writing is a close-up of one building, never a city-wide letterbox
-      const view = writing ? 15 : (span * 0.72) / zoomRef.current;
+      const view = writing ? 15 : viewRef.current;
       const aspect = vw / vh;
       h.camera.left = (-view * aspect) / 2;
       h.camera.right = (view * aspect) / 2;
@@ -767,7 +801,9 @@ export function City3D({
       h.camera.bottom = -view / 2 + view * 0.14;
       const cx = centerRef.current.x + panRef.current.x;
       const cz = centerRef.current.z + panRef.current.z;
-      const dist = span * 2 + 50;
+      // constant range: with far = 900 even a decade of months fits the
+      // frustum (float32 world coords stay honest well past 500 units)
+      const dist = 400;
       h.camera.position.set(
         cx + Math.sin(yawRef.current) * Math.cos(ELEVATION) * dist,
         Math.sin(ELEVATION) * dist,
@@ -776,12 +812,37 @@ export function City3D({
       h.camera.lookAt(cx, 0, cz);
       h.camera.updateProjectionMatrix();
 
-      // two-pass: scene → low-res RT → quantise to screen
+      // sub-pixel snap: cancel the fractional part of the camera centre in
+      // virtual-pixel space via the projection matrix (the camera itself
+      // never moves), so panning cannot shimmer the pixel grid. Skipped
+      // while the yaw glide or zoom ease is in flight.
+      if (
+        Math.abs(yawRef.current - yawTargetRef.current) < 1e-4 &&
+        viewGoalRef.current === null
+      ) {
+        h.camera.updateMatrixWorld();
+        const me = h.camera.matrixWorld.elements;
+        const wppX = (h.camera.right - h.camera.left) / vw;
+        const wppY = (h.camera.top - h.camera.bottom) / vh;
+        const px = (cx * me[0] + cz * me[2]) / wppX;
+        const py = (cx * me[4] + cz * me[6]) / wppY;
+        const fx = px - Math.floor(px);
+        const fy = py - Math.floor(py);
+        h.camera.projectionMatrix.elements[12] -= (fx * 2) / vw;
+        h.camera.projectionMatrix.elements[13] -= (fy * 2) / vh;
+      }
+
+      // two-pass: scene → low-res RT → quantise to screen (centered
+      // integer-multiple blit; the margin stays background)
       h.quantMat.uniforms.uTime.value = now / 1000;
       h.renderer.setRenderTarget(h.rt);
       h.renderer.render(h.scene, h.camera);
       h.renderer.setRenderTarget(null);
+      const ox = Math.floor((dw - vw * S) / 2);
+      const oy = Math.floor((dh - vh * S) / 2);
+      h.renderer.setViewport(ox, oy, vw * S, vh * S);
       h.renderer.render(h.quantScene, h.quantCam);
+      h.renderer.setViewport(0, 0, dw, dh);
       return animating;
     },
     [applyInstances, applyCreatures, applyWeather],
@@ -811,7 +872,7 @@ export function City3D({
     renderer.setClearColor(new THREE.Color("#05060a"));
 
     const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 500);
+    const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 900);
 
     // (ground lives inside the instanced mesh — one flat slab per city)
 
@@ -926,6 +987,16 @@ export function City3D({
     for (const lot of plan.lots) {
       for (const box of massing(lot)) entries.push({ lot, box });
     }
+    const decorLot = (x: number, z: number): Lot => ({
+      file: "__decor__",
+      date: "",
+      x,
+      z,
+      half: 0,
+      floors: 0,
+      seed: 2,
+      lit: 0,
+    });
     if (decor.harbor && plan.blocks.length > 0) {
       // a dock off the west edge of the first block
       const fb = plan.blocks[0];
@@ -1002,16 +1073,6 @@ export function City3D({
     }
 
     // decor bought with watts — lamps at corners, groves, the old fountain
-    const decorLot = (x: number, z: number): Lot => ({
-      file: "__decor__",
-      date: "",
-      x,
-      z,
-      half: 0,
-      floors: 0,
-      seed: 2,
-      lit: 0,
-    });
     if (decor.lamps) {
       for (const block of plan.blocks) {
         const corners = [
@@ -1203,10 +1264,6 @@ export function City3D({
 
     const b = plan.bounds;
     centerRef.current.set((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2);
-    if (!zoomInitRef.current && plan.lots.length > 0) {
-      zoomInitRef.current = true;
-      zoomRef.current = plan.lots.length <= 6 ? 2.1 : plan.lots.length <= 20 ? 1.5 : 1;
-    }
     loop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan, extras, decor, skin, streak, weather]);
@@ -1314,12 +1371,36 @@ export function City3D({
     return file && file.startsWith("__") ? null : file;
   }, []);
 
+  /** clamp a view height to [closest stop, whole-city overview] */
+  const clampView = useCallback((v: number) => {
+    const b = stateRef.current.plan.bounds;
+    const span = Math.max(b.maxX - b.minX, b.maxZ - b.minZ, 20);
+    const maxView = Math.max(VIEW_STOPS[0], span * 0.8);
+    return Math.min(maxView, Math.max(VIEW_MIN, v));
+  }, []);
+
+  /** shortly after a zoom gesture ends, glide to the nearest detent */
+  const scheduleViewSnap = useCallback(() => {
+    if (viewSnapTimerRef.current !== null) window.clearTimeout(viewSnapTimerRef.current);
+    viewSnapTimerRef.current = window.setTimeout(() => {
+      viewSnapTimerRef.current = null;
+      const v = viewRef.current;
+      if (v > VIEW_STOPS[0] * 1.25) return; // free overview — no detent out here
+      let best = VIEW_STOPS[0];
+      for (const s of VIEW_STOPS) {
+        if (Math.abs(Math.log(v / s)) < Math.abs(Math.log(v / best))) best = s;
+      }
+      viewGoalRef.current = best;
+      loop();
+    }, 240);
+  }, [loop]);
+
   const onPointerDown = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointersRef.current.size === 2) {
       // second finger: switch from drag to pinch-zoom
       const [a, b] = [...pointersRef.current.values()];
-      pinchRef.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), zoom: zoomRef.current };
+      pinchRef.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), view: viewRef.current };
       dragRef.current = null;
       return;
     }
@@ -1347,8 +1428,9 @@ export function City3D({
       if (pinchRef.current && pointersRef.current.size >= 2) {
         const [a, b] = [...pointersRef.current.values()];
         const dist = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinchRef.current.dist > 0) {
-          zoomRef.current = Math.min(6, Math.max(0.4, pinchRef.current.zoom * (dist / pinchRef.current.dist)));
+        if (pinchRef.current.dist > 0 && dist > 0) {
+          viewGoalRef.current = null;
+          viewRef.current = clampView(pinchRef.current.view * (pinchRef.current.dist / dist));
           loop();
         }
         return;
@@ -1382,13 +1464,16 @@ export function City3D({
         onHover(hit, event.clientX, event.clientY);
       }
     },
-    [loop, onHover, raycast],
+    [loop, onHover, raycast, clampView],
   );
 
   const onPointerUp = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
       pointersRef.current.delete(event.pointerId);
-      if (pointersRef.current.size < 2) pinchRef.current = null;
+      if (pointersRef.current.size < 2 && pinchRef.current) {
+        pinchRef.current = null;
+        scheduleViewSnap();
+      }
       const drag = dragRef.current;
       dragRef.current = null;
       if (drag && drag.moved) {
@@ -1402,7 +1487,7 @@ export function City3D({
       const hit = raycast(event.clientX, event.clientY);
       if (hit && !hit.startsWith("demo/")) onOpen(hit);
     },
-    [loop, onOpen, raycast],
+    [loop, onOpen, raycast, scheduleViewSnap],
   );
 
   /** pan in camera-relative screen axes → world */
@@ -1427,10 +1512,12 @@ export function City3D({
         panBy(event.deltaX * 1.4, 0);
         return;
       }
-      zoomRef.current = Math.min(6, Math.max(0.4, zoomRef.current * (event.deltaY > 0 ? 0.92 : 1.09)));
+      viewGoalRef.current = null;
+      viewRef.current = clampView(viewRef.current * (event.deltaY > 0 ? 1.09 : 0.92));
+      scheduleViewSnap();
       loop();
     },
-    [loop, panBy],
+    [loop, panBy, clampView, scheduleViewSnap],
   );
 
   /* arrow keys pan the city */
