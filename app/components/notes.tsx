@@ -164,15 +164,22 @@ export function NotesPanel({
     return clientRef.current;
   }, []);
 
-  const checkConnection = useCallback(async (client: ObsidianClient) => {
-    setStatus("loading");
-    setError(null);
+  const checkConnection = useCallback(async (client: ObsidianClient, quiet = false) => {
+    if (!quiet) {
+      setStatus("loading");
+      setError(null);
+    }
     try {
       await client.list();
       setStatus("idle");
+      setError(null);
       setConnected(true);
       return true;
     } catch {
+      if (quiet) {
+        setConnected(false);
+        return false;
+      }
       setStatus("error");
       setConnected(false);
       let message = "Can't reach Obsidian — check the plugin, HTTP port and key.";
@@ -207,6 +214,21 @@ export function NotesPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cityLive, connected]);
 
+  /* while the panel is open and the link is down, quietly retry every 8 s
+     on our own — and push any waiting words the moment it heals */
+  const flushRef = useRef<(() => Promise<void>) | null>(null);
+  useEffect(() => {
+    if (!open || connected || view === "setup") return;
+    const id = window.setInterval(() => {
+      const client = clientRef.current;
+      if (!client || document.hidden) return;
+      void checkConnection(client, true).then((ok) => {
+        if (ok && dirtyRef.current) void flushRef.current?.();
+      });
+    }, 8000);
+    return () => window.clearInterval(id);
+  }, [open, connected, view, checkConnection]);
+
   /* Today is one page per day: load it if it exists, otherwise start it. */
   const openTonight = useCallback(async () => {
     const client = clientRef.current;
@@ -229,6 +251,28 @@ export function NotesPanel({
     setView("edit");
     const draft = await drafts.get(file);
     if (draft && draft.content.trim() !== draft.seed.trim()) {
+      // the vault may have moved on (Obsidian edits, another device) —
+      // show its latest and carry any unsent words forward, never hide it
+      if (client) {
+        try {
+          const doc = await client.readDoc(file);
+          if (doc.mtime !== null && (draft.baseMtime === null || doc.mtime > draft.baseMtime)) {
+            const delta = draft.content.startsWith(draft.seed)
+              ? draft.content.slice(draft.seed.length)
+              : draft.content;
+            const carried = delta.trim().length > 0;
+            const body = doc.content.trimEnd() + (carried ? `\n\n${delta.trim()}\n` : "\n");
+            setContent(body);
+            baseMtimeRef.current = doc.mtime;
+            baseContentRef.current = doc.content;
+            dirtyRef.current = carried;
+            if (!carried) void drafts.remove(file);
+            setStatus("idle");
+            window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
+            return;
+          }
+        } catch {}
+      }
       seedRef.current = draft.seed || seed;
       setContent(draft.content);
       baseMtimeRef.current = draft.baseMtime;
@@ -479,6 +523,10 @@ export function NotesPanel({
     }
   }, [conflict, activeFile, content, onSaved]);
 
+  useEffect(() => {
+    flushRef.current = flushSave;
+  }, [flushSave]);
+
   /* The draft journal is the safety net, so the vault push can breathe slower. */
   useEffect(() => {
     if (!dirtyRef.current) return;
@@ -668,7 +716,15 @@ export function NotesPanel({
                 <button
                   type="button"
                   className="bar-obsidian"
-                  onClick={() => void clientRef.current?.openInObsidian(activeFile)}
+                  onClick={() => {
+                    void clientRef.current?.openInObsidian(activeFile).catch(() => {});
+                    // the REST call opens the note; the protocol brings
+                    // Obsidian itself to the front (macOS won't focus an
+                    // app for a background request)
+                    window.setTimeout(() => {
+                      window.location.href = "obsidian://open";
+                    }, 150);
+                  }}
                   aria-label="Open in Obsidian"
                   title="Open in Obsidian"
                 >
