@@ -289,7 +289,8 @@ export default function Home() {
         icon: !had ? "emote_dots" : tierAfter > tierBefore ? "emote_heart" : "emote_wave",
         until: now + 1600,
       });
-      if (tierAfter > tierBefore && chimeOn) hum().settle();
+      hum().greet(hit.seed);
+      if (tierAfter > tierBefore) hum().settle();
     },
     [game, chimeOn, hum, scheduleBondSave, lang],
   );
@@ -318,7 +319,7 @@ export default function Home() {
           updatedAt: Date.now(),
         };
         void saveGameState(next, clientRef.current);
-        hum().settle();
+        hum().purchase();
         return next;
       });
     },
@@ -342,6 +343,28 @@ export default function Home() {
       })
       .sort((a, b) => b.days - a.days);
   }, [game.bonds]);
+
+  /* the ambience bus follows the sky you bought */
+  useEffect(() => {
+    hum().setWeather(game.weather);
+  }, [game.weather, humOn, hum]);
+
+  /* level-up: a named moment, not a number — one line, one chord, and the
+     growth wave city3d already plays */
+  const prevLevelRef = useRef<number | null>(null);
+  const [levelToast, setLevelToast] = useState(false);
+  useEffect(() => {
+    const prev = prevLevelRef.current;
+    prevLevelRef.current = level;
+    if (prev === null || level <= prev || metrics.length === 0) return;
+    hum().levelUp();
+    const show = window.setTimeout(() => setLevelToast(true), 10);
+    const hide = window.setTimeout(() => setLevelToast(false), 5200);
+    return () => {
+      window.clearTimeout(show);
+      window.clearTimeout(hide);
+    };
+  }, [level, hum, metrics.length]);
 
   const extras = useMemo(
     () => ({
@@ -603,6 +626,7 @@ export default function Home() {
         else openWrite();
       } else if (event.key === "b" || event.key === "B") {
         event.preventDefault();
+        hum().click();
         setShopOpen((v) => !v);
       } else if (event.key === "[") {
         event.preventDefault();
@@ -615,15 +639,17 @@ export default function Home() {
         setZen((v) => !v);
       } else if (event.key === "c" || event.key === "C") {
         event.preventDefault();
+        hum().click();
         setDexOpen((v) => !v);
       } else if (event.key === "m" || event.key === "M") {
         event.preventDefault();
+        hum().click();
         setMirrorOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeWrite, dexOpen, jumpMonth, mirrorOpen, openWrite, registerActivity, searchOpen, settingsOpen, shopOpen]);
+  }, [closeWrite, dexOpen, hum, jumpMonth, mirrorOpen, openWrite, registerActivity, searchOpen, settingsOpen, shopOpen]);
 
   /* ---------- render ---------- */
 
@@ -670,6 +696,11 @@ export default function Home() {
           <div className="no-gl">
             <strong>{t("nogl.title")}</strong>
             <span>{t("nogl.body")}</span>
+          </div>
+        )}
+        {levelToast && (
+          <div className="levelup-toast" role="status">
+            {t("levelup.line")}
           </div>
         )}
         {bubble && (
@@ -737,6 +768,7 @@ export default function Home() {
           <button
             type="button"
             onClick={() => {
+              hum().click();
               if (searchOpen) {
                 setSearchOpen(false);
                 setQuery("");
@@ -752,7 +784,7 @@ export default function Home() {
           </button>
           <button
             type="button"
-            onClick={() => setShopOpen(!shopOpen)}
+            onClick={() => { hum().click(); setShopOpen(!shopOpen); }}
             className={shopOpen ? "active" : ""}
             aria-label={t("topbar.depot")}
             aria-expanded={shopOpen}
@@ -763,7 +795,7 @@ export default function Home() {
           </button>
           <button
             type="button"
-            onClick={() => setDexOpen(!dexOpen)}
+            onClick={() => { hum().click(); setDexOpen(!dexOpen); }}
             className={dexOpen ? "active" : ""}
             aria-label={t("topbar.registry")}
             aria-expanded={dexOpen}
@@ -775,7 +807,7 @@ export default function Home() {
           </button>
           <button
             type="button"
-            onClick={() => setSettingsOpen(!settingsOpen)}
+            onClick={() => { hum().click(); setSettingsOpen(!settingsOpen); }}
             className={settingsOpen ? "active" : ""}
             aria-label={t("topbar.settings")}
             aria-expanded={settingsOpen}
