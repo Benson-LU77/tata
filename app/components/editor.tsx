@@ -192,6 +192,30 @@ const taskClick = EditorView.domEventHandlers({
   },
 });
 
+/** [[wikilink]] click-to-open — click inside the brackets jumps pages */
+function wikiClick(getOpen: () => ((name: string) => void) | undefined) {
+  return EditorView.domEventHandlers({
+    mousedown(event, view) {
+      const open = getOpen();
+      if (!open) return false;
+      const target = event.target as HTMLElement;
+      const pos = view.posAtDOM(target, 0);
+      const line = view.state.doc.lineAt(pos);
+      const col = pos - line.from;
+      const re = /\[\[([^\]]+)\]\]/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(line.text)) !== null) {
+        if (col >= m.index && col <= m.index + m[0].length) {
+          open(m[1]);
+          event.preventDefault();
+          return true;
+        }
+      }
+      return false;
+    },
+  });
+}
+
 /* ---------- slash commands ---------- */
 
 function slashSource(getChannel: () => string) {
@@ -373,12 +397,15 @@ export function MarkdownEditor({
   onChange,
   onBlur,
   onReady,
+  onOpenPage,
 }: {
   value: string;
   channelName: string;
   placeholder: string;
   /** vault page names for [[wikilink]] autocomplete */
   pages?: string[];
+  /** open another vault page (wikilink click) */
+  onOpenPage?: (name: string) => void;
   onChange: (next: string) => void;
   onBlur: () => void;
   onReady: (api: EditorApi) => void;
@@ -387,13 +414,15 @@ export function MarkdownEditor({
   const viewRef = useRef<EditorView | null>(null);
   const channelRef = useRef(channelName);
   const pagesRef = useRef(pages);
+  const openPageRef = useRef(onOpenPage);
   const callbacksRef = useRef({ onChange, onBlur, onReady });
 
   useEffect(() => {
     channelRef.current = channelName;
     pagesRef.current = pages;
+    openPageRef.current = onOpenPage;
     callbacksRef.current = { onChange, onBlur, onReady };
-  }, [channelName, pages, onChange, onBlur, onReady]);
+  }, [channelName, pages, onChange, onBlur, onReady, onOpenPage]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -411,6 +440,7 @@ export function MarkdownEditor({
           taskField,
           markHideField,
           taskClick,
+          wikiClick(() => openPageRef.current),
           autocompletion({
             override: [
               slashSource(() => channelRef.current),

@@ -9,7 +9,7 @@ import { demoMetrics, loadCityMetrics, dateOf } from "./lib/city/metrics";
 import type { NoteMetric } from "./lib/city/metrics";
 import { ObsidianClient, loadConfig } from "./lib/obsidian";
 import { cityCache } from "./lib/drafts";
-import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, workOrders } from "./lib/game/watts";
+import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, streakOf, workOrders } from "./lib/game/watts";
 import { floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
@@ -155,7 +155,35 @@ export default function Home() {
 
   /* ---------- derived city ---------- */
 
-  const cityPlan = useMemo(() => planCity(metrics, nowTs), [metrics, nowTs]);
+  const archPinsRef = useRef<Record<string, number> | null>(null);
+  if (archPinsRef.current === null && typeof window !== "undefined") {
+    try {
+      archPinsRef.current = JSON.parse(window.localStorage.getItem("tata.archpins") ?? "{}");
+    } catch {
+      archPinsRef.current = {};
+    }
+  }
+  const cityPlan = useMemo(
+    () => planCity(metrics, nowTs, archPinsRef.current ?? undefined),
+    [metrics, nowTs],
+  );
+  useEffect(() => {
+    const pins = archPinsRef.current;
+    if (!pins || cityPlan.lots.length === 0) return;
+    let changed = false;
+    for (const lot of cityPlan.lots) {
+      if (lot.file.startsWith("__") || lot.file.startsWith("demo/")) continue;
+      if (pins[lot.file] === undefined) {
+        pins[lot.file] = lot.arch ?? 0;
+        changed = true;
+      }
+    }
+    if (changed) {
+      try {
+        window.localStorage.setItem("tata.archpins", JSON.stringify(pins));
+      } catch {}
+    }
+  }, [cityPlan]);
 
   /* ---------- watts & the depot ---------- */
 
@@ -272,6 +300,9 @@ export default function Home() {
         scheduleBondSave(next);
       }
       const name = nameOf(kind, hit.seed);
+      const sinceGreet = had
+        ? Math.round((now - new Date(had.last + "T00:00:00").getTime()) / 86400000)
+        : 0;
       const line = lineFor(
         {
           kind,
@@ -279,6 +310,10 @@ export default function Home() {
           hour: d.getHours(),
           weather: game.weather === "none" ? "base" : game.weather,
           firstMeet: !had,
+          wroteTonight: metrics.some((m) => m.date === today),
+          streak: streakOf(metrics, today),
+          totalNotes: metrics.length,
+          daysSinceGreet: Math.max(0, sinceGreet),
         },
         Math.random(),
         lang,
@@ -292,7 +327,7 @@ export default function Home() {
       hum().greet(hit.seed);
       if (tierAfter > tierBefore) hum().settle();
     },
-    [game, chimeOn, hum, scheduleBondSave, lang],
+    [game, hum, scheduleBondSave, lang, metrics],
   );
 
   /* bubbles and emotes fade on their own clock */

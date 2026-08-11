@@ -67,15 +67,31 @@ export class ObsidianClient {
   }
 
   async list(): Promise<string[]> {
+    // folders recurse (depth 3) — a vault organised as Journal/2026/…
+    // must not read as an empty city
     const folder = this.folder();
-    const path = folder ? `/vault/${encodePath(folder)}/` : "/vault/";
-    const res = await fetch(this.base() + path, { headers: this.headers() });
-    if (res.status === 404) return [];
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as { files?: string[] };
-    return (data.files ?? [])
-      .filter((file) => file.endsWith(".md"))
-      .sort((a, b) => b.localeCompare(a));
+    const walk = async (prefix: string, depth: number): Promise<string[]> => {
+      const path = prefix ? `/vault/${encodePath(prefix)}/` : "/vault/";
+      const res = await fetch(this.base() + path, { headers: this.headers() });
+      if (res.status === 404) return [];
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { files?: string[] };
+      const out: string[] = [];
+      for (const file of data.files ?? []) {
+        if (file.endsWith("/")) {
+          if (depth > 0) {
+            const sub = await walk(prefix ? `${prefix}/${file.slice(0, -1)}` : file.slice(0, -1), depth - 1);
+            // names stay relative to the configured folder
+            out.push(...sub.map((f) => `${file}${f}`));
+          }
+        } else if (file.endsWith(".md")) {
+          out.push(file);
+        }
+      }
+      return out;
+    };
+    const files = await walk(folder, 3);
+    return files.sort((a, b) => b.localeCompare(a));
   }
 
   async read(name: string): Promise<string> {

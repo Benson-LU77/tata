@@ -330,11 +330,25 @@ export function NotesPanel({
       baseContentRef.current = doc.content;
       dirtyRef.current = false;
       setStatus("idle");
-    } catch {
+    } catch (first) {
+      // a wikilink to a page that doesn't exist yet starts that page —
+      // but only when the link is truly absent, not when the wire dropped
+      const ok = await checkConnection(client, true);
+      if (ok) {
+        seedRef.current = "";
+        setActiveFile(name);
+        setContent("");
+        baseMtimeRef.current = null;
+        baseContentRef.current = null;
+        dirtyRef.current = false;
+        setStatus("idle");
+        return;
+      }
+      void first;
       setStatus("error");
       setError(t("notes.error.open"));
     }
-  }, [t]);
+  }, [t, checkConnection]);
 
   /* first open: resume the freshest unsent draft, else tonight */
   useEffect(() => {
@@ -776,6 +790,10 @@ export function NotesPanel({
             </button>
           </div>
           <MarkdownEditor
+            onOpenPage={(name) => {
+              const file = name.endsWith(".md") ? name : `${name}.md`;
+              void openNote(file);
+            }}
             value={content}
             channelName=""
             pages={pages}
