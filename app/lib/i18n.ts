@@ -195,8 +195,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     /* depot catalog */
     "shop.cats.name": "Alley cats",
     "shop.cats.line": "Four more cats take the kerbs.",
-    "shop.birds.name": "A flock",
-    "shop.birds.line": "Six more birds cross the sky.",
+    "shop.birds.name": "Courier ships",
+    "shop.birds.line": "Six more ships take the sky lanes.",
     "shop.dog.name": "A dog",
     "shop.dog.line": "One good dog. It patrols.",
     "shop.lamps.name": "Street lamps",
@@ -392,8 +392,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     /* depot catalog */
     "shop.cats.name": "巷貓",
     "shop.cats.line": "四隻貓接管路緣。",
-    "shop.birds.name": "鳥群",
-    "shop.birds.line": "六隻鳥掠過夜空。",
+    "shop.birds.name": "信使船",
+    "shop.birds.line": "六艘小船加入夜空航線。",
     "shop.dog.name": "一隻狗",
     "shop.dog.line": "一隻好狗，牠會巡邏。",
     "shop.lamps.name": "街燈",

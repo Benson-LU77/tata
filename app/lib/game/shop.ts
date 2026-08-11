@@ -16,7 +16,7 @@ export type ShopItem = {
 
 export const CATALOG: ShopItem[] = [
   { id: "cats", name: "Alley cats", line: "Four more cats take the kerbs.", cost: 80, kind: "creature" },
-  { id: "birds", name: "A flock", line: "Six more birds cross the sky.", cost: 90, kind: "creature" },
+  { id: "birds", name: "Courier ships", line: "Six more ships take the sky lanes.", cost: 90, kind: "creature" },
   { id: "dog", name: "A dog", line: "One good dog. It patrols.", cost: 140, kind: "creature" },
   { id: "lamps", name: "Street lamps", line: "Cold light at every corner.", cost: 120, kind: "decor" },
   { id: "trees", name: "Pocket groves", line: "Grey trees between the towers.", cost: 100, kind: "decor" },

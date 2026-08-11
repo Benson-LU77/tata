@@ -76,6 +76,7 @@ export function NotesPanel({
   open,
   onClose,
   requestOpen,
+  requestToday,
   requestSetup,
   recent,
   pages,
@@ -90,6 +91,8 @@ export function NotesPanel({
   onClose: () => void;
   /** ask the panel to open a specific vault file (click on a building) */
   requestOpen: { file: string; n: number } | null;
+  /** bumped when the user explicitly asks for today's page */
+  requestToday?: number;
   /** ask the panel to show the Obsidian setup view */
   requestSetup?: number;
   /** recently touched pages, newest first */
@@ -302,6 +305,14 @@ export function NotesPanel({
     setStatus("idle");
     window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
   }, []);
+
+  const todaySeenRef = useRef(0);
+  useEffect(() => {
+    if (!requestToday || requestToday === todaySeenRef.current) return;
+    todaySeenRef.current = requestToday;
+    void openTonight();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestToday]);
 
   const openNote = useCallback(async (name: string) => {
     const client = clientRef.current;

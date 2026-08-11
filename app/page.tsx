@@ -46,6 +46,7 @@ export default function Home() {
   const [hover, setHover] = useState<{ file: string; x: number; y: number } | null>(null);
   const [focusFile, setFocusFile] = useState<string | null>(null);
   const [requestOpen, setRequestOpen] = useState<{ file: string; n: number } | null>(null);
+  const [requestToday, setRequestToday] = useState(0);
   const [uiVisible, setUiVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [canFullscreen, setCanFullscreen] = useState(true);
@@ -943,7 +944,10 @@ export default function Home() {
         <button
           type="button"
           className="tonight-cta immersion-ui"
-          onClick={() => openWrite()}
+          onClick={() => {
+            openWrite();
+            setRequestToday(Date.now());
+          }}
           title={t("today.title")}
         >
           {t("notes.today")}
@@ -1003,6 +1007,7 @@ export default function Home() {
         open={writeOpen}
         onClose={closeWrite}
         requestOpen={requestOpen}
+        requestToday={requestToday}
         requestSetup={requestSetup}
         recent={recent}
         pages={allPages}
