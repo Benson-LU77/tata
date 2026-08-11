@@ -6,6 +6,7 @@ import type { CityPlan, Lot } from "../lib/city/plan";
 import { FLOOR_H } from "../lib/city/plan";
 import { massing } from "../lib/city/voxel";
 import { PALETTE } from "../lib/city/palette";
+import { terrainFor } from "../lib/city/terrain";
 import { buildAtlas } from "../lib/city/sprites/atlas";
 import { SPRITE_WORLD_H } from "../lib/city/sprites/data";
 import { creaturesFor, poseAt } from "../lib/city/residents";
@@ -211,6 +212,13 @@ void main() {
   float amber = step(1.9, vTint.r);
   vec3 base = amber > 0.5 ? vec3(0.55, 0.38, 0.16) : vTint * tone;
 
+  if (n.y > 0.5) {
+    // roofs carry weight up here: tile rows with seams, a hash per tile
+    vec2 rp = floor(vWorld.xz / 0.75);
+    base *= 0.9 + hash(rp) * 0.16;
+    if (fract(vWorld.x / 0.75) < 0.09) base *= 0.78;
+  }
+
   // windows on vertical faces: one band per storey, sparse lit cells
   if (n.y < 0.5) {
     float floorIdx = floor(vWorld.y / uFloorH);
@@ -230,8 +238,90 @@ void main() {
     }
     // faint storey seam
     base *= 1.0 - 0.12 * step(f, 0.08);
+    // grounding shadow: buildings sit on the earth instead of floating
+    base *= 1.0 - 0.4 * (1.0 - smoothstep(0.0, 0.22, vWorld.y));
   }
   gl_FragColor = vec4(base, 1.0);
+}
+`;
+
+/**
+ * The living ground: a terrain map (R8, 2 texels/world) picks the material
+ * per patch; the shader draws meadow tone fields, stone slabs, plaza seams
+ * and a cliff-shadow coastline. All in luminance — the quantise pass turns
+ * the gradients into dithered pixel texture, reference-style.
+ */
+const GROUND_VERT = `
+varying vec3 vWorld;
+void main() {
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWorld = wp.xyz;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`;
+
+const GROUND_FRAG = `
+precision mediump float;
+varying vec3 vWorld;
+uniform sampler2D uMap;
+uniform vec2 uMin;
+uniform vec2 uInv;
+uniform vec2 uTexel;
+uniform float uWx; // 0 clear, 1 rain, 2 snow, 3 fog
+
+float hash21(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float vn(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+void main() {
+  vec2 uv = (vWorld.xz - uMin) * uInv;
+  float id = texture2D(uMap, uv).r * 255.0;
+  if (id < 0.5) discard;
+  vec2 px = floor(vWorld.xz * 2.0);
+  float n = hash21(px);
+  vec2 slab = floor(vWorld.xz / 1.5);
+  float tone;
+  if (id < 1.5) {
+    // meadow: a slow tone field + fine speckle + rare pale wildflowers
+    tone = 0.14 + vn(vWorld.xz / 6.0) * 0.08 + n * 0.04;
+    if (hash21(px + 17.0) > 0.995) tone = 0.5;
+  } else if (id < 2.5) {
+    // street: stone slabs with grout lines
+    tone = 0.27 + hash21(slab) * 0.09;
+    vec2 f = fract(vWorld.xz / 1.5);
+    if (f.x < 0.07 || f.y < 0.07) tone *= 0.55;
+  } else {
+    // plaza: quiet cells, one seam per calendar cell
+    tone = 0.175 + n * 0.045;
+    vec2 f2 = fract(vWorld.xz / 3.0);
+    if (f2.x < 0.035 || f2.y < 0.035) tone *= 0.62;
+  }
+  // coastline: any void neighbour pulls the edge into cliff shadow
+  float rim = min(
+    min(texture2D(uMap, uv + vec2(uTexel.x, 0.0)).r,
+        texture2D(uMap, uv - vec2(uTexel.x, 0.0)).r),
+    min(texture2D(uMap, uv + vec2(0.0, uTexel.y)).r,
+        texture2D(uMap, uv - vec2(0.0, uTexel.y)).r));
+  if (rim * 255.0 < 0.5) tone = 0.04; // cliff shadow at the coastline
+  if (uWx > 1.5 && uWx < 2.5) {
+    // snow: the meadow blankets over, walked streets stay darker
+    if (id < 1.5) tone = 0.5 + n * 0.06;
+    else if (id > 2.5) tone = 0.36 + n * 0.05;
+    else tone = mix(tone, 0.4, 0.45);
+  } else if (uWx > 0.5 && uWx < 1.5) {
+    tone *= 0.8; // rain-dark ground
+  }
+  gl_FragColor = vec4(vec3(tone), 1.0);
 }
 `;
 
@@ -252,6 +342,8 @@ type Handles = {
   spriteFrames: Record<string, { x: number; y: number; w: number; h: number }>;
   spriteRect: THREE.InstancedBufferAttribute | null;
   spriteParam: THREE.InstancedBufferAttribute | null;
+  ground: THREE.Mesh | null;
+  groundMat: THREE.ShaderMaterial | null;
   creatures: Creature[];
   weatherMesh: THREE.InstancedMesh | null;
   beam: THREE.Mesh | null;
@@ -915,6 +1007,18 @@ export function City3D({
       spriteFrames: {},
       spriteRect: null,
       spriteParam: null,
+      ground: null,
+      groundMat: new THREE.ShaderMaterial({
+        uniforms: {
+          uMap: { value: null },
+          uMin: { value: new THREE.Vector2() },
+          uInv: { value: new THREE.Vector2() },
+          uTexel: { value: new THREE.Vector2() },
+          uWx: { value: 0 },
+        },
+        vertexShader: GROUND_VERT,
+        fragmentShader: GROUND_FRAG,
+      }),
       creatures: [],
       weatherMesh: null,
       beam: null,
@@ -1051,32 +1155,7 @@ export function City3D({
       entries.push({ lot: { ...decorLot(ox2, oz2), seed: 5 }, box: { x: ox2 + 0.3, y: 3.3, z: oz2, w: 0.18, h: 0.55, d: 0.18 } });
     }
 
-    // streets — a faint grid between the month blocks, always there
-    const streetLot: Lot = { file: "__street__", date: "", x: 0, z: 0, half: 0, floors: 0, seed: 6, lit: 0 };
-    for (const block of plan.blocks) {
-      entries.push({
-        lot: streetLot,
-        box: {
-          x: block.x + 3.5 * CELL,
-          y: -0.03,
-          z: block.z + 6 * CELL + CELL * 0.5,
-          w: 8 * CELL,
-          h: 0.06,
-          d: CELL * 0.7,
-        },
-      });
-      entries.push({
-        lot: streetLot,
-        box: {
-          x: block.x + 7 * CELL + CELL * 0.5,
-          y: -0.03,
-          z: block.z + 2.5 * CELL,
-          w: CELL * 0.7,
-          h: 0.06,
-          d: 8 * CELL,
-        },
-      });
-    }
+    // streets live in the terrain map now — no geometry needed
 
     // streak: one small streetlight per consecutive night, newest block
     if (streak > 0 && plan.blocks.length > 0) {
@@ -1106,7 +1185,7 @@ export function City3D({
           entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 1.42, z: lz, w: 0.3, h: 0.05, d: 0.3 } }); // bracket
           entries.push({ lot: { ...decorLot(lx, lz), seed: 3 }, box: { x: lx, y: 1.5, z: lz, w: 0.22, h: 0.18, d: 0.22 } });
           entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 1.68, z: lz, w: 0.12, h: 0.06, d: 0.12 } }); // cap
-          entries.push({ lot: { ...decorLot(lx, lz), seed: 7 }, box: { x: lx, y: -0.015, z: lz, w: 0.85, h: 0.02, d: 0.85 } }); // light pool
+          entries.push({ lot: { ...decorLot(lx, lz), seed: 7 }, box: { x: lx, y: 0.012, z: lz, w: 0.85, h: 0.02, d: 0.85 } }); // light pool
         }
       }
     }
@@ -1135,45 +1214,34 @@ export function City3D({
       entries.push({ lot: { ...decorLot(fx, fz), seed: 5 }, box: { x: fx, y: 0.73, z: fz, w: 0.16, h: 0.16, d: 0.16 } });
     }
 
-    // ground slab under the whole city, through the same pipeline
-    const b0 = plan.bounds;
-    const groundLot = {
-      file: "__ground__",
-      date: "",
-      x: (b0.minX + b0.maxX) / 2,
-      z: (b0.minZ + b0.maxZ) / 2,
-      half: 0,
-      floors: 0,
-      seed: 1,
-      lit: 0,
-    };
-    // the island must cover every month block (streets included), not
-    // just the lots — otherwise streets float in space
-    let gMinX = b0.minX;
-    let gMaxX = b0.maxX;
-    let gMinZ = b0.minZ;
-    let gMaxZ = b0.maxZ;
-    for (const block of plan.blocks) {
-      gMinX = Math.min(gMinX, block.x - CELL);
-      gMaxX = Math.max(gMaxX, block.x + 8.5 * CELL);
-      gMinZ = Math.min(gMinZ, block.z - CELL);
-      gMaxZ = Math.max(gMaxZ, block.z + 7.5 * CELL);
+    // the island itself: a terrain-mapped plane with an organic coastline
+    {
+      const terr = terrainFor(plan);
+      const tex = new THREE.DataTexture(terr.data, terr.w, terr.h, THREE.RedFormat, THREE.UnsignedByteType);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      tex.unpackAlignment = 1;
+      tex.needsUpdate = true;
+      const gm = h.groundMat!;
+      const prev = gm.uniforms.uMap.value as THREE.DataTexture | null;
+      if (prev) prev.dispose();
+      gm.uniforms.uMap.value = tex;
+      (gm.uniforms.uMin.value as THREE.Vector2).set(terr.minX, terr.minZ);
+      (gm.uniforms.uInv.value as THREE.Vector2).set(1 / terr.worldW, 1 / terr.worldH);
+      (gm.uniforms.uTexel.value as THREE.Vector2).set(1 / terr.w, 1 / terr.h);
+      gm.uniforms.uWx.value = weather === "rain" ? 1 : weather === "snow" ? 2 : weather === "fog" ? 3 : 0;
+      if (h.ground) {
+        h.scene.remove(h.ground);
+        h.ground.geometry.dispose();
+      }
+      const gGeo = new THREE.PlaneGeometry(terr.worldW, terr.worldH);
+      gGeo.rotateX(-Math.PI / 2);
+      const gMesh = new THREE.Mesh(gGeo, gm);
+      gMesh.position.set(terr.minX + terr.worldW / 2, 0, terr.minZ + terr.worldH / 2);
+      gMesh.frustumCulled = false;
+      h.scene.add(gMesh);
+      h.ground = gMesh;
     }
-    const spanC = Math.max(gMaxX - gMinX, gMaxZ - gMinZ);
-    const gMargin = Math.min(20, Math.max(5, spanC * 0.16));
-    const gLotX = (gMinX + gMaxX) / 2;
-    const gLotZ = (gMinZ + gMaxZ) / 2;
-    entries.push({
-      lot: { ...groundLot, x: gLotX, z: gLotZ },
-      box: {
-        x: gLotX,
-        y: -0.22,
-        z: gLotZ,
-        w: gMaxX - gMinX + gMargin,
-        h: 0.2,
-        d: gMaxZ - gMinZ + gMargin,
-      },
-    });
     const geo = new THREE.BoxGeometry(1, 1, 1);
     geo.translate(0, 0.5, 0); // origin at base — lets intro rise by scaling Y
     const mat = h.buildingMat!;
