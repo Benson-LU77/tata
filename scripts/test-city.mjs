@@ -193,4 +193,11 @@ assert.ok(after >= before, "the city never shrinks overnight");
   assert.strictEqual(nameOf("cat", 7), nameOf("cat", 7), "names are deterministic");
 }
 
+// 12. the calendar inverse: clicking a cell finds its date
+// roundtrip: cellOf(dateAtCell) — via planCity grid semantics
+const { dateAtCell } = await import(join(out, "plan.js"));
+assert.strictEqual(dateAtCell("2026-08", 5, 1), "2026-08-08", "cell maps to date");
+assert.strictEqual(dateAtCell("2026-08", 0, 0), null, "before the 1st is empty ground");
+assert.strictEqual(dateAtCell("2026-02", 6, 4), null, "past month end is empty ground");
+
 console.log("city tests: all passed");

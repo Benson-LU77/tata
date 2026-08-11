@@ -65,6 +65,18 @@ export function floorsOf(words: number): number {
   return Math.max(1, Math.round(heightOf(words) / 8));
 }
 
+/** inverse of the calendar grid: which date sits at (col,row) of a month —
+ *  null for cells past the month's last day or before its first */
+export function dateAtCell(month: string, col: number, row: number): string | null {
+  const [y, m] = month.split("-").map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const firstWd = (first.getUTCDay() + 6) % 7; // Mon=0
+  const day = row * 7 + col - firstWd + 1;
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  if (day < 1 || day > lastDay) return null;
+  return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 export function planCity(
   metrics: NoteMetric[],
   now: number,

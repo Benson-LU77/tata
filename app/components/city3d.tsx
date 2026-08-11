@@ -461,6 +461,7 @@ export function City3D({
   onHover,
   onOpen,
   onCreatureTap,
+  onGroundTap,
   look,
   emote,
   trackKey,
@@ -488,6 +489,8 @@ export function City3D({
   onOpen: (file: string) => void;
   /** a resident was tapped (never fires for ships) */
   onCreatureTap: (hit: { key: string; kind: string; seed: number; x: number; y: number }) => void;
+  /** tapped the island itself — world coords, for the calendar inverse */
+  onGroundTap?: (x: number, z: number) => void;
   /** your figure, composed into the atlas at runtime */
   look: YouLook;
   /** a small thought above someone's head, until the given ms timestamp */
@@ -1624,6 +1627,21 @@ export function City3D({
     [projectCreature],
   );
 
+  const groundPoint = useCallback((clientX: number, clientY: number): { x: number; z: number } | null => {
+    const h = hRef.current;
+    const canvas = canvasRef.current;
+    if (!h || !h.ground || !canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    const caster = new THREE.Raycaster();
+    caster.setFromCamera(ndc, h.camera);
+    const hit = caster.intersectObject(h.ground, false)[0];
+    return hit ? { x: hit.point.x, z: hit.point.z } : null;
+  }, []);
+
   const onPointerUp = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
       pointersRef.current.delete(event.pointerId);
@@ -1648,9 +1666,16 @@ export function City3D({
         return;
       }
       const hit = raycast(event.clientX, event.clientY);
-      if (hit && !hit.startsWith("demo/")) onOpen(hit);
+      if (hit && !hit.startsWith("demo/")) {
+        onOpen(hit);
+        return;
+      }
+      if (!hit && onGroundTap) {
+        const g = groundPoint(event.clientX, event.clientY);
+        if (g) onGroundTap(g.x, g.z);
+      }
     },
-    [loop, onOpen, raycast, scheduleViewSnap, pickCreature, onCreatureTap],
+    [loop, onOpen, raycast, scheduleViewSnap, pickCreature, onCreatureTap, groundPoint, onGroundTap],
   );
 
   /** pan in camera-relative screen axes → world */

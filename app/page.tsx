@@ -10,7 +10,7 @@ import type { NoteMetric } from "./lib/city/metrics";
 import { ObsidianClient, loadConfig } from "./lib/obsidian";
 import { cityCache } from "./lib/drafts";
 import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, streakOf, workOrders } from "./lib/game/watts";
-import { floorsOf } from "./lib/city/plan";
+import { dateAtCell, floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
 import { greet, tierOf, nameOf, lineFor, tierName } from "./lib/game/bonds";
@@ -52,6 +52,7 @@ export default function Home() {
   const [ceremony, setCeremony] = useState<{ file: string; n: number } | null>(null);
   const [dexOpen, setDexOpen] = useState(false);
   const [mirrorOpen, setMirrorOpen] = useState(false);
+  const [monthListOpen, setMonthListOpen] = useState(false);
   const [bubble, setBubble] = useState<{ key: string; name: string; text: string; until: number } | null>(null);
   const [emote, setEmote] = useState<{ key: string; icon: string; until: number } | null>(null);
   const [lang, setLang] = useState<Lang>("en");
@@ -571,6 +572,30 @@ export default function Home() {
     if (file) setRequestOpen({ file, n: Date.now() });
   }, []);
 
+  const onGroundTap = useCallback(
+    (x: number, z: number) => {
+      const CELL = 3;
+      const block = cityPlan.blocks.find(
+        (b) => x >= b.x && x < b.x + 7 * CELL && z >= b.z && z < b.z + 6 * CELL,
+      );
+      if (!block) return;
+      const col = Math.floor((x - block.x) / CELL);
+      const row = Math.floor((z - block.z) / CELL);
+      const date = dateAtCell(block.month, col, row);
+      if (!date || !today || date > today) return; // the future stays empty
+      const existing = metrics.filter((m) => m.date === date);
+      if (existing.length > 0) {
+        openWrite(existing.sort((a2, b2) => b2.mtime - a2.mtime)[0].file);
+      } else {
+        // backfill: a page for a day that stayed dark — the bridge's true path
+        hum().click();
+        openWrite(`${date} Today.md`);
+      }
+    },
+    [cityPlan.blocks, metrics, today, openWrite, hum],
+  );
+
+
   const closeWrite = useCallback(() => {
     writeOpenRef.current = false;
     setWriteOpen(false);
@@ -721,6 +746,7 @@ export default function Home() {
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
             onOpen={(file) => openWrite(file)}
             onCreatureTap={onCreatureTap}
+            onGroundTap={onGroundTap}
             look={game.look}
             emote={emote}
             trackKey={bubble?.key ?? null}
@@ -910,12 +936,47 @@ export default function Home() {
         </button>
       )}
 
+      {monthListOpen && !writeOpen && (
+        <div className="month-list immersion-ui" role="dialog" aria-label={t("months.list")}>
+          {metrics
+            .filter((m) => m.date.startsWith(cityPlan.blocks[Math.max(0, monthIx)]?.month ?? "----"))
+            .sort((a2, b2) => (a2.date < b2.date ? -1 : 1))
+            .map((m) => (
+              <button
+                key={m.file}
+                type="button"
+                onClick={() => {
+                  setMonthListOpen(false);
+                  openWrite(m.file);
+                }}
+              >
+                <span>{m.date.slice(8)}</span>
+                <strong>{m.file.replace(/\.md$/, "")}</strong>
+                <em>{m.words}{t("notes.wordunit")}</em>
+              </button>
+            ))}
+          {metrics.filter((m) =>
+            m.date.startsWith(cityPlan.blocks[Math.max(0, monthIx)]?.month ?? "----"),
+          ).length === 0 && <p>{t("months.empty")}</p>}
+        </div>
+      )}
       {gl3d && !empty && !writeOpen && cityPlan.blocks.length > 0 && (
         <div className="month-dock immersion-ui" aria-label={t("months.aria")}>
           <button type="button" onClick={() => jumpMonth(-1)} aria-label={t("months.earlier")}>
             ◀
           </button>
-          <span>{cityPlan.blocks[Math.max(0, monthIx)]?.month ?? ""}</span>
+          <button
+            type="button"
+            className={"month-label" + (monthListOpen ? " active" : "")}
+            onClick={() => {
+              hum().click();
+              setMonthListOpen((v) => !v);
+            }}
+            aria-expanded={monthListOpen}
+            aria-label={t("months.list")}
+          >
+            {cityPlan.blocks[Math.max(0, monthIx)]?.month ?? ""}
+          </button>
           <button type="button" onClick={() => jumpMonth(1)} aria-label={t("months.later")}>
             ▶
           </button>
