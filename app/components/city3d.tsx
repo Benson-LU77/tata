@@ -414,6 +414,8 @@ void main() {
 }
 `;
 
+const PERSON_LOOKS = ["person", "person2", "person3"];
+
 const SPRITE_FRAG = `
 precision mediump float;
 varying vec2 vUv2;
@@ -699,17 +701,20 @@ export function City3D({
       }
       const beat = Math.floor(p.phase / Math.PI) % 2 === 0 ? "a" : "b";
       if (c.kind === "bird") {
+        // the sky lanes belong to little courier ships out here
         const y = p.y + Math.sin(p.phase * 0.5) * 0.3;
-        place(`bird_E_${beat}`, p.x, y, p.z, SPRITE_WORLD_H.bird, mirror, 0);
+        place(`ship_E_${beat}`, p.x, y, p.z, SPRITE_WORLD_H.ship, mirror, 0);
         continue;
       }
       const frame = p.moving ? beat : "i";
+      // wardrobe variety: each resident keeps one of three looks for life
+      const look = c.kind === "person" ? PERSON_LOOKS[c.seed % PERSON_LOOKS.length] : c.kind;
       place(
-        `${c.kind}_${dir}_${frame}`,
+        `${look}_${dir}_${frame}`,
         p.x,
         p.y,
         p.z,
-        SPRITE_WORLD_H[c.kind],
+        SPRITE_WORLD_H[look],
         mirror,
         c.kind === "you" ? 1 : 0,
       );
