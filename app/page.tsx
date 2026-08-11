@@ -20,6 +20,17 @@ import { MirrorPanel } from "./components/mirror";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
 import type { Lang } from "./lib/i18n";
 
+/** frozen archetype verdicts — module-level so render stays pure while the
+ *  map quietly grows; persisted to localStorage after each plan */
+const ARCH_PINS: Record<string, number> = (() => {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem("tata.archpins") ?? "{}") as Record<string, number>;
+  } catch {
+    return {};
+  }
+})();
+
 const HUM_KEY = "yeyufm.hum";
 const CHIME_KEY = "yeyufm.chime";
 
@@ -156,20 +167,12 @@ export default function Home() {
 
   /* ---------- derived city ---------- */
 
-  const archPinsRef = useRef<Record<string, number> | null>(null);
-  if (archPinsRef.current === null && typeof window !== "undefined") {
-    try {
-      archPinsRef.current = JSON.parse(window.localStorage.getItem("tata.archpins") ?? "{}");
-    } catch {
-      archPinsRef.current = {};
-    }
-  }
   const cityPlan = useMemo(
-    () => planCity(metrics, nowTs, archPinsRef.current ?? undefined),
+    () => planCity(metrics, nowTs, ARCH_PINS),
     [metrics, nowTs],
   );
   useEffect(() => {
-    const pins = archPinsRef.current;
+    const pins = ARCH_PINS;
     if (!pins || cityPlan.lots.length === 0) return;
     let changed = false;
     for (const lot of cityPlan.lots) {
@@ -194,6 +197,17 @@ export default function Home() {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }, [nowTs]);
+  /* natural weather: dated, deterministic, free — owning a sky means the
+     right to force it; "none" hands the night back to nature */
+  const effectiveWeather = useMemo(() => {
+    if (game.weather !== "none") return game.weather;
+    if (!today) return "none" as const;
+    const h = hash32(today + ":sky");
+    const roll = h % 20;
+    return roll < 3 ? ("rain" as const) : roll < 4 ? ("fog" as const) : roll < 5 ? ("snow" as const) : ("none" as const);
+  }, [game.weather, today]);
+
+
   const earnedDerived = useMemo(() => earnedWatts(metrics) + orderBonus(metrics), [metrics]);
   // the iron rule, enforced: deleting notes in the vault never shrinks the
   // city — the floor only ever rises, and it lives in tata.json
@@ -309,7 +323,7 @@ export default function Home() {
           kind,
           tier: tierAfter,
           hour: d.getHours(),
-          weather: game.weather === "none" ? "base" : game.weather,
+          weather: effectiveWeather === "none" ? "base" : effectiveWeather,
           firstMeet: !had,
           wroteTonight: metrics.some((m) => m.date === today),
           streak: streakOf(metrics, today),
@@ -328,7 +342,7 @@ export default function Home() {
       hum().greet(hit.seed);
       if (tierAfter > tierBefore) hum().settle();
     },
-    [game, hum, scheduleBondSave, lang, metrics],
+    [game, hum, scheduleBondSave, lang, metrics, effectiveWeather],
   );
 
   /* bubbles and emotes fade on their own clock */
@@ -380,10 +394,10 @@ export default function Home() {
       .sort((a, b) => b.days - a.days);
   }, [game.bonds]);
 
-  /* the ambience bus follows the sky you bought */
+  /* the ambience bus follows tonight's sky */
   useEffect(() => {
-    hum().setWeather(game.weather);
-  }, [game.weather, humOn, hum]);
+    hum().setWeather(effectiveWeather);
+  }, [effectiveWeather, humOn, hum]);
 
   /* level-up: a named moment, not a number — one line, one chord, and the
      growth wave city3d already plays */
@@ -737,7 +751,7 @@ export default function Home() {
             extras={extras}
             decor={decor}
             skin={game.skin}
-            weather={game.weather}
+            weather={effectiveWeather}
             writeMode={writeOpen}
             goMonth={goMonth}
             ceremony={ceremony}

@@ -527,6 +527,12 @@ export function City3D({
   const waveRef = useRef<{ x: number; z: number; start: number; oldCap: number } | null>(null);
   const prevCapRef = useRef<number | null>(null);
   const hoverRef = useRef<string | null>(null);
+  const dayLiftRef = useRef(1);
+  const basePalRef = useRef<THREE.Color[]>(
+    ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#4a4f59", "#8b9099", "#c9ccd2", "#f2f3f5"].map(
+      (c) => new THREE.Color(c),
+    ),
+  );
   const stateRef = useRef({ plan, focus, matches, weather, levelCap, writeMode, emote, trackKey });
 
   useEffect(() => {
@@ -746,6 +752,12 @@ export function City3D({
         place(`ship_E_${beat}`, p.x, y, p.z, SPRITE_WORLD_H.ship, mirror, 0);
         continue;
       }
+      // population tide: people sleep; cats, the dog and you do not
+      if (c.kind === "person") {
+        const hr = new Date(now + performance.timeOrigin).getHours();
+        const fr = hr < 5 ? 15 : hr < 8 ? 50 : hr < 17 ? 85 : 100;
+        if ((c.seed >>> 3) % 100 >= fr) continue;
+      }
       const frame = p.moving ? beat : "i";
       // wardrobe variety: each resident keeps one of three looks for life
       const look2 = c.kind === "person" ? PERSON_LOOKS[c.seed % PERSON_LOOKS.length] : c.kind;
@@ -952,6 +964,30 @@ export function City3D({
         h.camera.projectionMatrix.elements[13] -= (fy * 2) / vh;
       }
 
+      // the city keeps local time: palette lifts toward a pale day and
+      // sinks back to deep night (identity: always night-ish, never blue)
+      {
+        const hour = new Date().getHours() + new Date().getMinutes() / 60;
+        // keyframes: deep night 1.0 · dawn 1.12 · day 1.3 · dusk 1.1
+        const liftAt = (h2: number) => {
+          if (h2 < 4) return 1.0;
+          if (h2 < 7) return 1.0 + ((h2 - 4) / 3) * 0.12;
+          if (h2 < 9) return 1.12 + ((h2 - 7) / 2) * 0.18;
+          if (h2 < 16) return 1.3;
+          if (h2 < 19) return 1.3 - ((h2 - 16) / 3) * 0.2;
+          if (h2 < 22) return 1.1 - ((h2 - 19) / 3) * 0.1;
+          return 1.0;
+        };
+        const lift = liftAt(hour);
+        if (Math.abs(lift - dayLiftRef.current) > 0.004) {
+          dayLiftRef.current = lift;
+          const colors = h.quantMat.uniforms.uPal.value as THREE.Color[];
+          basePalRef.current.forEach((c, i2) => {
+            colors[i2].copy(c).multiplyScalar(i2 === 0 ? 1 : lift);
+          });
+        }
+      }
+
       // sprite uniforms: pixel density, rest state, and a small shift
       // toward the camera so quads sit in front of their own ground
       if (h.spriteMat) {
@@ -1045,6 +1081,7 @@ export function City3D({
         uScene: { value: rt.texture },
         uRes: { value: new THREE.Vector2(320, 270) },
         uPal: { value: pal.map((c) => new THREE.Color(c)) },
+        // basePal stays untouched; the frame loop lifts uPal by hour
         uAmber: { value: new THREE.Color(PALETTE.amber) },
         uAmberDim: { value: new THREE.Color("#8a6c3c") },
         uFog: { value: 0 },
