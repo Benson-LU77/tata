@@ -6,6 +6,8 @@ import type { CityPlan, Lot } from "../lib/city/plan";
 import { FLOOR_H } from "../lib/city/plan";
 import { massing } from "../lib/city/voxel";
 import { PALETTE } from "../lib/city/palette";
+import { buildAtlas } from "../lib/city/sprites/atlas";
+import { SPRITE_WORLD_H } from "../lib/city/sprites/data";
 import { creaturesFor, poseAt } from "../lib/city/residents";
 import type { Creature, CreatureExtras } from "../lib/city/residents";
 import { CELL } from "../lib/city/plan";
@@ -243,12 +245,13 @@ type Handles = {
   quantMat: THREE.ShaderMaterial;
   mesh: THREE.InstancedMesh | null;
   buildingMat: THREE.ShaderMaterial | null;
-  creatureMat: THREE.ShaderMaterial | null;
   lotOfInstance: Lot[];
   boxesPerInstance: { lot: Lot; box: { x: number; y: number; z: number; w: number; h: number; d: number } }[];
-  creatureMesh: THREE.InstancedMesh | null;
-  outlineMesh: THREE.InstancedMesh | null;
-  outlineMat: THREE.MeshBasicMaterial | null;
+  spriteMesh: THREE.InstancedMesh | null;
+  spriteMat: THREE.ShaderMaterial | null;
+  spriteFrames: Record<string, { x: number; y: number; w: number; h: number }>;
+  spriteRect: THREE.InstancedBufferAttribute | null;
+  spriteParam: THREE.InstancedBufferAttribute | null;
   creatures: Creature[];
   weatherMesh: THREE.InstancedMesh | null;
   beam: THREE.Mesh | null;
@@ -283,20 +286,58 @@ void main() {
 }
 `;
 
-/** boxes per creature kind — the whole cast is little box joints */
-const BASE_PARTS: Record<Creature["kind"], number> = { person: 10, cat: 9, bird: 3, dog: 9, you: 10 };
-
-function partsFor(kind: Creature["kind"], weather: CityWeather): number {
-  const extra =
-    kind === "person" || kind === "you"
-      ? weather === "rain"
-        ? 2 // umbrella stick + canopy
-        : weather === "snow"
-          ? 3 // three footprints in the snow
-          : 0
-      : 0;
-  return BASE_PARTS[kind] + extra;
+/**
+ * Residents are hand-drawn pixel sprites on camera-facing quads. The
+ * vertex shader snaps each quad to the virtual-pixel grid at an integer
+ * texel scale, so the art lands exactly as drawn — the sprite-sheet look
+ * of the reference pieces, inside a true 3D city. One quad per creature
+ * plus one optional overlay (umbrella) per person when it rains.
+ */
+const SPRITE_VERT = `
+attribute vec4 aRect;   // atlas rect in texels: x, y, w, h
+attribute vec3 aParam;  // world height, mirror flag, amber flag
+varying vec2 vUv2;
+varying float vAmber;
+uniform vec2 uRes;
+uniform float uPxY;      // virtual pixels per world unit (vertical)
+uniform float uAtlas;
+uniform vec3 uCamOff;    // small shift toward the camera for depth
+uniform float uSnap;     // 1 when the camera is at rest on a detent
+void main() {
+  vAmber = aParam.z;
+  vec4 anchor = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  anchor.xyz += uCamOff;
+  vec4 clip = projectionMatrix * viewMatrix * anchor;
+  vec2 pix = (clip.xy / clip.w * 0.5 + 0.5) * uRes;
+  float kf = aParam.x * uPxY / max(aRect.w, 1.0);
+  float k = uSnap > 0.5 ? max(1.0, floor(kf + 0.5)) : max(0.25, kf);
+  vec2 corner = vec2(position.x + 0.5, position.y);
+  vec2 sz = aRect.zw * k;
+  vec2 p = pix + vec2((corner.x - 0.5) * sz.x, corner.y * sz.y);
+  if (uSnap > 0.5) p = floor(p + 0.5);
+  vec2 ndc = p / uRes * 2.0 - 1.0;
+  gl_Position = vec4(ndc * clip.w, clip.z, clip.w);
+  float u = mix(corner.x, 1.0 - corner.x, aParam.y);
+  vUv2 = (aRect.xy + vec2(u * aRect.z, (1.0 - corner.y) * aRect.w)) / uAtlas;
 }
+`;
+
+const SPRITE_FRAG = `
+precision mediump float;
+varying vec2 vUv2;
+varying float vAmber;
+uniform sampler2D uTex;
+void main() {
+  float a = texture2D(uTex, vUv2).a;
+  if (a > 0.94) discard; // transparent
+  float i = floor(a * 16.0);
+  if (vAmber > 0.5 && i > 1.5) {
+    // the amber you: mid greys onto the amber ramp, outline stays dark
+    i = i < 3.5 ? 8.0 : (i < 5.5 ? 9.0 : (i < 6.5 ? 10.0 : 11.0));
+  }
+  gl_FragColor = vec4(0.0, 0.0, 0.0, (i + 0.5) / 16.0);
+}
+`;
 
 export type CityDecor = {
   lamps: boolean;
@@ -351,6 +392,7 @@ export function City3D({
   const hRef = useRef<Handles | null>(null);
   const yawRef = useRef(Math.PI / 4);
   const yawTargetRef = useRef(Math.PI / 4);
+  const settledYawRef = useRef(Math.PI / 4);
   const viewRef = useRef(VIEW_DEFAULT);
   const viewGoalRef = useRef<number | null>(null);
   const viewSnapTimerRef = useRef<number | null>(null);
@@ -481,32 +523,14 @@ export function City3D({
 
   const applyCreatures = useCallback((now: number) => {
     const h = hRef.current;
-    if (!h || !h.creatureMesh || h.creatures.length === 0) return false;
+    if (!h || !h.spriteMesh || !h.spriteRect || !h.spriteParam || h.creatures.length === 0)
+      return false;
     const { plan: pl, weather: w } = stateRef.current;
     const t = now / 1000;
     const m = new THREE.Matrix4();
-    let pi = 0;
-    const CS = 2.0; // chibi scale — the cast reads clearly from city height
-    const PAD = 0.05; // outline shell thickness, world units
-    let ax = 0;
-    let ay = 0;
-    let az = 0;
-    const put = (x: number, y: number, z: number, w2: number, hh: number, d: number, ol = false) => {
-      m.makeScale(w2 * CS, hh * CS, d * CS);
-      m.setPosition(ax + (x - ax) * CS, ay + (y - ay) * CS, az + (z - az) * CS);
-      h.creatureMesh!.setMatrixAt(pi, m);
-      if (h.outlineMesh) {
-        if (ol) {
-          m.makeScale(w2 * CS + PAD, hh * CS + PAD, d * CS + PAD);
-          m.setPosition(ax + (x - ax) * CS, ay + (y - ay) * CS - PAD / 2, az + (z - az) * CS);
-        } else {
-          m.makeScale(0, 0, 0);
-          m.setPosition(0, -20, 0);
-        }
-        h.outlineMesh.setMatrixAt(pi, m);
-      }
-      pi += 1;
-    };
+    const rect = h.spriteRect;
+    const param = h.spriteParam;
+    const camYaw = settledYawRef.current;
 
     // pass 1: everyone's pose, then social adjustments
     const poses = h.creatures.map((c) => poseAt(c, pl, t));
@@ -547,109 +571,64 @@ export function City3D({
       });
     }
 
-    // pass 2: place the box joints
+    // pass 2: one pixel-snapped quad per creature (+ umbrella overlays)
+    let si = 0;
+    const place = (
+      name: string,
+      x: number,
+      y: number,
+      z: number,
+      worldH: number,
+      mirror: number,
+      amber: number,
+    ) => {
+      const f = h.spriteFrames[name];
+      if (!f || si >= h.spriteMesh!.count) return;
+      m.makeTranslation(x, y, z);
+      h.spriteMesh!.setMatrixAt(si, m);
+      rect.setXYZW(si, f.x, f.y, f.w, f.h);
+      param.setXYZ(si, worldH, mirror, amber);
+      si += 1;
+    };
     for (let i = 0; i < h.creatures.length; i += 1) {
       const c = h.creatures[i];
       const p = poses[i];
-      ax = p.x;
-      ay = p.y;
-      az = p.z;
-      const swing = p.moving ? Math.sin(p.phase) : 0;
-      const fx = Math.sin(p.facing);
-      const fz = Math.cos(p.facing);
-      const alongX = Math.abs(fx) > 0.5;
-      const lx = fz;
-      const lz = -fx;
-
-      if (c.kind === "person" || c.kind === "you") {
-        const nod = chat[i] ? Math.sin(t * 2.2 + i) * 0.012 : 0;
-        const bob = p.moving ? Math.abs(Math.sin(p.phase)) * 0.02 : 0;
-        const y = p.y + bob;
-        put(p.x, y + 0.14, p.z, 0.22, 0.22, 0.18, true); // body
-        put(p.x, y + 0.37 + nod, p.z, 0.19, 0.17, 0.19, true); // head
-        if (c.kind === "you") {
-          put(p.x, y + 0.52 + nod, p.z, 0.15, 0.13, 0.15, true); // your little top hat
-        } else if (c.seed % 3 === 0) {
-          put(p.x, y + 0.52 + nod, p.z, 0.16, 0.1, 0.16, true); // a taller hat
-        } else {
-          put(p.x, y + 0.52 + nod, p.z, 0.2, 0.05, 0.2, true); // hair cap
-        }
-        const armSwing = -swing * 0.06; // arms counter the legs — a real gait
-        put(p.x + lx * 0.145 + fx * armSwing, y + 0.16, p.z + lz * 0.145 + fz * armSwing, 0.06, 0.18, 0.06);
-        put(p.x - lx * 0.145 - fx * armSwing, y + 0.16, p.z - lz * 0.145 - fz * armSwing, 0.06, 0.18, 0.06);
-        const step = swing * 0.05;
-        put(p.x + lx * 0.055 + fx * step, p.y, p.z + lz * 0.055 + fz * step, 0.075, 0.15, 0.075);
-        put(p.x - lx * 0.055 - fx * step, p.y, p.z - lz * 0.055 - fz * step, 0.075, 0.15, 0.075);
-        // face plate and two dark eyes on the facing side of the head
-        put(p.x + fx * 0.09, y + 0.345 + nod, p.z + fz * 0.09, alongX ? 0.035 : 0.15, 0.12, alongX ? 0.15 : 0.035);
-        put(p.x + fx * 0.105 + lx * 0.045, y + 0.395 + nod, p.z + fz * 0.105 + lz * 0.045, 0.035, 0.035, 0.035);
-        put(p.x + fx * 0.105 - lx * 0.045, y + 0.395 + nod, p.z + fz * 0.105 - lz * 0.045, 0.035, 0.035, 0.035);
-        if (w === "rain") {
-          // umbrella overhead
-          put(p.x + lx * 0.12, y + 0.3, p.z + lz * 0.12, 0.03, 0.42, 0.03); // stick
-          put(p.x + lx * 0.12, y + 0.7, p.z + lz * 0.12, 0.46, 0.07, 0.46); // canopy
-        } else if (w === "snow") {
-          // three footprints trailing on the walked path
-          for (let f = 1; f <= 3; f += 1) {
-            const back = poseAt(c, pl, t - f * 0.45);
-            put(back.x, 0.005, back.z, 0.07, 0.02, 0.07);
-          }
-        }
-      } else if (c.kind === "cat") {
-        const hurry = chasing ? 1.6 : 1;
-        const bob = p.moving ? Math.abs(Math.sin(p.phase * hurry)) * 0.012 : 0;
-        const y = p.y + bob;
-        if (!p.moving) {
-          // sitting: upright body, head high, tail curled at the side
-          put(p.x, y, p.z, 0.13, 0.17, 0.13, true); // body upright
-          put(p.x + fx * 0.02, y + 0.17, p.z + fz * 0.02, 0.1, 0.09, 0.1, true); // head
-          put(p.x + fx * 0.02 + lx * 0.035, y + 0.26, p.z + fz * 0.02 + lz * 0.035, 0.028, 0.05, 0.028);
-          put(p.x + fx * 0.02 - lx * 0.035, y + 0.26, p.z + fz * 0.02 - lz * 0.035, 0.028, 0.05, 0.028);
-          const curl = Math.sin(t * 0.9 + c.seed) * 0.02;
-          put(p.x - lx * 0.09 + curl, y + 0.01, p.z - lz * 0.09, 0.1, 0.035, 0.1); // curled tail
-          // white chest, bright eyes, a dark stripe down the back
-          put(p.x + fx * 0.065, y + 0.05, p.z + fz * 0.065, alongX ? 0.04 : 0.09, 0.09, alongX ? 0.09 : 0.04);
-          put(p.x + fx * 0.08 + lx * 0.028, y + 0.2, p.z + fz * 0.08 + lz * 0.028, 0.028, 0.028, 0.028);
-          put(p.x + fx * 0.08 - lx * 0.028, y + 0.2, p.z + fz * 0.08 - lz * 0.028, 0.028, 0.028, 0.028);
-          put(p.x - fx * 0.02, y + 0.155, p.z - fz * 0.02, alongX ? 0.05 : 0.1, 0.03, alongX ? 0.1 : 0.05);
-        } else {
-          put(p.x, y + 0.03, p.z, alongX ? 0.3 : 0.12, 0.1, alongX ? 0.12 : 0.3, true);
-          put(p.x + fx * 0.17, y + 0.1, p.z + fz * 0.17, 0.1, 0.09, 0.1, true);
-          put(p.x + fx * 0.17 + lx * 0.035, y + 0.19, p.z + fz * 0.17 + lz * 0.035, 0.028, 0.05, 0.028);
-          put(p.x + fx * 0.17 - lx * 0.035, y + 0.19, p.z + fz * 0.17 - lz * 0.035, 0.028, 0.05, 0.028);
-          const sway = Math.sin(p.phase * 1.4) * 0.03;
-          put(p.x - fx * 0.18 + lx * sway, y + 0.1, p.z - fz * 0.18 + lz * sway, 0.035, 0.12, 0.035);
-          // chest under the chin, eyes forward, stripe along the spine
-          put(p.x + fx * 0.13, y + 0.045, p.z + fz * 0.13, 0.07, 0.07, 0.07);
-          put(p.x + fx * 0.23 + lx * 0.028, y + 0.135, p.z + fz * 0.23 + lz * 0.028, 0.028, 0.028, 0.028);
-          put(p.x + fx * 0.23 - lx * 0.028, y + 0.135, p.z + fz * 0.23 - lz * 0.028, 0.028, 0.028, 0.028);
-          put(p.x - fx * 0.02, y + 0.115, p.z - fz * 0.02, alongX ? 0.14 : 0.1, 0.03, alongX ? 0.1 : 0.14);
-        }
-      } else if (c.kind === "dog") {
-        const bob = p.moving ? Math.abs(Math.sin(p.phase)) * 0.018 : 0;
-        const y = p.y + bob;
-        put(p.x, y + 0.06, p.z, alongX ? 0.38 : 0.16, 0.15, alongX ? 0.16 : 0.38, true);
-        put(p.x + fx * 0.23, y + 0.17, p.z + fz * 0.23, 0.13, 0.12, 0.13, true);
-        put(p.x + fx * 0.31, y + 0.17, p.z + fz * 0.31, 0.07, 0.06, 0.07, true);
-        put(p.x + fx * 0.23 + lx * 0.05, y + 0.28, p.z + fz * 0.23 + lz * 0.05, 0.035, 0.05, 0.035);
-        put(p.x + fx * 0.23 - lx * 0.05, y + 0.28, p.z + fz * 0.23 - lz * 0.05, 0.035, 0.05, 0.035);
-        const wag = Math.sin(p.phase * 2.4) * 0.045;
-        put(p.x - fx * 0.22 + lx * wag, y + 0.16, p.z - fz * 0.22 + lz * wag, 0.04, 0.11, 0.04);
-        // dark eyes above the snout, a dark collar at the neck
-        put(p.x + fx * 0.305 + lx * 0.034, y + 0.225, p.z + fz * 0.305 + lz * 0.034, 0.028, 0.028, 0.028);
-        put(p.x + fx * 0.305 - lx * 0.034, y + 0.225, p.z + fz * 0.305 - lz * 0.034, 0.028, 0.028, 0.028);
-        put(p.x + fx * 0.19, y + 0.11, p.z + fz * 0.19, alongX ? 0.05 : 0.18, 0.05, alongX ? 0.18 : 0.05);
+      // screen-space heading relative to the settled camera yaw picks the
+      // drawing: |right| wins ties so street walkers show their profile
+      const rel = p.facing - camYaw;
+      const sx = Math.sin(rel);
+      const sz = Math.cos(rel);
+      let dir: "S" | "E" | "N" = "E";
+      let mirror = 0;
+      if (Math.abs(sx) >= Math.abs(sz) - 1e-6) {
+        mirror = sx < 0 ? 1 : 0;
       } else {
-        const glideY = p.y + Math.sin(p.phase * 0.5) * 0.3;
-        const gliding = Math.sin(p.phase * 0.13 + c.seed) > 0.25;
-        const flap = gliding ? 0.06 : Math.sin(p.phase) * 0.5;
-        put(p.x, glideY, p.z, 0.1, 0.06, 0.14, true);
-        put(p.x + lx * 0.1, glideY + 0.03 + flap * 0.05, p.z + lz * 0.1, 0.12, 0.03, 0.09);
-        put(p.x - lx * 0.1, glideY + 0.03 + flap * 0.05, p.z - lz * 0.1, 0.12, 0.03, 0.09);
+        dir = sz > 0 ? "S" : "N";
+      }
+      const beat = Math.floor(p.phase / Math.PI) % 2 === 0 ? "a" : "b";
+      if (c.kind === "bird") {
+        const y = p.y + Math.sin(p.phase * 0.5) * 0.3;
+        place(`bird_E_${beat}`, p.x, y, p.z, SPRITE_WORLD_H.bird, mirror, 0);
+        continue;
+      }
+      const frame = p.moving ? beat : "i";
+      place(
+        `${c.kind}_${dir}_${frame}`,
+        p.x,
+        p.y,
+        p.z,
+        SPRITE_WORLD_H[c.kind],
+        mirror,
+        c.kind === "you" ? 1 : 0,
+      );
+      if (w === "rain" && (c.kind === "person" || c.kind === "you")) {
+        place("umbrella", p.x, p.y + SPRITE_WORLD_H[c.kind] * 0.92, p.z, SPRITE_WORLD_H.umbrella, 0, 0);
       }
     }
-    h.creatureMesh.instanceMatrix.needsUpdate = true;
-    if (h.outlineMesh) h.outlineMesh.instanceMatrix.needsUpdate = true;
+    for (; si < h.spriteMesh.count; si += 1) rect.setXYZW(si, 0, 0, 0, 0);
+    h.spriteMesh.instanceMatrix.needsUpdate = true;
+    rect.needsUpdate = true;
+    param.needsUpdate = true;
     return true;
   }, []);
 
@@ -832,6 +811,25 @@ export function City3D({
         h.camera.projectionMatrix.elements[13] -= (fy * 2) / vh;
       }
 
+      // sprite uniforms: pixel density, rest state, and a small shift
+      // toward the camera so quads sit in front of their own ground
+      if (h.spriteMat) {
+        const su = h.spriteMat.uniforms;
+        (su.uRes.value as THREE.Vector2).set(vw, vh);
+        su.uPxY.value = vh / view;
+        const settled =
+          Math.abs(yawRef.current - yawTargetRef.current) < 1e-4 && viewGoalRef.current === null;
+        su.uSnap.value = settled ? 1 : 0;
+        if (settled) settledYawRef.current = yawRef.current;
+        (su.uCamOff.value as THREE.Vector3)
+          .set(
+            Math.sin(yawRef.current) * Math.cos(ELEVATION),
+            Math.sin(ELEVATION),
+            Math.cos(yawRef.current) * Math.cos(ELEVATION),
+          )
+          .multiplyScalar(0.3);
+      }
+
       // two-pass: scene → low-res RT → quantise to screen (centered
       // integer-multiple blit; the margin stays background)
       h.quantMat.uniforms.uTime.value = now / 1000;
@@ -912,11 +910,11 @@ export function City3D({
       mesh: null,
       lotOfInstance: [],
       boxesPerInstance: [],
-      creatureMesh: null,
-      outlineMesh: null,
-      // inverted-hull shell: back faces of a slightly fatter box read as a
-      // pixel outline after quantization — the sprite-sheet trick, in 3D
-      outlineMat: new THREE.MeshBasicMaterial({ color: 0x07070a, side: THREE.BackSide }),
+      spriteMesh: null,
+      spriteMat: null,
+      spriteFrames: {},
+      spriteRect: null,
+      spriteParam: null,
       creatures: [],
       weatherMesh: null,
       beam: null,
@@ -925,11 +923,32 @@ export function City3D({
         vertexShader: BUILDING_VERT,
         fragmentShader: BUILDING_FRAG,
       }),
-      creatureMat: new THREE.ShaderMaterial({
-        vertexShader: CREATURE_VERT,
-        fragmentShader: CREATURE_FRAG,
-      }),
     };
+
+    // resident sprites: one atlas texture, one material for the whole cast
+    {
+      const atlas = buildAtlas();
+      const tex = new THREE.DataTexture(atlas.data, atlas.size, atlas.size, THREE.RGBAFormat, THREE.UnsignedByteType);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      tex.needsUpdate = true;
+      hRef.current.spriteFrames = atlas.frames;
+      hRef.current.spriteMat = new THREE.ShaderMaterial({
+        uniforms: {
+          uTex: { value: tex },
+          uRes: { value: new THREE.Vector2(1, 1) },
+          uPxY: { value: 10 },
+          uAtlas: { value: atlas.size },
+          uCamOff: { value: new THREE.Vector3() },
+          uSnap: { value: 1 },
+        },
+        vertexShader: SPRITE_VERT,
+        fragmentShader: SPRITE_FRAG,
+        blending: THREE.NoBlending,
+        transparent: false,
+        side: THREE.DoubleSide,
+      });
+    }
 
     // weather particles — one mesh, repurposed for rain or snow
     {
@@ -1192,73 +1211,33 @@ export function City3D({
     }
 
     // creatures: people circle their blocks, cats take the kerbs, birds the sky
-    if (h.creatureMesh) {
-      h.scene.remove(h.creatureMesh);
-      h.creatureMesh.geometry.dispose(); // material is shared and lives on
-    }
-    if (h.outlineMesh) {
-      h.scene.remove(h.outlineMesh);
-      h.outlineMesh.geometry.dispose();
+    if (h.spriteMesh) {
+      h.scene.remove(h.spriteMesh);
+      h.spriteMesh.geometry.dispose(); // material and atlas live on
     }
     const creatures = creaturesFor(plan, plan.lots.length, extras);
-    const partCount = creatures.reduce((s, c) => s + partsFor(c.kind, weather), 0);
-    if (partCount > 0) {
-      const cGeo = new THREE.BoxGeometry(1, 1, 1);
-      cGeo.translate(0, 0.5, 0);
-      const cMesh = new THREE.InstancedMesh(cGeo, h.creatureMat!, partCount);
-      cMesh.count = partCount;
-      cMesh.frustumCulled = false;
-      const cTints = new Float32Array(partCount * 3);
-      const MULS: Record<Creature["kind"], number[]> = {
-        // body head hat armL armR legL legR face eyeL eyeR
-        person: [1, 1.15, 0.55, 0.88, 0.88, 0.6, 0.6, 1.34, 0.16, 0.16],
-        // body head earL earR tail chest eyeL eyeR stripe — cat eyes glow at night
-        cat: [1, 1.12, 0.68, 0.68, 0.8, 1.42, 1.55, 1.55, 0.55],
-        // body head snout earL earR tail eyeL eyeR collar
-        dog: [1, 1.1, 1.28, 0.62, 0.62, 0.85, 0.16, 0.16, 0.45],
-        bird: [1, 1.18, 1.18], // body wingL wingR
-        you: [1, 1, 1, 1, 1, 1, 1, 1, 0.16, 0.16], // amber, but your eyes are dark
-      };
-      let pi = 0;
-      for (const c of creatures) {
-        const base = 0.68 + ((c.seed >>> 5) % 100) / 380;
-        const total = partsFor(c.kind, weather);
-        for (let p = 0; p < total; p += 1) {
-          const isExtra = p >= BASE_PARTS[c.kind];
-          if (c.kind === "you" && !isExtra && (MULS.you[p] ?? 1) > 0.5) {
-            cTints[pi * 3] = 2.0; // amber flag — the shader paints you warm
-            cTints[pi * 3 + 1] = 2.0;
-            cTints[pi * 3 + 2] = 2.0;
-          } else if (isExtra) {
-            // umbrella canopy / stick / footprints — quiet greys
-            const v = weather === "rain" ? (p === total - 1 ? 0.62 : 0.4) : 0.3;
-            cTints[pi * 3] = v;
-            cTints[pi * 3 + 1] = v;
-            cTints[pi * 3 + 2] = v * 1.04;
-          } else {
-            const mul = MULS[c.kind][p] ?? 1;
-            cTints[pi * 3] = base * mul;
-            cTints[pi * 3 + 1] = base * mul;
-            cTints[pi * 3 + 2] = base * mul * 1.05;
-          }
-          pi += 1;
-        }
-      }
-      cGeo.setAttribute("aTint", new THREE.InstancedBufferAttribute(cTints, 3));
-      h.scene.add(cMesh);
-      h.creatureMesh = cMesh;
-      // the outline shell shares the box geometry; its own matrices, back faces only
-      const oGeo = new THREE.BoxGeometry(1, 1, 1);
-      oGeo.translate(0, 0.5, 0);
-      const oMesh = new THREE.InstancedMesh(oGeo, h.outlineMat!, partCount);
-      oMesh.count = partCount;
-      oMesh.frustumCulled = false;
-      h.scene.add(oMesh);
-      h.outlineMesh = oMesh;
+    const slots = creatures.length * 2; // room for one overlay each (umbrella)
+    if (slots > 0 && h.spriteMat) {
+      const g = new THREE.PlaneGeometry(1, 1);
+      g.translate(0, 0.5, 0);
+      const rect = new THREE.InstancedBufferAttribute(new Float32Array(slots * 4), 4);
+      const paramA = new THREE.InstancedBufferAttribute(new Float32Array(slots * 3), 3);
+      rect.setUsage(THREE.DynamicDrawUsage);
+      paramA.setUsage(THREE.DynamicDrawUsage);
+      g.setAttribute("aRect", rect);
+      g.setAttribute("aParam", paramA);
+      const mesh = new THREE.InstancedMesh(g, h.spriteMat, slots);
+      mesh.count = slots;
+      mesh.frustumCulled = false;
+      h.scene.add(mesh);
+      h.spriteMesh = mesh;
+      h.spriteRect = rect;
+      h.spriteParam = paramA;
       h.creatures = creatures;
     } else {
-      h.creatureMesh = null;
-      h.outlineMesh = null;
+      h.spriteMesh = null;
+      h.spriteRect = null;
+      h.spriteParam = null;
       h.creatures = [];
     }
 
