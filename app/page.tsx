@@ -13,6 +13,10 @@ import { earnedWatts, levelFromWatts, orderBonus, skylineCap, streakOf, workOrde
 import { floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
+import { greet, tierOf, nameOf, lineFor, TIER_NAMES } from "./lib/game/bonds";
+import type { CreatureKind } from "./lib/city/residents";
+import { hash32 } from "./lib/city/layout";
+import { MirrorPanel } from "./components/mirror";
 
 const HUM_KEY = "yeyufm.hum";
 const CHIME_KEY = "yeyufm.chime";
@@ -44,6 +48,9 @@ export default function Home() {
   const [zen, setZen] = useState(false);
   const [ceremony, setCeremony] = useState<{ file: string; n: number } | null>(null);
   const [dexOpen, setDexOpen] = useState(false);
+  const [mirrorOpen, setMirrorOpen] = useState(false);
+  const [bubble, setBubble] = useState<{ key: string; name: string; text: string; until: number } | null>(null);
+  const [emote, setEmote] = useState<{ key: string; icon: string; until: number } | null>(null);
 
   const humRef = useRef<Hum | null>(null);
   const clientRef = useRef<ObsidianClient | null>(null);
@@ -51,6 +58,9 @@ export default function Home() {
   const writeOpenRef = useRef(false);
   const wordsThrottleRef = useRef(0);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+  const bondSaveTimerRef = useRef<number | null>(null);
+  const bondSaveStateRef = useRef<GameState | null>(null);
 
   const hum = useCallback(() => {
     humRef.current ??= new Hum();
@@ -209,6 +219,106 @@ export default function Home() {
     },
     [earned, hum],
   );
+
+  /** vault writes for bonds are debounced — greeting is frequent, saving is not */
+  const scheduleBondSave = useCallback((state: GameState) => {
+    bondSaveStateRef.current = state;
+    if (bondSaveTimerRef.current !== null) window.clearTimeout(bondSaveTimerRef.current);
+    bondSaveTimerRef.current = window.setTimeout(() => {
+      bondSaveTimerRef.current = null;
+      if (bondSaveStateRef.current) void saveGameState(bondSaveStateRef.current, clientRef.current);
+    }, 5000);
+  }, []);
+
+  const onCreatureTap = useCallback(
+    (hit: { key: string; kind: string; seed: number; x: number; y: number }) => {
+      if (hit.kind === "you") {
+        setMirrorOpen(true);
+        return;
+      }
+      const kind = hit.kind as CreatureKind;
+      const now = Date.now();
+      const d = new Date(now);
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const had = game.bonds[hit.key];
+      const nextBonds = greet(game.bonds, hit.key, today);
+      const tierBefore = tierOf(had);
+      const tierAfter = tierOf(nextBonds[hit.key]);
+      if (nextBonds !== game.bonds) {
+        const next: GameState = { ...game, bonds: nextBonds, updatedAt: now };
+        setGame(next);
+        scheduleBondSave(next);
+      }
+      const name = nameOf(kind, hit.seed);
+      const line = lineFor(
+        {
+          kind,
+          tier: tierAfter,
+          hour: d.getHours(),
+          weather: game.weather === "none" ? "base" : game.weather,
+          firstMeet: !had,
+        },
+        Math.random(),
+      );
+      setBubble({ key: hit.key, name: had ? name : "someone", text: line, until: now + 4200 });
+      setEmote({
+        key: hit.key,
+        icon: !had ? "emote_dots" : tierAfter > tierBefore ? "emote_heart" : "emote_wave",
+        until: now + 1600,
+      });
+      if (tierAfter > tierBefore && chimeOn) hum().settle();
+    },
+    [game, chimeOn, hum, scheduleBondSave],
+  );
+
+  /* bubbles and emotes fade on their own clock */
+  useEffect(() => {
+    if (!bubble) return;
+    const t = window.setTimeout(() => setBubble(null), Math.max(0, bubble.until - Date.now()));
+    return () => window.clearTimeout(t);
+  }, [bubble]);
+  useEffect(() => {
+    if (!emote) return;
+    const t = window.setTimeout(() => setEmote(null), Math.max(0, emote.until - Date.now()));
+    return () => window.clearTimeout(t);
+  }, [emote]);
+
+  /** unlock a wardrobe part with Watts, or wear a look — the Mirror's two verbs */
+  const unlockPart = useCallback(
+    (id: string, cost: number) => {
+      setGame((prev) => {
+        if (prev.owned.includes(id) || earned - prev.spent < cost) return prev;
+        const next: GameState = {
+          ...prev,
+          spent: prev.spent + cost,
+          owned: [...prev.owned, id],
+          updatedAt: Date.now(),
+        };
+        void saveGameState(next, clientRef.current);
+        hum().settle();
+        return next;
+      });
+    },
+    [earned, hum],
+  );
+  const wearLook = useCallback((look: GameState["look"]) => {
+    setGame((prev) => {
+      const next: GameState = { ...prev, look, updatedAt: Date.now() };
+      void saveGameState(next, clientRef.current);
+      return next;
+    });
+    setMirrorOpen(false);
+  }, []);
+
+  /* the neighbours you know, for the Registry */
+  const knownResidents = useMemo(() => {
+    return Object.entries(game.bonds)
+      .map(([key, bond]) => {
+        const kind = key.split(":")[0] as CreatureKind;
+        return { key, kind, name: nameOf(kind, hash32(key)), tier: tierOf(bond), days: bond.n };
+      })
+      .sort((a, b) => b.days - a.days);
+  }, [game.bonds]);
 
   const extras = useMemo(
     () => ({
@@ -428,7 +538,8 @@ export default function Home() {
         if (searchOpen) {
           setSearchOpen(false);
           setQuery("");
-        } else if (dexOpen) setDexOpen(false);
+        } else if (mirrorOpen) setMirrorOpen(false);
+        else if (dexOpen) setDexOpen(false);
         else if (shopOpen) setShopOpen(false);
         else if (settingsOpen) setSettingsOpen(false);
         else if (writeOpenRef.current) closeWrite();
@@ -463,11 +574,14 @@ export default function Home() {
       } else if (event.key === "c" || event.key === "C") {
         event.preventDefault();
         setDexOpen((v) => !v);
+      } else if (event.key === "m" || event.key === "M") {
+        event.preventDefault();
+        setMirrorOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeWrite, dexOpen, jumpMonth, openWrite, registerActivity, searchOpen, settingsOpen, shopOpen]);
+  }, [closeWrite, dexOpen, jumpMonth, mirrorOpen, openWrite, registerActivity, searchOpen, settingsOpen, shopOpen]);
 
   /* ---------- render ---------- */
 
@@ -503,12 +617,23 @@ export default function Home() {
             streak={streak}
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
             onOpen={(file) => openWrite(file)}
+            onCreatureTap={onCreatureTap}
+            look={game.look}
+            emote={emote}
+            trackKey={bubble?.key ?? null}
+            trackRef={bubbleRef}
             onFail={() => setGl3d(false)}
           />
         ) : (
           <div className="no-gl">
             <strong>This city needs WebGL.</strong>
             <span>Your notes and the editor still work — press N to write.</span>
+          </div>
+        )}
+        {bubble && (
+          <div ref={bubbleRef} className="city-bubble" aria-live="polite">
+            <strong>{bubble.name}</strong>
+            <span>{bubble.text}</span>
           </div>
         )}
         {hover && !writeOpen && (
@@ -711,8 +836,36 @@ export default function Home() {
             </div>
           ))}
         </div>
+        {knownResidents.length > 0 && (
+          <>
+            <div className="panel-heading dex-sub">
+              <span>Neighbours</span>
+            </div>
+            <div className="dex-items">
+              {knownResidents.map((r) => (
+                <div key={r.key} className="dex-item found">
+                  <strong>{r.name}</strong>
+                  <em>
+                    {"\u25a0".repeat(r.tier)}
+                    {"\u25a1".repeat(4 - r.tier)} {TIER_NAMES[r.tier]}
+                  </em>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
         <p className="depot-note">The city remembers how each page was written.</p>
       </aside>
+
+      <MirrorPanel
+        open={mirrorOpen}
+        look={game.look}
+        owned={game.owned}
+        watts={earned - game.spent}
+        onClose={() => setMirrorOpen(false)}
+        onUnlock={unlockPart}
+        onWear={wearLook}
+      />
 
       <aside
         className="settings-panel shop-panel"

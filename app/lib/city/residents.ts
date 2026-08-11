@@ -8,14 +8,18 @@
 
 import type { CityPlan } from "./plan";
 import { CELL } from "./plan";
-import { rng } from "./layout";
+import { rng, hash32 } from "./layout";
 
 export type CreatureKind = "person" | "cat" | "bird" | "dog" | "you";
 
 export type CreatureExtras = { cats: number; birds: number; dogs: number };
 
 export type Creature = {
+  /** render index only — never persist anything against this */
   id: number;
+  /** stable identity ("person:7", "cat:2") — populations only grow, so a
+   *  key never changes hands; bonds and looks may safely attach to it */
+  key: string;
   kind: CreatureKind;
   seed: number;
   /** anchor: which block (index into plan.blocks) it lives around */
@@ -50,8 +54,9 @@ export function creaturesFor(
   let id = 0;
   const add = (kind: CreatureKind, count: number) => {
     for (let i = 0; i < count; i += 1) {
-      const seed = (id * 2654435761) >>> 0;
-      out.push({ id, kind, seed, block: seed % plan.blocks.length });
+      const key = `${kind}:${i}`;
+      const seed = hash32(key);
+      out.push({ id, key, kind, seed, block: seed % plan.blocks.length });
       id += 1;
     }
   };
@@ -60,7 +65,7 @@ export function creaturesFor(
   add("bird", birds);
   add("dog", extras.dogs);
   // and you — one amber figure, living in the newest month
-  out.push({ id, kind: "you", seed: 0xa11ce, block: plan.blocks.length - 1 });
+  out.push({ id, key: "you:0", kind: "you", seed: 0xa11ce, block: plan.blocks.length - 1 });
   return out;
 }
 

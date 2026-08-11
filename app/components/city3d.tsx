@@ -9,6 +9,7 @@ import { PALETTE } from "../lib/city/palette";
 import { terrainFor } from "../lib/city/terrain";
 import { buildAtlas } from "../lib/city/sprites/atlas";
 import { SPRITE_WORLD_H } from "../lib/city/sprites/data";
+import { composeYou, DEFAULT_LOOK, type YouLook } from "../lib/city/sprites/compose";
 import { creaturesFor, poseAt } from "../lib/city/residents";
 import type { Creature, CreatureExtras } from "../lib/city/residents";
 import { CELL } from "../lib/city/plan";
@@ -459,6 +460,11 @@ export function City3D({
   streak,
   onHover,
   onOpen,
+  onCreatureTap,
+  look,
+  emote,
+  trackKey,
+  trackRef,
   onFail,
 }: {
   plan: CityPlan;
@@ -480,6 +486,15 @@ export function City3D({
   streak: number;
   onHover: (file: string | null, x: number, y: number) => void;
   onOpen: (file: string) => void;
+  /** a resident was tapped (never fires for ships) */
+  onCreatureTap: (hit: { key: string; kind: string; seed: number; x: number; y: number }) => void;
+  /** your figure, composed into the atlas at runtime */
+  look: YouLook;
+  /** a small thought above someone's head, until the given ms timestamp */
+  emote: { key: string; icon: string; until: number } | null;
+  /** creature the speech bubble follows; positions land on trackRef */
+  trackKey: string | null;
+  trackRef: React.RefObject<HTMLDivElement | null>;
   onFail: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -509,13 +524,33 @@ export function City3D({
   const waveRef = useRef<{ x: number; z: number; start: number; oldCap: number } | null>(null);
   const prevCapRef = useRef<number | null>(null);
   const hoverRef = useRef<string | null>(null);
-  const stateRef = useRef({ plan, focus, matches, weather, levelCap, writeMode });
+  const stateRef = useRef({ plan, focus, matches, weather, levelCap, writeMode, emote, trackKey });
 
   useEffect(() => {
-    stateRef.current = { plan, focus, matches, weather, levelCap, writeMode };
-  }, [plan, focus, matches, weather, levelCap, writeMode]);
+    stateRef.current = { plan, focus, matches, weather, levelCap, writeMode, emote, trackKey };
+    loopRef.current?.();
+  }, [plan, focus, matches, weather, levelCap, writeMode, emote, trackKey]);
+  const loopRef = useRef<(() => void) | null>(null);
 
   /* ---------- frame ---------- */
+
+  /** project a creature's head to CSS pixel coords on the canvas */
+  const projectCreature = useCallback((key: string, now: number) => {
+    const h = hRef.current;
+    const canvas = canvasRef.current;
+    if (!h || !canvas) return null;
+    const c = h.creatures.find((cc) => cc.key === key);
+    if (!c) return null;
+    const p = poseAt(c, stateRef.current.plan, now / 1000);
+    const kindH = SPRITE_WORLD_H[c.kind === "bird" ? "ship" : c.kind] ?? 1;
+    const v = new THREE.Vector3(p.x, p.y + kindH + 0.15, p.z).project(h.camera);
+    if (v.z > 1) return null;
+    return {
+      x: (v.x * 0.5 + 0.5) * canvas.clientWidth,
+      y: (-v.y * 0.5 + 0.5) * canvas.clientHeight,
+    };
+  }, []);
+
 
   const applyInstances = useCallback((now: number) => {
     const h = hRef.current;
@@ -708,18 +743,22 @@ export function City3D({
       }
       const frame = p.moving ? beat : "i";
       // wardrobe variety: each resident keeps one of three looks for life
-      const look = c.kind === "person" ? PERSON_LOOKS[c.seed % PERSON_LOOKS.length] : c.kind;
+      const look2 = c.kind === "person" ? PERSON_LOOKS[c.seed % PERSON_LOOKS.length] : c.kind;
       place(
-        `${look}_${dir}_${frame}`,
+        `${look2}_${dir}_${frame}`,
         p.x,
         p.y,
         p.z,
-        SPRITE_WORLD_H[look],
+        SPRITE_WORLD_H[look2],
         mirror,
         c.kind === "you" ? 1 : 0,
       );
       if (w === "rain" && (c.kind === "person" || c.kind === "you")) {
         place("umbrella", p.x, p.y + SPRITE_WORLD_H[c.kind] * 0.92, p.z, SPRITE_WORLD_H.umbrella, 0, 0);
+      }
+      const em = stateRef.current.emote;
+      if (em && em.key === c.key && now < em.until) {
+        place(em.icon, p.x, p.y + SPRITE_WORLD_H[look2] + 0.3, p.z, 0.5, 0, 0);
       }
     }
     for (; si < h.spriteMesh.count; si += 1) rect.setXYZW(si, 0, 0, 0, 0);
@@ -927,6 +966,19 @@ export function City3D({
           .multiplyScalar(0.3);
       }
 
+      // the speech bubble follows its speaker in CSS space
+      const tk = stateRef.current.trackKey;
+      const bubbleEl = trackRef.current;
+      if (bubbleEl) {
+        const pos = tk ? projectCreature(tk, now) : null;
+        if (pos) {
+          bubbleEl.style.transform = `translate(-50%, -100%) translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px)`;
+          bubbleEl.style.visibility = "visible";
+        } else {
+          bubbleEl.style.visibility = "hidden";
+        }
+      }
+
       // two-pass: scene → low-res RT → quantise to screen (centered
       // integer-multiple blit; the margin stays background)
       h.quantMat.uniforms.uTime.value = now / 1000;
@@ -940,7 +992,7 @@ export function City3D({
       h.renderer.setViewport(0, 0, dw, dh);
       return animating;
     },
-    [applyInstances, applyCreatures, applyWeather],
+    [applyInstances, applyCreatures, applyWeather, projectCreature, trackRef],
   );
 
   const loop = useCallback(() => {
@@ -951,6 +1003,9 @@ export function City3D({
     };
     if (rafRef.current === null) rafRef.current = requestAnimationFrame(step);
   }, [frame]);
+  loopRef.current = loop;
+
+
 
   /* ---------- scene lifecycle ---------- */
 
@@ -1036,7 +1091,7 @@ export function City3D({
 
     // resident sprites: one atlas texture, one material for the whole cast
     {
-      const atlas = buildAtlas();
+      const atlas = buildAtlas(composeYou(DEFAULT_LOOK));
       const tex = new THREE.DataTexture(atlas.data, atlas.size, atlas.size, THREE.RGBAFormat, THREE.UnsignedByteType);
       tex.magFilter = THREE.NearestFilter;
       tex.minFilter = THREE.NearestFilter;
@@ -1289,7 +1344,7 @@ export function City3D({
       h.spriteMesh.geometry.dispose(); // material and atlas live on
     }
     const creatures = creaturesFor(plan, plan.lots.length, extras);
-    const slots = creatures.length * 2; // room for one overlay each (umbrella)
+    const slots = creatures.length * 2 + 8; // umbrellas + a few emotes
     if (slots > 0 && h.spriteMat) {
       const g = new THREE.PlaneGeometry(1, 1);
       g.translate(0, 0.5, 0);
@@ -1319,6 +1374,24 @@ export function City3D({
     loop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan, extras, decor, skin, streak, weather]);
+
+  /* the Mirror: a new look recomposes your nine frames into the atlas.
+     Texture and frame table swap in the same tick — they must never
+     disagree, or every sprite in town samples the wrong rectangle. */
+  useEffect(() => {
+    const h = hRef.current;
+    if (!h || !h.spriteMat) return;
+    const atlas = buildAtlas(composeYou(look));
+    const tex = new THREE.DataTexture(atlas.data, atlas.size, atlas.size, THREE.RGBAFormat, THREE.UnsignedByteType);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    tex.needsUpdate = true;
+    const old = h.spriteMat.uniforms.uTex.value as THREE.DataTexture | null;
+    h.spriteMat.uniforms.uTex.value = tex;
+    h.spriteFrames = atlas.frames;
+    if (old) old.dispose();
+    loop();
+  }, [look, loop]);
 
   /* redraw on prop changes */
   useEffect(() => {
@@ -1519,6 +1592,34 @@ export function City3D({
     [loop, onHover, raycast, clampView],
   );
 
+  /** nearest resident within tap radius, in screen space — sprite quads
+   *  are sized in the vertex shader, so CPU raycasts can't see them */
+  const pickCreature = useCallback(
+    (clientX: number, clientY: number) => {
+      const h = hRef.current;
+      const canvas = canvasRef.current;
+      if (!h || !canvas) return null;
+      const rect = canvas.getBoundingClientRect();
+      const px = clientX - rect.left;
+      const py = clientY - rect.top;
+      const radius = window.matchMedia("(pointer: coarse)").matches ? 30 : 22;
+      let best: { key: string; kind: string; seed: number; x: number; y: number } | null = null;
+      let bestD = radius;
+      for (const c of h.creatures) {
+        if (c.kind === "bird") continue; // you can't greet a courier ship
+        const pos = projectCreature(c.key, lastDrawRef.current);
+        if (!pos) continue;
+        const d = Math.hypot(pos.x - px, pos.y - py + 8); // aim at the body
+        if (d < bestD) {
+          bestD = d;
+          best = { key: c.key, kind: c.kind, seed: c.seed, x: pos.x, y: pos.y };
+        }
+      }
+      return best;
+    },
+    [projectCreature],
+  );
+
   const onPointerUp = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
       pointersRef.current.delete(event.pointerId);
@@ -1536,10 +1637,16 @@ export function City3D({
         }
         return;
       }
+      // residents first — they are small targets, buildings are not
+      const creature = pickCreature(event.clientX, event.clientY);
+      if (creature) {
+        onCreatureTap(creature);
+        return;
+      }
       const hit = raycast(event.clientX, event.clientY);
       if (hit && !hit.startsWith("demo/")) onOpen(hit);
     },
-    [loop, onOpen, raycast, scheduleViewSnap],
+    [loop, onOpen, raycast, scheduleViewSnap, pickCreature, onCreatureTap],
   );
 
   /** pan in camera-relative screen axes → world */

@@ -18,7 +18,7 @@ export type SpriteAtlas = {
   frames: Record<string, SpriteFrame>;
 };
 
-export function buildAtlas(): SpriteAtlas {
+export function buildAtlas(extra?: Record<string, string[]>): SpriteAtlas {
   const size = 128;
   const data = new Uint8Array(size * size * 4);
   for (let i = 3; i < data.length; i += 4) data[i] = 255; // all transparent
@@ -26,7 +26,7 @@ export function buildAtlas(): SpriteAtlas {
   let cx = 1;
   let cy = 1;
   let shelf = 0;
-  for (const [name, rows] of Object.entries(SPRITES)) {
+  for (const [name, rows] of Object.entries({ ...SPRITES, ...(extra ?? {}) })) {
     const w = rows[0].length;
     const h = rows.length;
     for (const r of rows) {

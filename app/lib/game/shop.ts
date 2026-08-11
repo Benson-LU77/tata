@@ -33,11 +33,20 @@ export const CATALOG: ShopItem[] = [
 
 export type Weather = "none" | "rain" | "snow" | "fog";
 
+import type { YouLook } from "../city/sprites/compose";
+import { DEFAULT_LOOK } from "../city/sprites/compose";
+import type { Bonds } from "./bonds";
+import { mergeBonds } from "./bonds";
+
 export type GameState = {
   spent: number;
   owned: string[];
   skin: "base" | "chalk" | "ink";
   weather: Weather;
+  /** your figure in the Mirror — one coherent choice, last write wins */
+  look: YouLook;
+  /** who you know, keyed by stable creature key */
+  bonds: Bonds;
   updatedAt: number;
 };
 
@@ -46,6 +55,8 @@ export const EMPTY_STATE: GameState = {
   owned: [],
   skin: "base",
   weather: "none",
+  look: DEFAULT_LOOK,
+  bonds: {},
   updatedAt: 0,
 };
 
@@ -64,6 +75,8 @@ function mergeStates(a: GameState, b: GameState): GameState {
     owned: [...new Set([...a.owned, ...b.owned])],
     skin: newer.skin,
     weather: newer.weather,
+    look: newer.look, // an outfit is one decision, not a union of parts
+    bonds: mergeBonds(a.bonds, b.bonds),
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }
@@ -94,6 +107,8 @@ async function loadLocalState(): Promise<GameState> {
                 owned: raw.owned ?? [],
                 skin: raw.skin ?? "base",
                 weather: raw.weather ?? "none",
+                look: raw.look ?? DEFAULT_LOOK,
+                bonds: raw.bonds ?? {},
                 updatedAt: raw.updatedAt ?? 0,
               }
             : EMPTY_STATE,
@@ -120,6 +135,8 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
       owned: remote.owned ?? [],
       skin: remote.skin ?? "base",
       weather: remote.weather ?? "none",
+      look: remote.look ?? DEFAULT_LOOK,
+      bonds: remote.bonds ?? {},
       updatedAt: remote.updatedAt ?? 0,
     });
     void saveGameState(merged); // heal the local copy

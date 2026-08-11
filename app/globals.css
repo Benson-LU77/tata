@@ -1292,3 +1292,108 @@ button:focus-visible, input:focus-visible {
 }
 .notes-recent button:hover { color: var(--v6); border-color: var(--v4); }
 .notes-recent button.current { color: var(--v7); border-color: var(--v4); }
+
+/* ---------- bonds: the speech bubble & neighbours ---------- */
+
+.city-bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 240px;
+  margin-top: -10px;
+  padding: 7px 10px;
+  border: 1px solid var(--v4);
+  background: rgba(13, 15, 19, .95);
+  font: 400 11px/1.45 var(--mono);
+  letter-spacing: .03em;
+  color: var(--v6);
+  pointer-events: none;
+}
+
+.city-bubble strong {
+  font-weight: 600;
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--v5);
+}
+
+.dex-sub { margin-top: 18px; }
+
+/* ---------- the Mirror ---------- */
+
+.mirror-body {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.mirror-preview {
+  width: 96px;
+  height: 156px;
+  image-rendering: pixelated;
+  border: 1px solid var(--line);
+  background: rgba(6, 7, 10, .8);
+  flex: none;
+}
+
+.mirror-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mirror-row-title {
+  display: block;
+  margin-bottom: 5px;
+  font: 400 9.5px/1 var(--mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--v5);
+}
+
+.mirror-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mirror-opt {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  background: transparent;
+  font: 400 10.5px/1 var(--mono);
+  letter-spacing: .03em;
+  color: var(--v6);
+  cursor: pointer;
+}
+
+.mirror-opt.active {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.mirror-opt.locked { color: var(--v4); }
+.mirror-opt.locked em { font-style: normal; color: var(--v5); }
+
+.mirror-opt.tone { padding: 5px; }
+.tone-chip { display: block; width: 14px; height: 14px; }
+
+.mirror-wear {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 8px 16px;
+  border: 1px solid var(--amber);
+  background: transparent;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--amber);
+  cursor: pointer;
+}

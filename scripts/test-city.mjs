@@ -11,6 +11,9 @@ for (const [entry, name] of [
   ["app/lib/city/plan.ts", "plan"],
   ["app/lib/game/watts.ts", "watts"],
   ["app/lib/city/residents.ts", "residents"],
+  ["app/lib/city/sprites/compose.ts", "compose"],
+  ["app/lib/city/sprites/parts.ts", "parts"],
+  ["app/lib/game/bonds.ts", "bonds"],
 ]) {
   execSync(`npx esbuild ${entry} --bundle --format=esm --outfile=${join(out, name + ".js")}`, {
     stdio: "pipe",
@@ -101,6 +104,93 @@ assert.ok(after >= before, "the city never shrinks overnight");
       assert.ok(dot > 0.7, `${c.kind}#${c.id} walks the way it faces (dot=${dot.toFixed(2)} at t=${t})`);
     }
   }
+}
+
+// 9. identity is forever: growing the city only ADDS residents — every
+// existing key keeps its kind and seed (bonds depend on this)
+{
+  const { creaturesFor } = await import(join(out, "residents.js"));
+  const plan = planCity(metrics, NOW);
+  const small = creaturesFor(plan, 10, { cats: 2, birds: 1, dogs: 1 });
+  const big = creaturesFor(plan, 200, { cats: 4, birds: 2, dogs: 2 });
+  const byKey = new Map(big.map((c) => [c.key, c]));
+  for (const c of small) {
+    const later = byKey.get(c.key);
+    assert.ok(later, `resident ${c.key} survived growth`);
+    assert.strictEqual(later.kind, c.kind, `${c.key} keeps its kind`);
+    assert.strictEqual(later.seed, c.seed, `${c.key} keeps its seed`);
+  }
+}
+
+// 10. the Mirror never breaks the figure: default look reproduces the
+// canonical sprite exactly; every part stays above the walk rows; every
+// composed frame is legal palette art
+{
+  const { composeYou, DEFAULT_LOOK } = await import(join(out, "compose.js"));
+  const { PARTS } = await import(join(out, "parts.js"));
+  const golden = composeYou(DEFAULT_LOOK);
+  assert.deepStrictEqual(
+    golden.you_S_i,
+    [
+      ".00000..",
+      ".04440..",
+      "0444440.",
+      "..0000..",
+      ".066660.",
+      "06166160",
+      "06666660",
+      ".066660.",
+      ".004400.",
+      "05444450",
+      "05444450",
+      ".044440.",
+      ".00.00..",
+    ],
+    "default look reproduces the canonical you",
+  );
+  for (const part of PARTS) {
+    for (const patch of Object.values(part.art)) {
+      assert.ok(patch.top + patch.rows.length <= 9, `${part.id} stays above the walk rows`);
+    }
+  }
+  for (const look of [
+    DEFAULT_LOOK,
+    { hat: "hat.hood", hair: "hair.long", acc: "acc.scarf", tone: 3 },
+    { hat: "hat.none", hair: "hair.fringe", acc: "acc.none", tone: 0 },
+  ]) {
+    const frames = Object.entries(composeYou(look));
+    assert.strictEqual(frames.length, 9, "nine frames always");
+    for (const [name, rows] of frames) {
+      assert.strictEqual(rows.length, 13, `${name} is 13 rows`);
+      for (const row of rows) {
+        assert.strictEqual(row.length, 8, `${name} rows are 8 wide`);
+        assert.ok(/^[.0-7]+$/.test(row), `${name} resolves to legal palette art`);
+      }
+    }
+  }
+}
+
+// 11. bonds: one day counts once, tiers gate on days, merge never regresses
+{
+  const { greet, tierOf, mergeBonds, nameOf } = await import(join(out, "bonds.js"));
+  let b = greet({}, "cat:2", "2026-08-11");
+  b = greet(b, "cat:2", "2026-08-11"); // same day, no double count
+  assert.strictEqual(b["cat:2"].n, 1, "same-day greets count once");
+  b = greet(b, "cat:2", "2026-08-12");
+  assert.strictEqual(b["cat:2"].n, 2, "a new day counts");
+  assert.strictEqual(tierOf(undefined), 0, "strangers are tier 0");
+  assert.strictEqual(tierOf({ n: 1, met: "", last: "" }), 1, "first greet = familiar");
+  assert.strictEqual(tierOf({ n: 20, met: "", last: "" }), 4, "twenty days = family");
+  const m = mergeBonds(
+    { "cat:2": { n: 3, met: "2026-08-01", last: "2026-08-10" } },
+    { "cat:2": { n: 5, met: "2026-08-02", last: "2026-08-11" } },
+  );
+  assert.deepStrictEqual(
+    m["cat:2"],
+    { n: 5, met: "2026-08-01", last: "2026-08-11" },
+    "merge takes max days, earliest meeting, latest greeting",
+  );
+  assert.strictEqual(nameOf("cat", 7), nameOf("cat", 7), "names are deterministic");
 }
 
 console.log("city tests: all passed");
