@@ -862,6 +862,8 @@ export function City3D({
       const frame = p.moving ? beat : "i";
       // wardrobe variety: each resident keeps one of three looks for life
       const look2 = c.kind === "person" ? `npc${c.seed % CITIZENS.length}` : c.kind;
+      const encScale =
+        enc && (c.kind === "you" || c.key === enc.key) ? 1 + 0.7 * enc.blend : 1;
       let sname = `${look2}_${dir}_${frame}`;
       // standing people facing you blink now and then
       if (
@@ -878,7 +880,7 @@ export function City3D({
         p.x,
         p.y,
         p.z,
-        SPRITE_WORLD_H[look2] ?? 1.4,
+        (SPRITE_WORLD_H[look2] ?? 1.4) * encScale,
         mirror,
         c.kind === "you" ? 1 : 0,
       );
@@ -890,7 +892,7 @@ export function City3D({
         place(em.icon, p.x, p.y + SPRITE_WORLD_H[look2] + 0.3, p.z, 0.5, 0, 0);
       }
       if (enc && enc.phase === "walk" && c.key === enc.key) {
-        place("emote_notice", p.x, p.y + (SPRITE_WORLD_H[look2] ?? 1.4) + 0.3, p.z, 0.5, 0, 0);
+        place("emote_notice", p.x, p.y + (SPRITE_WORLD_H[look2] ?? 1.4) * encScale + 0.3, p.z, 0.5, 0, 0);
       }
     }
     for (; si < h.spriteMesh.count; si += 1) rect.setXYZW(si, 0, 0, 0, 0);
@@ -1040,7 +1042,7 @@ export function City3D({
         animating = true;
       }
       // writing is a close-up of one building, never a city-wide letterbox
-      let view = writing ? 15 : viewRef.current;
+      const view = writing ? 15 : viewRef.current;
       const aspect = vw / vh;
       h.camera.left = (-view * aspect) / 2;
       h.camera.right = (view * aspect) / 2;
@@ -1056,10 +1058,11 @@ export function City3D({
         const goal = encC.phase === "meet" ? 1 : encC.phase === "walk" ? 0.35 : 0;
         encC.blend += (goal - encC.blend) * Math.min(0.16, dt / 320);
         if (encC.blend > 0.005) {
+          // the world keeps its size — only the camera drifts to frame
+          // the pair; the two speakers themselves grow instead
           const anchor = encC.meetAt ?? encC.you;
           const midX = (anchor.x + encC.target.x) / 2;
           const midZ = (anchor.z + encC.target.z) / 2;
-          view = view + (10.7 - view) * encC.blend;
           cx = cx + (midX - cx) * encC.blend;
           cz = cz + (midZ - cz) * encC.blend;
           animating = true;
