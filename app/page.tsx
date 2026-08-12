@@ -82,7 +82,6 @@ export default function Home() {
   const writeOpenRef = useRef(false);
   const wordsThrottleRef = useRef(0);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const bubbleRef = useRef<HTMLDivElement | null>(null);
   const bondSaveTimerRef = useRef<number | null>(null);
   const bondSaveStateRef = useRef<GameState | null>(null);
 
@@ -312,7 +311,7 @@ export default function Home() {
   const lastAdvanceRef = useRef(0);
   const advanceEncounter = useCallback(() => {
     // double-fired pointer events must not skip a page of dialogue
-    if (Date.now() - lastAdvanceRef.current < 300) return;
+    if (Date.now() - lastAdvanceRef.current < 650) return;
     lastAdvanceRef.current = Date.now();
     if (encStageRef.current === "their") {
       encStageRef.current = "reply";
@@ -845,8 +844,6 @@ export default function Home() {
             onEncounterMeet={onEncounterMeet}
             look={game.look}
             emote={emote}
-            trackKey={bubble?.key ?? null}
-            trackRef={bubbleRef}
             onFail={() => setGl3d(false)}
           />
         ) : (
@@ -861,7 +858,7 @@ export default function Home() {
           </div>
         )}
         {bubble && (
-          <div ref={bubbleRef} className="city-bubble" aria-live="polite">
+          <div className="city-bubble city-bubble--docked" aria-live="polite">
             <strong>{bubble.name}</strong>
             <span>{bubble.text}</span>
           </div>

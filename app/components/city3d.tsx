@@ -486,8 +486,6 @@ export function City3D({
   onEncounterMeet,
   look,
   emote,
-  trackKey,
-  trackRef,
   onFail,
 }: {
   plan: CityPlan;
@@ -521,9 +519,6 @@ export function City3D({
   look: YouLook;
   /** a small thought above someone's head, until the given ms timestamp */
   emote: { key: string; icon: string; until: number } | null;
-  /** creature the speech bubble follows; positions land on trackRef */
-  trackKey: string | null;
-  trackRef: React.RefObject<HTMLDivElement | null>;
   onFail: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -559,16 +554,16 @@ export function City3D({
       (c) => new THREE.Color(c),
     ),
   );
-  const stateRef = useRef({ plan, focus, matches, weather, levelCap, writeMode, emote, trackKey });
+  const stateRef = useRef({ plan, focus, matches, weather, levelCap, writeMode, emote });
   const onMeetRef = useRef(onEncounterMeet);
   useEffect(() => {
     onMeetRef.current = onEncounterMeet;
   }, [onEncounterMeet]);
 
   useEffect(() => {
-    stateRef.current = { plan, focus, matches, weather, levelCap, writeMode, emote, trackKey };
+    stateRef.current = { plan, focus, matches, weather, levelCap, writeMode, emote };
     loopRef.current?.();
-  }, [plan, focus, matches, weather, levelCap, writeMode, emote, trackKey]);
+  }, [plan, focus, matches, weather, levelCap, writeMode, emote]);
   const loopRef = useRef<(() => void) | null>(null);
 
   /* ---------- frame ---------- */
@@ -1145,19 +1140,6 @@ export function City3D({
           .multiplyScalar(0.3);
       }
 
-      // the speech bubble follows its speaker in CSS space
-      const tk = stateRef.current.trackKey;
-      const bubbleEl = trackRef.current;
-      if (bubbleEl) {
-        const pos = tk ? projectCreature(tk, now) : null;
-        if (pos) {
-          bubbleEl.style.transform = `translate(-50%, -100%) translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px)`;
-          bubbleEl.style.visibility = "visible";
-        } else {
-          bubbleEl.style.visibility = "hidden";
-        }
-      }
-
       // two-pass: scene → low-res RT → quantise to screen (centered
       // integer-multiple blit; the margin stays background)
       h.quantMat.uniforms.uTime.value = now / 1000;
@@ -1171,7 +1153,7 @@ export function City3D({
       h.renderer.setViewport(0, 0, dw, dh);
       return animating;
     },
-    [applyInstances, applyCreatures, applyWeather, projectCreature, trackRef],
+    [applyInstances, applyCreatures, applyWeather],
   );
 
   const loop = useCallback(() => {

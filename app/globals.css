@@ -1482,3 +1482,20 @@ button:focus-visible, input:focus-visible {
 }
 
 .dex-prof { font-weight: 400; color: var(--v5); font-size: 10px; letter-spacing: .06em; }
+
+/* the dialogue box docks — a steady window, Pokemon-style */
+.city-bubble--docked {
+  visibility: visible;
+  left: 50%;
+  top: auto;
+  bottom: 88px;
+  transform: translateX(-50%);
+  min-width: 280px;
+  max-width: min(480px, 86vw);
+  padding: 10px 14px;
+  animation: bubble-in .18s ease both;
+}
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
