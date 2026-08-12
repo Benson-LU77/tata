@@ -69,6 +69,8 @@ export default function Home() {
   const [monthListOpen, setMonthListOpen] = useState(false);
   const [encounterKey, setEncounterKey] = useState<string | null>(null);
   const encTimersRef = useRef<number[]>([]);
+  const encStageRef = useRef<"their" | "reply" | null>(null);
+  const encReplyRef = useRef<string>("");
   const [bubble, setBubble] = useState<{ key: string; name: string; text: string; until: number } | null>(null);
   const [emote, setEmote] = useState<{ key: string; icon: string; until: number } | null>(null);
   const [lang, setLang] = useState<Lang>("en");
@@ -306,19 +308,43 @@ export default function Home() {
     encTimersRef.current = [];
   }, []);
 
+  /** a click during the meeting turns the conversation one page */
+  const advanceEncounter = useCallback(() => {
+    if (encStageRef.current === "their") {
+      encStageRef.current = "reply";
+      hum().click();
+      setBubble({
+        key: "you:0",
+        name: "you",
+        text: encReplyRef.current,
+        until: Date.now() + 30000,
+      });
+    } else {
+      clearEncounterTimers();
+      encStageRef.current = null;
+      setBubble(null);
+      setEncounterKey(null);
+    }
+  }, [clearEncounterTimers, hum]);
+
   const onCreatureTap = useCallback(
     (hit: { key: string; kind: string; seed: number; x: number; y: number }) => {
       if (hit.kind === "you") {
         setMirrorOpen(true);
         return;
       }
+      if (encounterKey && hit.key === encounterKey) {
+        advanceEncounter();
+        return;
+      }
       // start the walk — the greeting happens when you actually arrive
       clearEncounterTimers();
+      encStageRef.current = null;
       setBubble(null);
       hum().click();
       setEncounterKey(hit.key);
     },
-    [clearEncounterTimers, hum],
+    [clearEncounterTimers, hum, encounterKey, advanceEncounter],
   );
 
   /** you arrived: the exchange — their line, your reply, then goodbye */
@@ -357,7 +383,7 @@ export default function Home() {
         Math.random(),
         lang,
       );
-      setBubble({ key: hit.key, name: had ? name : "someone", text: line, until: now + 4200 });
+      setBubble({ key: hit.key, name: had ? name : "someone", text: line, until: now + 30000 });
       setEmote({
         key: hit.key,
         icon: !had ? "emote_dots" : tierAfter > tierBefore ? "emote_heart" : "emote_wave",
@@ -365,19 +391,11 @@ export default function Home() {
       });
       hum().greet(hit.seed);
       if (tierAfter > tierBefore) hum().settle();
-      // your reply, then the goodbye — timers are cancellable
+      // the exchange advances on your click; a long failsafe closes it
       const reply = REPLY_LINES[Math.floor(Math.random() * REPLY_LINES.length)];
-      encTimersRef.current.push(
-        window.setTimeout(() => {
-          setBubble({
-            key: "you:0",
-            name: "you",
-            text: lang === "zh" ? reply.zh : reply.en,
-            until: Date.now() + 3000,
-          });
-        }, 4400),
-        window.setTimeout(() => setEncounterKey(null), 7600),
-      );
+      encReplyRef.current = lang === "zh" ? reply.zh : reply.en;
+      encStageRef.current = "their";
+      encTimersRef.current.push(window.setTimeout(() => setEncounterKey(null), 30000));
     },
     [game, hum, scheduleBondSave, lang, metrics, effectiveWeather],
   );
@@ -637,9 +655,7 @@ export default function Home() {
   const onGroundTap = useCallback(
     (x: number, z: number) => {
       if (encounterKey) {
-        clearEncounterTimers();
-        setBubble(null);
-        setEncounterKey(null);
+        advanceEncounter();
         return;
       }
       const CELL = 3;
@@ -660,7 +676,7 @@ export default function Home() {
         openWrite(`${date} Today.md`);
       }
     },
-    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, clearEncounterTimers],
+    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, advanceEncounter],
   );
 
 
@@ -730,6 +746,7 @@ export default function Home() {
       if (event.key === "Escape") {
         if (encounterKey) {
           clearEncounterTimers();
+          encStageRef.current = null;
           setBubble(null);
           setEncounterKey(null);
         } else if (searchOpen) {

@@ -754,18 +754,27 @@ export function City3D({
       };
       if (yIdx >= 0) {
         if (enc.phase === "walk" && tIdx >= 0) {
+          // the stop point is decided once — recomputing it every frame
+          // makes you orbit the target forever when you start close
           const gap = 1.0;
-          const dx = enc.target.x - enc.you.x;
-          const dz = enc.target.z - enc.you.z;
-          const d = Math.hypot(dx, dz);
-          const stop = {
-            x: enc.target.x - (dx / Math.max(d, 0.001)) * gap,
-            z: enc.target.z - (dz / Math.max(d, 0.001)) * gap,
-          };
-          const mv = step(enc.you, stop, 2.4);
+          if (!enc.stopAt) {
+            const dx0 = enc.target.x - enc.you.x;
+            const dz0 = enc.target.z - enc.you.z;
+            const d0 = Math.hypot(dx0, dz0);
+            enc.stopAt =
+              d0 <= gap
+                ? { ...enc.you } // already at conversation distance
+                : {
+                    x: enc.target.x - (dx0 / d0) * gap,
+                    z: enc.target.z - (dz0 / d0) * gap,
+                  };
+          }
+          const mv = step(enc.you, enc.stopAt, 2.4);
           enc.you = { x: mv.x, z: mv.z };
-          poses[yIdx] = { x: mv.x, y: 0, z: mv.z, facing: mv.facing, moving: !mv.done, phase: t * 6.5 };
-          if (mv.done) {
+          const arrived =
+            mv.done || Math.hypot(enc.target.x - mv.x, enc.target.z - mv.z) <= gap + 0.05;
+          poses[yIdx] = { x: mv.x, y: 0, z: mv.z, facing: mv.facing, moving: !arrived, phase: t * 6.5 };
+          if (arrived) {
             enc.phase = "meet";
             enc.meetAt = { ...enc.you };
             if (!enc.notified) {
@@ -1046,10 +1055,11 @@ export function City3D({
       const encC = encRef.current;
       if (encC && !writing) {
         const goal = encC.phase === "meet" ? 1 : encC.phase === "walk" ? 0.35 : 0;
-        encC.blend += (goal - encC.blend) * Math.min(1, dt / 320);
+        encC.blend += (goal - encC.blend) * Math.min(0.16, dt / 320);
         if (encC.blend > 0.005) {
-          const midX = (encC.you.x + encC.target.x) / 2;
-          const midZ = (encC.you.z + encC.target.z) / 2;
+          const anchor = encC.meetAt ?? encC.you;
+          const midX = (anchor.x + encC.target.x) / 2;
+          const midZ = (anchor.z + encC.target.z) / 2;
           view = view + (10.7 - view) * encC.blend;
           cx = cx + (midX - cx) * encC.blend;
           cz = cz + (midZ - cz) * encC.blend;
@@ -1177,6 +1187,7 @@ export function City3D({
     target: { x: number; z: number };
     you: { x: number; z: number };
     meetAt: { x: number; z: number } | null;
+    stopAt: { x: number; z: number } | null;
     blend: number;
     notified: boolean;
     lastT: number;
@@ -1201,6 +1212,7 @@ export function City3D({
         target: { x: tp.x, z: tp.z },
         you: { ...start },
         meetAt: null,
+        stopAt: null,
         blend: encRef.current?.blend ?? 0,
         notified: false,
         lastT: now,
