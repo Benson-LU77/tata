@@ -12,6 +12,10 @@ export type NoteMetric = {
   date: string;
   words: number;
   mtime: number;
+  /** outgoing [[wikilink]] targets (names, no .md) — powers backlinks */
+  links?: string[];
+  /** #tags found in the body */
+  tags?: string[];
 };
 
 export type Building = {

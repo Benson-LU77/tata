@@ -78,6 +78,8 @@ export function NotesPanel({
   requestOpen,
   requestToday,
   lang,
+  backlinks,
+  onOpenTag,
   requestSetup,
   recent,
   pages,
@@ -96,6 +98,10 @@ export function NotesPanel({
   requestToday?: number;
   /** UI language, forwarded to the editor's command menu */
   lang?: "en" | "zh";
+  /** files that link to the active page */
+  backlinks?: string[];
+  /** a #tag was clicked in the editor */
+  onOpenTag?: (tag: string) => void;
   /** ask the panel to show the Obsidian setup view */
   requestSetup?: number;
   /** recently touched pages, newest first */
@@ -140,6 +146,45 @@ export function NotesPanel({
   useEffect(() => {
     onActiveFile(open ? activeFile : null);
   }, [activeFile, open, onActiveFile]);
+
+  const [templates, setTemplates] = useState<{ name: string; content: string }[]>([]);
+  useEffect(() => {
+    const client = clientRef.current;
+    if (!connected || !client) return;
+    let dead = false;
+    void (async () => {
+      try {
+        const names = (await client.list()).filter((f) => /^Templates\//i.test(f));
+        const out: { name: string; content: string }[] = [];
+        for (const f of names.slice(0, 12)) {
+          try {
+            const doc = await client.readDoc(f);
+            out.push({
+              name: f.replace(/^Templates\//i, "").replace(/\.md$/i, ""),
+              content: doc.content.trimEnd() + "\n",
+            });
+          } catch {}
+        }
+        if (!dead) setTemplates(out);
+      } catch {}
+    })();
+    return () => {
+      dead = true;
+    };
+  }, [connected]);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const apply = () =>
+      document.documentElement.style.setProperty("--vvh", `${Math.round(vv.height)}px`);
+    apply();
+    vv.addEventListener("resize", apply);
+    return () => {
+      vv.removeEventListener("resize", apply);
+      document.documentElement.style.removeProperty("--vvh");
+    };
+  }, []);
 
   const setupSeenRef = useRef(0);
   useEffect(() => {
@@ -803,8 +848,20 @@ export function NotesPanel({
               aA
             </button>
           </div>
+          {backlinks && backlinks.length > 0 && (
+            <div className="notes-backlinks">
+              <span>{t("notes.backlinks")}</span>
+              {backlinks.map((f) => (
+                <button key={f} type="button" onClick={() => void openNote(f)}>
+                  {f.replace(/\.md$/, "")}
+                </button>
+              ))}
+            </div>
+          )}
           <MarkdownEditor
             lang={lang}
+            templates={templates}
+            onOpenTag={onOpenTag}
             onOpenPage={(name) => {
               const file = name.endsWith(".md") ? name : `${name}.md`;
               void openNote(file);

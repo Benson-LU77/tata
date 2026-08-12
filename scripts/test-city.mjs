@@ -14,6 +14,7 @@ for (const [entry, name] of [
   ["app/lib/city/sprites/compose.ts", "compose"],
   ["app/lib/city/sprites/parts.ts", "parts"],
   ["app/lib/game/bonds.ts", "bonds"],
+  ["app/lib/city/metrics.ts", "metrics"],
 ]) {
   execSync(`npx esbuild ${entry} --bundle --format=esm --outfile=${join(out, name + ".js")}`, {
     stdio: "pipe",
@@ -199,5 +200,14 @@ const { dateAtCell } = await import(join(out, "plan.js"));
 assert.strictEqual(dateAtCell("2026-08", 5, 1), "2026-08-08", "cell maps to date");
 assert.strictEqual(dateAtCell("2026-08", 0, 0), null, "before the 1st is empty ground");
 assert.strictEqual(dateAtCell("2026-02", 6, 4), null, "past month end is empty ground");
+
+// 13. link & tag parsing: wikilinks and #tags surface, code stays quiet
+{
+  const { linksOf, tagsOf } = await import(join(out, "metrics.js"));
+  const body = "去了 [[2026-08-01 Today]] 和 [[散步筆記|那篇]],想到 #夜行 和 #city/走路。\n#end";
+  assert.deepStrictEqual(linksOf(body), ["2026-08-01 Today", "散步筆記"], "wikilink targets, alias-safe");
+  assert.deepStrictEqual(tagsOf(body), ["夜行", "city/走路", "end"], "unicode tags parse");
+  assert.deepStrictEqual(linksOf("no links here"), [], "empty is empty");
+}
 
 console.log("city tests: all passed");

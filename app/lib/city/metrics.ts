@@ -13,6 +13,20 @@ import type { NoteMetric } from "./layout";
 export type { NoteMetric };
 
 /** CJK-aware word count — plain split() undercounts Chinese by ~everything. */
+/** outgoing wikilink targets, names only */
+export function linksOf(text: string): string[] {
+  const out = new Set<string>();
+  for (const mt of text.matchAll(/\[\[([^\]|#]+)/g)) out.add(mt[1].trim());
+  return [...out];
+}
+
+/** #tags in the body (unicode letters, dashes, slashes) */
+export function tagsOf(text: string): string[] {
+  const out = new Set<string>();
+  for (const mt of text.matchAll(/(^|\s)#([\p{L}\p{N}_/-]+)/gu)) out.add(mt[2]);
+  return [...out];
+}
+
 export function countWords(text: string): number {
   const cjk = text.match(/[぀-ヿ一-鿿]/g)?.length ?? 0;
   const latin = text.match(/[A-Za-z0-9]+/g)?.length ?? 0;
@@ -107,7 +121,9 @@ export async function loadCityMetrics(
   if (client) {
     void (async () => {
       try {
-        const names = await client.list();
+        const names = (await client.list()).filter(
+          (n) => !/^Templates\//i.test(n), // templates are tools, not pages
+        );
         const metas = await pool(names, async (name) => {
           const doc = await client.readDoc(name);
           return {
@@ -115,6 +131,8 @@ export async function loadCityMetrics(
             date: dateOf(name, doc.mtime ?? Date.now()),
             words: countWords(doc.content),
             mtime: doc.mtime ?? Date.now(),
+            links: linksOf(doc.content),
+            tags: tagsOf(doc.content),
           } satisfies NoteMetric;
         });
         let fresh = metas.filter((m): m is NoteMetric => m !== null);

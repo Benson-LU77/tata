@@ -216,6 +216,31 @@ function wikiClick(getOpen: () => ((name: string) => void) | undefined) {
   });
 }
 
+/** #tag click-to-search */
+function tagClick(getOpen: () => ((tag: string) => void) | undefined) {
+  return EditorView.domEventHandlers({
+    mousedown(event, view) {
+      const open = getOpen();
+      if (!open) return false;
+      const target = event.target as HTMLElement;
+      const pos = view.posAtDOM(target, 0);
+      const line = view.state.doc.lineAt(pos);
+      const col = pos - line.from;
+      const re = /(^|\s)#([\p{L}\p{N}_/-]+)/gu;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(line.text)) !== null) {
+        const start = m.index + m[1].length;
+        if (col >= start && col <= start + m[2].length + 1) {
+          open(m[2]);
+          event.preventDefault();
+          return true;
+        }
+      }
+      return false;
+    },
+  });
+}
+
 /* ---------- slash commands ---------- */
 
 /** command metadata: bilingual name + what it actually inserts */
@@ -233,7 +258,11 @@ const SLASH_DEFS: { label: string; en: string; zh: string; preview: string }[] =
   { label: "/now", en: "current time stamp", zh: "現在時間戳記", preview: "> 21:30" },
 ];
 
-function slashSource(getChannel: () => string, getLang: () => "en" | "zh") {
+function slashSource(
+  getChannel: () => string,
+  getLang: () => "en" | "zh",
+  getTemplates: () => { name: string; content: string }[],
+) {
   return (context: CompletionContext) => {
     const match = context.matchBefore(/\/\w*$/);
     if (!match) return null;
@@ -279,6 +308,12 @@ function slashSource(getChannel: () => string, getLang: () => "en" | "zh") {
         apply: insert("## Three good things\n\n1. \n2. \n3. "),
       },
       { label: "/tomorrow", ...meta("/tomorrow"), apply: insert("## Tomorrow\n\n- [ ] ") },
+      ...getTemplates().map((tpl) => ({
+        label: `/${tpl.name}`,
+        detail: lang === "zh" ? "自訂模板" : "your template",
+        info: tpl.content.split("\n")[0] || tpl.name,
+        apply: insert(tpl.content),
+      })),
       {
         label: "/now",
         ...meta("/now"),
@@ -421,6 +456,8 @@ export function MarkdownEditor({
   onReady,
   onOpenPage,
   lang,
+  templates,
+  onOpenTag,
 }: {
   value: string;
   channelName: string;
@@ -429,6 +466,10 @@ export function MarkdownEditor({
   pages?: string[];
   /** UI language for command descriptions */
   lang?: "en" | "zh";
+  /** vault templates joining the slash menu */
+  templates?: { name: string; content: string }[];
+  /** a #tag was clicked */
+  onOpenTag?: (tag: string) => void;
   /** open another vault page (wikilink click) */
   onOpenPage?: (name: string) => void;
   onChange: (next: string) => void;
@@ -441,6 +482,8 @@ export function MarkdownEditor({
   const pagesRef = useRef(pages);
   const openPageRef = useRef(onOpenPage);
   const langRef = useRef(lang ?? "en");
+  const templatesRef = useRef(templates ?? []);
+  const openTagRef = useRef(onOpenTag);
   const callbacksRef = useRef({ onChange, onBlur, onReady });
 
   useEffect(() => {
@@ -448,8 +491,10 @@ export function MarkdownEditor({
     pagesRef.current = pages;
     openPageRef.current = onOpenPage;
     langRef.current = lang ?? "en";
+    templatesRef.current = templates ?? [];
+    openTagRef.current = onOpenTag;
     callbacksRef.current = { onChange, onBlur, onReady };
-  }, [channelName, pages, onChange, onBlur, onReady, onOpenPage, lang]);
+  }, [channelName, pages, onChange, onBlur, onReady, onOpenPage, lang, templates, onOpenTag]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -468,9 +513,14 @@ export function MarkdownEditor({
           markHideField,
           taskClick,
           wikiClick(() => openPageRef.current),
+          tagClick(() => openTagRef.current),
           autocompletion({
             override: [
-              slashSource(() => channelRef.current, () => langRef.current),
+              slashSource(
+                () => channelRef.current,
+                () => langRef.current,
+                () => templatesRef.current,
+              ),
               wikiSource(() => pagesRef.current),
             ],
             icons: false,

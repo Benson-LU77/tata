@@ -224,6 +224,25 @@ export default function Home() {
   const bestStreak = useMemo(() => bestStreakOf(metrics), [metrics]);
   const orders = useMemo(() => workOrders(metrics, today), [metrics, today]);
   const allPages = useMemo(() => metrics.map((m) => m.file), [metrics]);
+  /** pages that link to the one being written */
+  const backlinks = useMemo(() => {
+    if (!focusFile) return [];
+    const base = focusFile.replace(/\.md$/i, "").toLowerCase();
+    const short = base.split("/").pop() ?? base;
+    return metrics
+      .filter(
+        (m) =>
+          m.file !== focusFile &&
+          (m.links ?? []).some((l) => {
+            const t2 = l.toLowerCase();
+            return t2 === base || t2 === short;
+          }),
+      )
+      .sort((a, b) => b.mtime - a.mtime)
+      .map((m) => m.file)
+      .slice(0, 8);
+  }, [metrics, focusFile]);
+
   const recent = useMemo(
     () => [...metrics].sort((a, b) => b.mtime - a.mtime).slice(0, 6).map((m) => m.file),
     [metrics],
@@ -530,6 +549,15 @@ export default function Home() {
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!searchOpen || !q) return null;
+    if (q.startsWith("#")) {
+      // tag search is fully local — the city lights up by topic
+      const tag = q.slice(1);
+      return new Set(
+        metrics
+          .filter((m) => (m.tags ?? []).some((t2) => t2.toLowerCase().includes(tag)))
+          .map((m) => m.file),
+      );
+    }
     const byName = new Set(
       metrics.filter((m) => m.file.toLowerCase().includes(q)).map((m) => m.file),
     );
@@ -1087,6 +1115,11 @@ export default function Home() {
         requestOpen={requestOpen}
         requestToday={requestToday}
         lang={lang}
+        backlinks={backlinks}
+        onOpenTag={(tag) => {
+          setSearchOpen(true);
+          setQuery(`#${tag}`);
+        }}
         requestSetup={requestSetup}
         recent={recent}
         pages={allPages}
