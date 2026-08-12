@@ -218,7 +218,22 @@ function wikiClick(getOpen: () => ((name: string) => void) | undefined) {
 
 /* ---------- slash commands ---------- */
 
-function slashSource(getChannel: () => string) {
+/** command metadata: bilingual name + what it actually inserts */
+const SLASH_DEFS: { label: string; en: string; zh: string; preview: string }[] = [
+  { label: "/todo", en: "to-do checkbox", zh: "待辦核取方塊", preview: "- [ ] …" },
+  { label: "/list", en: "bullet list", zh: "項目符號清單", preview: "- …" },
+  { label: "/numbered", en: "numbered list", zh: "編號清單", preview: "1. …" },
+  { label: "/h2", en: "section heading", zh: "大標題", preview: "## …" },
+  { label: "/h3", en: "small heading", zh: "小標題", preview: "### …" },
+  { label: "/quote", en: "quote block", zh: "引言區塊", preview: "> …" },
+  { label: "/divider", en: "horizontal divider", zh: "分隔線", preview: "———" },
+  { label: "/dream", en: "dream log template", zh: "夢境記錄模板", preview: "## Dream log + 清單" },
+  { label: "/3things", en: "three good things template", zh: "三件好事模板", preview: "## Three good things + 1. 2. 3." },
+  { label: "/tomorrow", en: "plan for tomorrow", zh: "明日待辦模板", preview: "## Tomorrow + 待辦" },
+  { label: "/now", en: "current time stamp", zh: "現在時間戳記", preview: "> 21:30" },
+];
+
+function slashSource(getChannel: () => string, getLang: () => "en" | "zh") {
   return (context: CompletionContext) => {
     const match = context.matchBefore(/\/\w*$/);
     if (!match) return null;
@@ -242,24 +257,31 @@ function slashSource(getChannel: () => string) {
         });
       };
 
+    const lang = getLang();
+    const meta = (label: string) => {
+      const d = SLASH_DEFS.find((x) => x.label === label);
+      return d
+        ? { detail: lang === "zh" ? d.zh : d.en, info: d.preview }
+        : { detail: "", info: "" };
+    };
     const options: Completion[] = [
-      { label: "/todo", detail: "to-do", apply: insert("- [ ] ") },
-      { label: "/list", detail: "bullet list", apply: insert("- ") },
-      { label: "/numbered", detail: "numbered list", apply: insert("1. ") },
-      { label: "/h2", detail: "heading", apply: insert("## ") },
-      { label: "/h3", detail: "small heading", apply: insert("### ") },
-      { label: "/quote", detail: "quote", apply: insert("> ") },
-      { label: "/divider", detail: "divider", apply: insert("---\n") },
-      { label: "/dream", detail: "dream log", apply: insert("## Dream log\n\n- ") },
+      { label: "/todo", ...meta("/todo"), apply: insert("- [ ] ") },
+      { label: "/list", ...meta("/list"), apply: insert("- ") },
+      { label: "/numbered", ...meta("/numbered"), apply: insert("1. ") },
+      { label: "/h2", ...meta("/h2"), apply: insert("## ") },
+      { label: "/h3", ...meta("/h3"), apply: insert("### ") },
+      { label: "/quote", ...meta("/quote"), apply: insert("> ") },
+      { label: "/divider", ...meta("/divider"), apply: insert("---\n") },
+      { label: "/dream", ...meta("/dream"), apply: insert("## Dream log\n\n- ") },
       {
         label: "/3things",
-        detail: "three good things",
+        ...meta("/3things"),
         apply: insert("## Three good things\n\n1. \n2. \n3. "),
       },
-      { label: "/tomorrow", detail: "for tomorrow", apply: insert("## Tomorrow\n\n- [ ] ") },
+      { label: "/tomorrow", ...meta("/tomorrow"), apply: insert("## Tomorrow\n\n- [ ] ") },
       {
         label: "/now",
-        detail: "time · channel",
+        ...meta("/now"),
         apply: (view, _completion, from, to) => {
           const text = stamp();
           view.dispatch({
@@ -398,12 +420,15 @@ export function MarkdownEditor({
   onBlur,
   onReady,
   onOpenPage,
+  lang,
 }: {
   value: string;
   channelName: string;
   placeholder: string;
   /** vault page names for [[wikilink]] autocomplete */
   pages?: string[];
+  /** UI language for command descriptions */
+  lang?: "en" | "zh";
   /** open another vault page (wikilink click) */
   onOpenPage?: (name: string) => void;
   onChange: (next: string) => void;
@@ -415,14 +440,16 @@ export function MarkdownEditor({
   const channelRef = useRef(channelName);
   const pagesRef = useRef(pages);
   const openPageRef = useRef(onOpenPage);
+  const langRef = useRef(lang ?? "en");
   const callbacksRef = useRef({ onChange, onBlur, onReady });
 
   useEffect(() => {
     channelRef.current = channelName;
     pagesRef.current = pages;
     openPageRef.current = onOpenPage;
+    langRef.current = lang ?? "en";
     callbacksRef.current = { onChange, onBlur, onReady };
-  }, [channelName, pages, onChange, onBlur, onReady, onOpenPage]);
+  }, [channelName, pages, onChange, onBlur, onReady, onOpenPage, lang]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -443,7 +470,7 @@ export function MarkdownEditor({
           wikiClick(() => openPageRef.current),
           autocompletion({
             override: [
-              slashSource(() => channelRef.current),
+              slashSource(() => channelRef.current, () => langRef.current),
               wikiSource(() => pagesRef.current),
             ],
             icons: false,

@@ -77,6 +77,7 @@ export function NotesPanel({
   onClose,
   requestOpen,
   requestToday,
+  lang,
   requestSetup,
   recent,
   pages,
@@ -93,6 +94,8 @@ export function NotesPanel({
   requestOpen: { file: string; n: number } | null;
   /** bumped when the user explicitly asks for today's page */
   requestToday?: number;
+  /** UI language, forwarded to the editor's command menu */
+  lang?: "en" | "zh";
   /** ask the panel to show the Obsidian setup view */
   requestSetup?: number;
   /** recently touched pages, newest first */
@@ -801,6 +804,7 @@ export function NotesPanel({
             </button>
           </div>
           <MarkdownEditor
+            lang={lang}
             onOpenPage={(name) => {
               const file = name.endsWith(".md") ? name : `${name}.md`;
               void openNote(file);

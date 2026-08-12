@@ -1086,6 +1086,7 @@ export default function Home() {
         onClose={closeWrite}
         requestOpen={requestOpen}
         requestToday={requestToday}
+        lang={lang}
         requestSetup={requestSetup}
         recent={recent}
         pages={allPages}
