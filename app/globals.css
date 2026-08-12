@@ -1480,3 +1480,5 @@ button:focus-visible, input:focus-visible {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+.dex-prof { font-weight: 400; color: var(--v5); font-size: 10px; letter-spacing: .06em; }

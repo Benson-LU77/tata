@@ -10,6 +10,7 @@ import { terrainFor } from "../lib/city/terrain";
 import { buildAtlas } from "../lib/city/sprites/atlas";
 import { SPRITE_WORLD_H } from "../lib/city/sprites/data";
 import { composeYou, DEFAULT_LOOK, type YouLook } from "../lib/city/sprites/compose";
+import { composeCitizens, CITIZENS } from "../lib/city/npc";
 import { creaturesFor, poseAt } from "../lib/city/residents";
 import type { Creature, CreatureExtras } from "../lib/city/residents";
 import { CELL } from "../lib/city/plan";
@@ -436,8 +437,6 @@ void main() {
 }
 `;
 
-const PERSON_LOOKS = ["person", "person2", "person3"];
-
 const SPRITE_FRAG = `
 precision mediump float;
 varying vec2 vUv2;
@@ -483,6 +482,8 @@ export function City3D({
   onOpen,
   onCreatureTap,
   onGroundTap,
+  encounterKey,
+  onEncounterMeet,
   look,
   emote,
   trackKey,
@@ -512,6 +513,10 @@ export function City3D({
   onCreatureTap: (hit: { key: string; kind: string; seed: number; x: number; y: number }) => void;
   /** tapped the island itself — world coords, for the calendar inverse */
   onGroundTap?: (x: number, z: number) => void;
+  /** resident to walk to and meet (encounter); null ends the meeting */
+  encounterKey: string | null;
+  /** you arrived — the exchange may begin */
+  onEncounterMeet: (hit: { key: string; kind: string; seed: number }) => void;
   /** your figure, composed into the atlas at runtime */
   look: YouLook;
   /** a small thought above someone's head, until the given ms timestamp */
@@ -732,6 +737,73 @@ export function City3D({
       });
     }
 
+    // the encounter overrides you and your interlocutor
+    const enc = encRef.current;
+    if (enc) {
+      const dtE = Math.max(0, Math.min(0.25, t - enc.lastT));
+      enc.lastT = t;
+      const tIdx = h.creatures.findIndex((cc) => cc.key === enc.key);
+      const yIdx = h.creatures.findIndex((cc) => cc.kind === "you");
+      const step = (from: { x: number; z: number }, to: { x: number; z: number }, speed: number) => {
+        const dx = to.x - from.x;
+        const dz = to.z - from.z;
+        const d = Math.hypot(dx, dz);
+        const s2 = speed * dtE;
+        if (d <= s2) return { x: to.x, z: to.z, done: true, facing: Math.atan2(dx, dz) };
+        return { x: from.x + (dx / d) * s2, z: from.z + (dz / d) * s2, done: false, facing: Math.atan2(dx, dz) };
+      };
+      if (yIdx >= 0) {
+        if (enc.phase === "walk" && tIdx >= 0) {
+          const gap = 1.0;
+          const dx = enc.target.x - enc.you.x;
+          const dz = enc.target.z - enc.you.z;
+          const d = Math.hypot(dx, dz);
+          const stop = {
+            x: enc.target.x - (dx / Math.max(d, 0.001)) * gap,
+            z: enc.target.z - (dz / Math.max(d, 0.001)) * gap,
+          };
+          const mv = step(enc.you, stop, 2.4);
+          enc.you = { x: mv.x, z: mv.z };
+          poses[yIdx] = { x: mv.x, y: 0, z: mv.z, facing: mv.facing, moving: !mv.done, phase: t * 6.5 };
+          if (mv.done) {
+            enc.phase = "meet";
+            enc.meetAt = { ...enc.you };
+            if (!enc.notified) {
+              enc.notified = true;
+              const tc = h.creatures[tIdx];
+              onEncounterMeet({ key: tc.key, kind: tc.kind, seed: tc.seed });
+            }
+          }
+        } else if (enc.phase === "meet" && enc.meetAt) {
+          poses[yIdx] = {
+            x: enc.meetAt.x,
+            y: 0,
+            z: enc.meetAt.z,
+            facing: Math.atan2(enc.target.x - enc.meetAt.x, enc.target.z - enc.meetAt.z),
+            moving: false,
+            phase: 0,
+          };
+        } else if (enc.phase === "leave") {
+          const home = poses[yIdx];
+          const mv = step(enc.you, { x: home.x, z: home.z }, 2.6);
+          enc.you = { x: mv.x, z: mv.z };
+          poses[yIdx] = { ...home, x: mv.x, z: mv.z, facing: mv.facing, moving: !mv.done, phase: t * 6.5 };
+          if (mv.done && enc.blend <= 0.01) encRef.current = null;
+        }
+      }
+      if (tIdx >= 0 && encRef.current) {
+        // the interlocutor stops and gives you their attention
+        poses[tIdx] = {
+          x: enc.target.x,
+          y: poses[tIdx].y,
+          z: enc.target.z,
+          facing: Math.atan2((enc.you.x ?? 0) - enc.target.x, (enc.you.z ?? 0) - enc.target.z),
+          moving: false,
+          phase: 0,
+        };
+      }
+    }
+
     // pass 2: one pixel-snapped quad per creature (+ umbrella overlays)
     let si = 0;
     const place = (
@@ -781,7 +853,7 @@ export function City3D({
       }
       const frame = p.moving ? beat : "i";
       // wardrobe variety: each resident keeps one of three looks for life
-      const look2 = c.kind === "person" ? PERSON_LOOKS[c.seed % PERSON_LOOKS.length] : c.kind;
+      const look2 = c.kind === "person" ? `npc${c.seed % CITIZENS.length}` : c.kind;
       let sname = `${look2}_${dir}_${frame}`;
       // standing people facing you blink now and then
       if (
@@ -798,7 +870,7 @@ export function City3D({
         p.x,
         p.y,
         p.z,
-        SPRITE_WORLD_H[look2],
+        SPRITE_WORLD_H[look2] ?? 1.4,
         mirror,
         c.kind === "you" ? 1 : 0,
       );
@@ -809,13 +881,16 @@ export function City3D({
       if (em && em.key === c.key && now < em.until) {
         place(em.icon, p.x, p.y + SPRITE_WORLD_H[look2] + 0.3, p.z, 0.5, 0, 0);
       }
+      if (enc && enc.phase === "walk" && c.key === enc.key) {
+        place("emote_notice", p.x, p.y + (SPRITE_WORLD_H[look2] ?? 1.4) + 0.3, p.z, 0.5, 0, 0);
+      }
     }
     for (; si < h.spriteMesh.count; si += 1) rect.setXYZW(si, 0, 0, 0, 0);
     h.spriteMesh.instanceMatrix.needsUpdate = true;
     rect.needsUpdate = true;
     param.needsUpdate = true;
     return true;
-  }, []);
+  }, [onEncounterMeet]);
 
   const applyWeather = useCallback((now: number) => {
     const h = hRef.current;
@@ -957,14 +1032,30 @@ export function City3D({
         animating = true;
       }
       // writing is a close-up of one building, never a city-wide letterbox
-      const view = writing ? 15 : viewRef.current;
+      let view = writing ? 15 : viewRef.current;
       const aspect = vw / vh;
       h.camera.left = (-view * aspect) / 2;
       h.camera.right = (view * aspect) / 2;
       h.camera.top = view / 2 + view * 0.14;
       h.camera.bottom = -view / 2 + view * 0.14;
-      const cx = centerRef.current.x + panRef.current.x;
-      const cz = centerRef.current.z + panRef.current.z;
+      let cx = centerRef.current.x + panRef.current.x;
+      let cz = centerRef.current.z + panRef.current.z;
+
+      // meeting camera: ease toward the pair, ease home on goodbye —
+      // writing mode always outranks the street
+      const encC = encRef.current;
+      if (encC && !writing) {
+        const goal = encC.phase === "meet" ? 1 : encC.phase === "walk" ? 0.35 : 0;
+        encC.blend += (goal - encC.blend) * Math.min(1, dt / 320);
+        if (encC.blend > 0.005) {
+          const midX = (encC.you.x + encC.target.x) / 2;
+          const midZ = (encC.you.z + encC.target.z) / 2;
+          view = view + (10.7 - view) * encC.blend;
+          cx = cx + (midX - cx) * encC.blend;
+          cz = cz + (midZ - cz) * encC.blend;
+          animating = true;
+        }
+      }
       // constant range: with far = 900 even a decade of months fits the
       // frustum (float32 world coords stay honest well past 500 units)
       const dist = 400;
@@ -1078,6 +1169,48 @@ export function City3D({
   }, [frame]);
   loopRef.current = loop;
 
+  /** the encounter — a walk, a meeting, a goodbye. Render-layer only:
+   *  the pure f(t) model never learns it happened. */
+  const encRef = useRef<{
+    key: string;
+    phase: "walk" | "meet" | "leave";
+    target: { x: number; z: number };
+    you: { x: number; z: number };
+    meetAt: { x: number; z: number } | null;
+    blend: number;
+    notified: boolean;
+    lastT: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const h = hRef.current;
+    if (!h) return;
+    const now = lastDrawRef.current / 1000;
+    if (encounterKey) {
+      const target = h.creatures.find((c) => c.key === encounterKey);
+      const you = h.creatures.find((c) => c.kind === "you");
+      if (!target || !you) return;
+      const tp = poseAt(target, stateRef.current.plan, now);
+      const start = encRef.current?.you ?? (() => {
+        const yp = poseAt(you, stateRef.current.plan, now);
+        return { x: yp.x, z: yp.z };
+      })();
+      encRef.current = {
+        key: encounterKey,
+        phase: "walk",
+        target: { x: tp.x, z: tp.z },
+        you: { ...start },
+        meetAt: null,
+        blend: encRef.current?.blend ?? 0,
+        notified: false,
+        lastT: now,
+      };
+    } else if (encRef.current && encRef.current.phase !== "leave") {
+      encRef.current.phase = "leave";
+    }
+    loop();
+  }, [encounterKey, loop]);
+
 
 
   /* ---------- scene lifecycle ---------- */
@@ -1165,7 +1298,7 @@ export function City3D({
 
     // resident sprites: one atlas texture, one material for the whole cast
     {
-      const atlas = buildAtlas(composeYou(DEFAULT_LOOK));
+      const atlas = buildAtlas({ ...composeYou(DEFAULT_LOOK), ...composeCitizens() });
       const tex = new THREE.DataTexture(atlas.data, atlas.size, atlas.size, THREE.RGBAFormat, THREE.UnsignedByteType);
       tex.magFilter = THREE.NearestFilter;
       tex.minFilter = THREE.NearestFilter;
@@ -1490,7 +1623,7 @@ export function City3D({
   useEffect(() => {
     const h = hRef.current;
     if (!h || !h.spriteMat) return;
-    const atlas = buildAtlas(composeYou(look));
+    const atlas = buildAtlas({ ...composeYou(look), ...composeCitizens() });
     const tex = new THREE.DataTexture(atlas.data, atlas.size, atlas.size, THREE.RGBAFormat, THREE.UnsignedByteType);
     tex.magFilter = THREE.NearestFilter;
     tex.minFilter = THREE.NearestFilter;

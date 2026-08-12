@@ -19,7 +19,7 @@ export type SpriteAtlas = {
 };
 
 /** creatures whose sprites get the automatic finishing passes */
-const WALKER_RE = /^(person\d?|you|cat|dog)_/;
+const WALKER_RE = /^(person\d?|npc\d+|you|cat|dog)_/;
 
 /** a '1' pixel with face ('6') on both sides is an eye */
 function blinkOf(rows: string[]): string[] | null {
@@ -55,7 +55,7 @@ function groundShadow(rows: string[]): string[] {
 }
 
 export function buildAtlas(extra?: Record<string, string[]>): SpriteAtlas {
-  const size = 128;
+  const size = 256;
   const data = new Uint8Array(size * size * 4);
   for (let i = 3; i < data.length; i += 4) data[i] = 255; // all transparent
   const frames: Record<string, SpriteFrame> = {};

@@ -17,6 +17,8 @@ import { greet, tierOf, nameOf, lineFor, tierName } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
 import { hash32 } from "./lib/city/layout";
 import { MirrorPanel } from "./components/mirror";
+import { professionOf } from "./lib/city/npc";
+import { REPLY_LINES } from "./lib/game/bonds-lines";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
 import type { Lang } from "./lib/i18n";
 
@@ -65,6 +67,8 @@ export default function Home() {
   const [dexOpen, setDexOpen] = useState(false);
   const [mirrorOpen, setMirrorOpen] = useState(false);
   const [monthListOpen, setMonthListOpen] = useState(false);
+  const [encounterKey, setEncounterKey] = useState<string | null>(null);
+  const encTimersRef = useRef<number[]>([]);
   const [bubble, setBubble] = useState<{ key: string; name: string; text: string; until: number } | null>(null);
   const [emote, setEmote] = useState<{ key: string; icon: string; until: number } | null>(null);
   const [lang, setLang] = useState<Lang>("en");
@@ -297,12 +301,29 @@ export default function Home() {
     return () => window.clearTimeout(id);
   }, [earnedDerived, game.earnedFloor, metrics.length, scheduleBondSave]);
 
+  const clearEncounterTimers = useCallback(() => {
+    for (const id of encTimersRef.current) window.clearTimeout(id);
+    encTimersRef.current = [];
+  }, []);
+
   const onCreatureTap = useCallback(
     (hit: { key: string; kind: string; seed: number; x: number; y: number }) => {
       if (hit.kind === "you") {
         setMirrorOpen(true);
         return;
       }
+      // start the walk — the greeting happens when you actually arrive
+      clearEncounterTimers();
+      setBubble(null);
+      hum().click();
+      setEncounterKey(hit.key);
+    },
+    [clearEncounterTimers, hum],
+  );
+
+  /** you arrived: the exchange — their line, your reply, then goodbye */
+  const onEncounterMeet = useCallback(
+    (hit: { key: string; kind: string; seed: number }) => {
       const kind = hit.kind as CreatureKind;
       const now = Date.now();
       const d = new Date(now);
@@ -327,6 +348,7 @@ export default function Home() {
           hour: d.getHours(),
           weather: effectiveWeather === "none" ? "base" : effectiveWeather,
           firstMeet: !had,
+          profession: kind === "person" ? professionOf(hit.seed) : undefined,
           wroteTonight: metrics.some((m) => m.date === today),
           streak: streakOf(metrics, today),
           totalNotes: metrics.length,
@@ -343,6 +365,19 @@ export default function Home() {
       });
       hum().greet(hit.seed);
       if (tierAfter > tierBefore) hum().settle();
+      // your reply, then the goodbye — timers are cancellable
+      const reply = REPLY_LINES[Math.floor(Math.random() * REPLY_LINES.length)];
+      encTimersRef.current.push(
+        window.setTimeout(() => {
+          setBubble({
+            key: "you:0",
+            name: "you",
+            text: lang === "zh" ? reply.zh : reply.en,
+            until: Date.now() + 3000,
+          });
+        }, 4400),
+        window.setTimeout(() => setEncounterKey(null), 7600),
+      );
     },
     [game, hum, scheduleBondSave, lang, metrics, effectiveWeather],
   );
@@ -391,7 +426,15 @@ export default function Home() {
     return Object.entries(game.bonds ?? {})
       .map(([key, bond]) => {
         const kind = key.split(":")[0] as CreatureKind;
-        return { key, kind, name: nameOf(kind, hash32(key)), tier: tierOf(bond), days: bond.n };
+        const seed = hash32(key);
+        return {
+          key,
+          kind,
+          name: nameOf(kind, seed),
+          tier: tierOf(bond),
+          days: bond.n,
+          prof: kind === "person" ? professionOf(seed) : null,
+        };
       })
       .sort((a, b) => b.days - a.days);
   }, [game.bonds]);
@@ -582,14 +625,23 @@ export default function Home() {
   /* ---------- writing ---------- */
 
   const openWrite = useCallback((file?: string) => {
+    clearEncounterTimers();
+    setEncounterKey(null);
+    setBubble(null);
     writeOpenRef.current = true;
     setWriteOpen(true);
     setUiVisible(true);
     if (file) setRequestOpen({ file, n: Date.now() });
-  }, []);
+  }, [clearEncounterTimers]);
 
   const onGroundTap = useCallback(
     (x: number, z: number) => {
+      if (encounterKey) {
+        clearEncounterTimers();
+        setBubble(null);
+        setEncounterKey(null);
+        return;
+      }
       const CELL = 3;
       const block = cityPlan.blocks.find(
         (b) => x >= b.x && x < b.x + 7 * CELL && z >= b.z && z < b.z + 6 * CELL,
@@ -608,7 +660,7 @@ export default function Home() {
         openWrite(`${date} Today.md`);
       }
     },
-    [cityPlan.blocks, metrics, today, openWrite, hum],
+    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, clearEncounterTimers],
   );
 
 
@@ -676,7 +728,11 @@ export default function Home() {
     const onKeyDown = (event: KeyboardEvent) => {
       registerActivity();
       if (event.key === "Escape") {
-        if (searchOpen) {
+        if (encounterKey) {
+          clearEncounterTimers();
+          setBubble(null);
+          setEncounterKey(null);
+        } else if (searchOpen) {
           setSearchOpen(false);
           setQuery("");
         } else if (mirrorOpen) setMirrorOpen(false);
@@ -725,7 +781,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeWrite, dexOpen, hum, jumpMonth, mirrorOpen, openWrite, registerActivity, searchOpen, settingsOpen, shopOpen]);
+  }, [closeWrite, dexOpen, hum, jumpMonth, mirrorOpen, openWrite, registerActivity, searchOpen, settingsOpen, shopOpen, encounterKey, clearEncounterTimers]);
 
   /* ---------- render ---------- */
 
@@ -763,6 +819,8 @@ export default function Home() {
             onOpen={(file) => openWrite(file)}
             onCreatureTap={onCreatureTap}
             onGroundTap={onGroundTap}
+            encounterKey={encounterKey}
+            onEncounterMeet={onEncounterMeet}
             look={game.look}
             emote={emote}
             trackKey={bubble?.key ?? null}
@@ -1049,7 +1107,10 @@ export default function Home() {
             <div className="dex-items">
               {knownResidents.map((r) => (
                 <div key={r.key} className="dex-item found">
-                  <strong>{r.name}</strong>
+                  <strong>
+                    {r.name}
+                    {r.prof && <span className="dex-prof"> · {t("prof." + r.prof)}</span>}
+                  </strong>
                   <em>
                     {"\u25a0".repeat(r.tier)}
                     {"\u25a1".repeat(4 - r.tier)} {tierName(r.tier, lang)}

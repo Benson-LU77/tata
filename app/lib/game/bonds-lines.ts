@@ -332,6 +332,32 @@ export const LINES: LineDef[] = [
   },
 ];
 
+/* ---- trades talk shop, quietly ---- */
+export const TRADE_LINES: LineDef[] = [
+  { when: (c) => c.profession === "stationmaster", en: "Every street on time tonight. My doing? Probably not.", zh: "今晚每條街都準點,是我的功勞嗎,大概不是。" },
+  { when: (c) => c.profession === "gardener", en: "The pines grew a whole pixel this month.", zh: "松樹這個月長高了一整個像素。" },
+  { when: (c) => c.profession === "courier", en: "Three letters tonight. None for you. Yet.", zh: "今晚送三封信,沒有你的,還沒有。" },
+  { when: (c) => c.profession === "astronomer", en: "The gas giant turned 0.3 degrees since we last spoke.", zh: "上次聊完到現在,那顆行星轉了 0.3 度。" },
+  { when: (c) => c.profession === "baker", en: "The oven's cold. The smell stays anyway.", zh: "烤爐是冷的,但香味還在。" },
+  { when: (c) => c.profession === "shipwright", en: "Two ships in for repairs. They fly fine. They just like the dock.", zh: "兩艘船進廠維修,其實它們飛得很好,只是喜歡待在船塢。" },
+  { when: (c) => c.profession === "lampkeeper", en: "Every lamp lit. Count them if you doubt me.", zh: "每盞燈都亮著,不信你去數。" },
+  { when: (c) => c.profession === "poet", en: "I had a line for you. It left. They do that.", zh: "我本來有句詩要給你,它跑了,詩都這樣。" },
+  { when: (c) => c.profession === "tailor", en: "That coat hangs well on you. I notice these things.", zh: "那件外套很合你,這種事我看得出來。" },
+  { when: (c) => c.profession === "archivist", en: "Everything you've written is somewhere. That's my whole job.", zh: "你寫過的一切都在某個地方,這就是我全部的工作。" },
+  { when: (c) => c.profession === "stargazer", en: "I don't study the stars. We just look at each other.", zh: "我不研究星星,我們只是互相看著。" },
+  { when: (c) => c.profession === "neighbour", en: "No trade. Just here. Someone has to be.", zh: "沒有職業,就是住在這裡,總得有人住著。" },
+];
+
+/** your half of the exchange — short, so the neighbour keeps the last word */
+export const REPLY_LINES: { en: string; zh: string }[] = [
+  { en: "Good night for it.", zh: "今晚不錯。" },
+  { en: "Just walking.", zh: "隨便走走。" },
+  { en: "The city's grown.", zh: "城市又長大了。" },
+  { en: "See you around.", zh: "回頭見。" },
+  { en: "Take care out here.", zh: "在外面小心。" },
+  { en: "I wrote a little.", zh: "我寫了一點東西。" },
+];
+
 export const CAT_LINE_DEFS: LineDef[] = [
   { en: "...", zh: "……" },
   { en: "mrr.", zh: "喵。" },
