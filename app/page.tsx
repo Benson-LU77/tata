@@ -258,6 +258,7 @@ export default function Home() {
         if (earned - prev.spent < item.cost) return prev;
         if ((item.minLevel ?? 0) > levelFromWatts(earned)) return prev;
         const next: GameState = {
+          ...prev, // never rebuild from scratch — newer fields must survive
           spent: prev.spent + item.cost,
           owned: [...prev.owned, id],
           skin: item.kind === "skin" ? (id as GameState["skin"]) : prev.skin,
@@ -387,7 +388,7 @@ export default function Home() {
 
   /* the neighbours you know, for the Registry */
   const knownResidents = useMemo(() => {
-    return Object.entries(game.bonds)
+    return Object.entries(game.bonds ?? {})
       .map(([key, bond]) => {
         const kind = key.split(":")[0] as CreatureKind;
         return { key, kind, name: nameOf(kind, hash32(key)), tier: tierOf(bond), days: bond.n };
