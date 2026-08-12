@@ -108,9 +108,15 @@ export function terrainFor(plan: CityPlan): TerrainMap {
   for (const block of plan.blocks) {
     // the month plaza under the lots
     stamp(block.x - CELL * 0.25, block.z - CELL * 0.25, block.x + 7.25 * CELL, block.z + 6.25 * CELL, T_PLAZA);
-    // south street and east avenue — same rects the old dark boxes used
-    stamp(block.x - CELL * 0.5, block.z + 6.15 * CELL, block.x + 7.5 * CELL, block.z + 6.85 * CELL, T_PATH);
-    stamp(block.x + 7.15 * CELL, block.z - CELL * 1.5, block.x + 7.85 * CELL, block.z + 6.5 * CELL, T_PATH);
+    // a full ring road around every month — no block left half-framed
+    const rx0 = block.x - CELL * 0.85;
+    const rx1 = block.x + 7.85 * CELL;
+    const rz0 = block.z - CELL * 0.85;
+    const rz1 = block.z + 6.85 * CELL;
+    stamp(rx0, rz0, rx1, block.z - CELL * 0.15, T_PATH); // north
+    stamp(rx0, block.z + 6.15 * CELL, rx1, rz1, T_PATH); // south
+    stamp(rx0, rz0, block.x - CELL * 0.15, rz1, T_PATH); // west
+    stamp(block.x + 7.15 * CELL, rz0, rx1, rz1, T_PATH); // east
   }
 
   return { minX: originX, minZ: originZ, w, h, worldW: w / TERRAIN_RES, worldH: h / TERRAIN_RES, data };

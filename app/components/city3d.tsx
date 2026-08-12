@@ -220,22 +220,43 @@ void main() {
     if (fract(vWorld.x / 0.75) < 0.09) base *= 0.78;
   }
 
-  // windows on vertical faces: one band per storey, sparse lit cells
+  // facades come in three skins, chosen by the lot's own dice:
+  // 0 office grid · 1 banded masonry · 2 glass curtain wall
   if (n.y < 0.5) {
+    float style = floor(fract(vInfo.y * 7.31) * 3.0);
     float floorIdx = floor(vWorld.y / uFloorH);
     float u = n.x > n.z ? vWorld.z : vWorld.x;
     float colIdx = floor(u * 3.0);
     float f = fract(vWorld.y / uFloorH);
-    float inBand = step(0.3, f) * step(f, 0.72);
     float cell = fract(u * 3.0);
-    float inCol = step(0.25, cell) * step(cell, 0.75);
     float h = hash(vec2(floorIdx + vInfo.y * 91.7, colIdx));
     float on = step(1.0 - (0.10 + vInfo.x * 0.35), h);
-    float glow = inBand * inCol * on;
-    if (amber > 0.5) {
-      base = mix(base, vec3(0.95, 0.70, 0.35), glow);
+
+    if (style < 0.5) {
+      // office grid — the classic sparse windows
+      float inBand = step(0.3, f) * step(f, 0.72);
+      float inCol = step(0.25, cell) * step(cell, 0.75);
+      float glow = inBand * inCol * on;
+      if (amber > 0.5) base = mix(base, vec3(0.95, 0.70, 0.35), glow);
+      else base = mix(base, vec3(0.86, 0.88, 0.92) * (0.5 + 0.5 * hash(vec2(colIdx, floorIdx))), glow * 0.9);
+    } else if (style < 1.5) {
+      // banded masonry — a bright spandrel line each storey, small panes
+      base *= 0.94;
+      if (f > 0.8) base *= 1.3;
+      float inBand = step(0.34, f) * step(f, 0.66);
+      float inCol = step(0.34, cell) * step(cell, 0.66);
+      float glow = inBand * inCol * on;
+      if (amber > 0.5) base = mix(base, vec3(0.95, 0.70, 0.35), glow);
+      else base = mix(base, vec3(0.82, 0.84, 0.9) * (0.5 + 0.5 * hash(vec2(colIdx, floorIdx))), glow * 0.9);
     } else {
-      base = mix(base, vec3(0.86, 0.88, 0.92) * (0.5 + 0.5 * hash(vec2(colIdx, floorIdx))), glow * 0.9);
+      // glass curtain — mullion columns, lit floors glow whole
+      base *= 1.22;
+      float mull = step(0.86, fract(u * 2.0));
+      base *= 1.0 - 0.35 * mull;
+      float lit = step(1.0 - (0.06 + vInfo.x * 0.2), hash(vec2(floorIdx, vInfo.y * 53.7)));
+      float inBand = step(0.16, f) * step(f, 0.9);
+      if (amber > 0.5) base = mix(base, vec3(0.95, 0.70, 0.35), lit * inBand * 0.8);
+      else base = mix(base, vec3(0.8, 0.83, 0.9), lit * inBand * 0.55);
     }
     // faint storey seam
     base *= 1.0 - 0.12 * step(f, 0.08);
@@ -1257,6 +1278,21 @@ export function City3D({
       entries.push({ lot: { ...decorLot(ox2, oz2), seed: 5 }, box: { x: ox2 + 0.3, y: 3.3, z: oz2, w: 0.18, h: 0.55, d: 0.18 } });
     }
 
+    // street furniture: two benches and a planter per month, always there
+    for (const block of plan.blocks) {
+      const bz = block.z + 6.5 * CELL;
+      for (const fx2 of [1.8, 5.2]) {
+        const bx = block.x + fx2 * CELL;
+        entries.push({ lot: decorLot(bx, bz), box: { x: bx, y: 0.14, z: bz, w: 0.62, h: 0.07, d: 0.22 } }); // seat
+        entries.push({ lot: decorLot(bx, bz), box: { x: bx, y: 0.21, z: bz - 0.1, w: 0.62, h: 0.18, d: 0.05 } }); // back
+        entries.push({ lot: decorLot(bx, bz), box: { x: bx - 0.24, y: 0, z: bz, w: 0.06, h: 0.14, d: 0.18 } });
+        entries.push({ lot: decorLot(bx, bz), box: { x: bx + 0.24, y: 0, z: bz, w: 0.06, h: 0.14, d: 0.18 } });
+      }
+      const px3 = block.x + 3.5 * CELL;
+      entries.push({ lot: decorLot(px3, bz), box: { x: px3, y: 0, z: bz, w: 0.4, h: 0.24, d: 0.4 } }); // planter
+      entries.push({ lot: { ...decorLot(px3, bz), seed: 4 }, box: { x: px3, y: 0.24, z: bz, w: 0.3, h: 0.22, d: 0.3 } });
+    }
+
     // streets live in the terrain map now — no geometry needed
 
     // streak: one small streetlight per consecutive night, newest block
@@ -1294,15 +1330,35 @@ export function City3D({
     if (decor.trees) {
       for (const block of plan.blocks) {
         const rand = rng(hashBlock(block.month));
-        for (let t = 0; t < 5; t += 1) {
+        for (let t = 0; t < 6; t += 1) {
           const tx = block.x + rand() * 7 * CELL;
           const tz = block.z + 6 * CELL + CELL * 0.42;
+          const shape = Math.floor(rand() * 3);
           entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.18, h: 0.08, d: 0.18 } }); // root flare
-          entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.1, h: 0.4, d: 0.1 } });
-          const cw2 = 0.5 + rand() * 0.2;
-          entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.4, z: tz, w: cw2, h: 0.42, d: cw2 } });
-          entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.82, z: tz, w: cw2 * 0.6, h: 0.3, d: cw2 * 0.6 } }); // crown
-          entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 1.12, z: tz, w: cw2 * 0.28, h: 0.16, d: cw2 * 0.28 } }); // tip
+          if (shape === 0) {
+            // round — broad crown in three steps
+            entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.1, h: 0.4, d: 0.1 } });
+            const cw2 = 0.5 + rand() * 0.2;
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.4, z: tz, w: cw2, h: 0.42, d: cw2 } });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.82, z: tz, w: cw2 * 0.6, h: 0.3, d: cw2 * 0.6 } });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 1.12, z: tz, w: cw2 * 0.28, h: 0.16, d: cw2 * 0.28 } });
+          } else if (shape === 1) {
+            // pine — four shrinking tiers to a point
+            entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.09, h: 0.3, d: 0.09 } });
+            let ty = 0.3;
+            for (let tier = 0; tier < 4; tier += 1) {
+              const tw = 0.62 - tier * 0.14;
+              const th = 0.3 - tier * 0.03;
+              entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: ty, z: tz, w: tw, h: th, d: tw } });
+              ty += th;
+            }
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: ty, z: tz, w: 0.08, h: 0.14, d: 0.08 } });
+          } else {
+            // columnar — a tall slender cypress
+            entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.08, h: 0.2, d: 0.08 } });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.2, z: tz, w: 0.3, h: 0.95, d: 0.3 } });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 1.15, z: tz, w: 0.16, h: 0.3, d: 0.16 } });
+          }
         }
       }
     }
