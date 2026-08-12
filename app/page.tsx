@@ -18,6 +18,13 @@ import type { CreatureKind } from "./lib/city/residents";
 import { hash32 } from "./lib/city/layout";
 import { MirrorPanel } from "./components/mirror";
 import { professionOf } from "./lib/city/npc";
+import {
+  COMMISSION_CATALOG,
+  commissionDef,
+  letterBody,
+  progressOf,
+  resolveCommissions,
+} from "./lib/game/commissions";
 import { REPLY_LINES } from "./lib/game/bonds-lines";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
 import type { Lang } from "./lib/i18n";
@@ -67,6 +74,7 @@ export default function Home() {
   const [dexOpen, setDexOpen] = useState(false);
   const [mirrorOpen, setMirrorOpen] = useState(false);
   const [monthListOpen, setMonthListOpen] = useState(false);
+  const [letterOpen, setLetterOpen] = useState<string | null>(null);
   const [encounterKey, setEncounterKey] = useState<string | null>(null);
   const encTimersRef = useRef<number[]>([]);
   const encStageRef = useRef<"their" | "reply" | null>(null);
@@ -502,6 +510,103 @@ export default function Home() {
     };
   }, [level, hum, metrics.length]);
 
+  /* public works resolve on real time; completion stamps once and the
+     caretaker's letter arrives — in tata.json, never in the vault */
+  const works = useMemo(
+    () =>
+      (game.commissions ?? []).map((c) => ({
+        id: c.id,
+        block: c.block,
+        progress: nowTs ? progressOf(c, nowTs) : 0,
+      })),
+    [game.commissions, nowTs],
+  );
+
+  useEffect(() => {
+    const now = Date.now();
+    const done = resolveCommissions(game.commissions ?? [], now).built.filter((b) => {
+      const c = (game.commissions ?? []).find((x) => x.id === b.id);
+      return c && !c.rewardClaimed;
+    });
+    if (done.length === 0) return;
+    const id = window.setTimeout(() => {
+      setGame((prev) => {
+        const pending = resolveCommissions(prev.commissions ?? [], now).built.filter((b) => {
+          const c = (prev.commissions ?? []).find((x) => x.id === b.id);
+          return c && !c.rewardClaimed;
+        });
+        if (pending.length === 0) return prev;
+        const d = new Date(now);
+        const pad2 = (n: number) => String(n).padStart(2, "0");
+        const today2 = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        const next: GameState = {
+          ...prev,
+          commissions: (prev.commissions ?? []).map((c) =>
+            pending.some((b) => b.id === c.id)
+              ? { ...c, completedAt: c.completedAt ?? now, rewardClaimed: true }
+              : c,
+          ),
+          letters: [
+            ...(prev.letters ?? []),
+            ...pending
+              .filter((b) => !(prev.letters ?? []).some((l) => l.id === b.id))
+              .map((b) => ({ id: b.id, date: today2, read: false })),
+          ],
+          updatedAt: now,
+        };
+        void saveGameState(next, clientRef.current);
+        return next;
+      });
+      hum().levelUp();
+    }, 600);
+    return () => window.clearTimeout(id);
+  }, [game.commissions, hum]);
+
+  const orderCommission = useCallback(
+    (id: string) => {
+      const def = commissionDef(id);
+      if (!def) return;
+      setGame((prev) => {
+        if ((prev.commissions ?? []).some((c) => c.id === id)) return prev;
+        if (earned - prev.spent < def.cost) return prev;
+        const next: GameState = {
+          ...prev,
+          spent: prev.spent + def.cost,
+          commissions: [
+            ...(prev.commissions ?? []),
+            {
+              id,
+              block: Math.max(0, cityPlan.blocks.length - 1),
+              placedAt: Date.now(),
+              completedAt: null,
+              rewardClaimed: false,
+            },
+          ],
+          updatedAt: Date.now(),
+        };
+        void saveGameState(next, clientRef.current);
+        hum().purchase();
+        return next;
+      });
+    },
+    [earned, hum, cityPlan.blocks.length],
+  );
+
+  const exportLetter = useCallback(
+    (id: string) => {
+      const client = clientRef.current;
+      const letter = (game.letters ?? []).find((l) => l.id === id);
+      if (!client || !letter) return;
+      const body = letterBody(
+        id,
+        { months: cityPlan.blocks.length, pages: metrics.length, date: letter.date },
+        lang,
+      );
+      void client.write(`Letters/${letter.date} ${id}.md`, body + "\n").catch(() => {});
+    },
+    [game.letters, cityPlan.blocks.length, metrics.length, lang],
+  );
+
   const extras = useMemo(
     () => ({
       cats: game.owned.includes("cats") ? 4 : 0,
@@ -864,6 +969,7 @@ export default function Home() {
             ceremony={ceremony}
             levelCap={levelCap}
             streak={bestStreak}
+            commissions={works}
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
             onOpen={(file) => openWrite(file)}
             onCreatureTap={onCreatureTap}
@@ -1060,6 +1166,33 @@ export default function Home() {
         </button>
       )}
 
+      {letterOpen && (
+        <div className="letter-veil" role="dialog" aria-label={t("letters.title")} onClick={() => setLetterOpen(null)}>
+          <div className="letter-paper" onClick={(e) => e.stopPropagation()}>
+            <pre>
+              {letterBody(
+                letterOpen,
+                {
+                  months: cityPlan.blocks.length,
+                  pages: metrics.length,
+                  date: (game.letters ?? []).find((l) => l.id === letterOpen)?.date ?? "",
+                },
+                lang,
+              )}
+            </pre>
+            <div className="letter-actions">
+              {synced === "live" && (
+                <button type="button" onClick={() => exportLetter(letterOpen)}>
+                  {t("letters.export")}
+                </button>
+              )}
+              <button type="button" onClick={() => setLetterOpen(null)}>
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {monthListOpen && !writeOpen && (
         <div className="month-list immersion-ui" role="dialog" aria-label={t("months.list")}>
           {metrics
@@ -1173,6 +1306,42 @@ export default function Home() {
             </div>
           </>
         )}
+        {(game.letters ?? []).length > 0 && (
+          <>
+            <div className="panel-heading dex-sub">
+              <span>{t("letters.title")}</span>
+            </div>
+            <div className="dex-items">
+              {(game.letters ?? []).map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  className={"dex-item found letter-row" + (l.read ? "" : " unread")}
+                  onClick={() => {
+                    setLetterOpen(l.id);
+                    setGame((prev) => {
+                      if ((prev.letters ?? []).find((x) => x.id === l.id)?.read) return prev;
+                      const next: GameState = {
+                        ...prev,
+                        letters: (prev.letters ?? []).map((x) =>
+                          x.id === l.id ? { ...x, read: true } : x,
+                        ),
+                        updatedAt: Date.now(),
+                      };
+                      void saveGameState(next, clientRef.current);
+                      return next;
+                    });
+                  }}
+                >
+                  <strong>
+                    {commissionDef(l.id)?.caretaker} · {t("comm." + l.id + ".name")}
+                  </strong>
+                  <em>{l.date}</em>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         <p className="depot-note">{t("registry.footer")}</p>
       </aside>
 
@@ -1250,6 +1419,45 @@ export default function Home() {
                       : locked
                         ? `${t("depot.balance.level")} ${item.minLevel}`
                         : `${item.cost} ${t("depot.unit.w")}`}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="panel-heading dex-sub">
+          <span>{t("works.title")}</span>
+        </div>
+        <div className="depot-items">
+          {COMMISSION_CATALOG.map((def) => {
+            const mine = (game.commissions ?? []).find((c) => c.id === def.id);
+            const prog = mine && nowTs ? progressOf(mine, nowTs) : 0;
+            const affordable = balance >= def.cost;
+            const locked = def.minLevel > level;
+            return (
+              <button
+                key={def.id}
+                type="button"
+                className={
+                  "depot-item" +
+                  (mine ? " owned" : "") +
+                  (!mine && (locked || !affordable) ? " locked" : "")
+                }
+                disabled={Boolean(mine) || locked || !affordable}
+                onClick={() => orderCommission(def.id)}
+              >
+                <strong>{t("comm." + def.id + ".name")}</strong>
+                <em>{t("comm." + def.id + ".line")}</em>
+                <span>
+                  {mine
+                    ? prog >= 1
+                      ? t("works.open")
+                      : `${t("works.building")} ${Math.min(
+                          def.days,
+                          Math.floor(prog * def.days) + 1,
+                        )}/${def.days}`
+                    : locked
+                      ? `${t("depot.balance.level")} ${def.minLevel}`
+                      : `${def.cost} W · ${def.days} ${t("works.days")}`}
                 </span>
               </button>
             );

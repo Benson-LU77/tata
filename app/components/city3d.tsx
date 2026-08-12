@@ -478,6 +478,7 @@ export function City3D({
   ceremony,
   levelCap,
   streak,
+  commissions,
   onHover,
   onOpen,
   onCreatureTap,
@@ -505,6 +506,8 @@ export function City3D({
   levelCap: number;
   /** consecutive nights written — streetlights on the newest block */
   streak: number;
+  /** public works: id + block + construction progress (1 = open) */
+  commissions: { id: string; block: number; progress: number }[];
   onHover: (file: string | null, x: number, y: number) => void;
   onOpen: (file: string) => void;
   /** a resident was tapped (never fires for ships) */
@@ -1442,6 +1445,62 @@ export function City3D({
       entries.push({ lot: { ...decorLot(px3, bz), seed: 4 }, box: { x: px3, y: 0.24, z: bz, w: 0.3, h: 0.22, d: 0.3 } });
     }
 
+    // public works: scaffolding climbs on real days; opened halls stand
+    // on the meadow north of their month, each with its own silhouette
+    for (const cm of commissions) {
+      const blk = plan.blocks[Math.min(cm.block, plan.blocks.length - 1)];
+      if (!blk) continue;
+      const wx = blk.x + 3.5 * CELL;
+      const wz = blk.z - CELL * 2.1;
+      const cLot = (seed: number): Lot => ({ ...decorLot(wx, wz), seed });
+      if (cm.progress < 1) {
+        // scaffold: four posts, platforms stacked with progress, a crane arm
+        const hFull = 3.2;
+        const hNow = Math.max(0.35, hFull * cm.progress);
+        for (const [px2, pz2] of [[-1.2, -0.8], [1.2, -0.8], [-1.2, 0.8], [1.2, 0.8]]) {
+          entries.push({ lot: cLot(2), box: { x: wx + px2, y: 0, z: wz + pz2, w: 0.09, h: hNow, d: 0.09 } });
+        }
+        const decks = Math.max(1, Math.floor(hNow / 0.8));
+        for (let dk = 1; dk <= decks; dk += 1) {
+          entries.push({ lot: cLot(2), box: { x: wx, y: dk * 0.8 - 0.05, z: wz, w: 2.6, h: 0.08, d: 1.8 } });
+        }
+        entries.push({ lot: cLot(2), box: { x: wx - 1.2, y: hNow, z: wz - 0.8, w: 0.07, h: 0.9, d: 0.07 } });
+        entries.push({ lot: cLot(3), box: { x: wx - 0.6, y: hNow + 0.82, z: wz - 0.8, w: 1.3, h: 0.07, d: 0.07 } });
+      } else if (cm.id === "library") {
+        entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 3.4, h: 1.5, d: 2.0 } });
+        for (const cx2 of [-1.15, 0, 1.15]) {
+          entries.push({ lot: cLot(3), box: { x: wx + cx2, y: 0, z: wz + 1.06, w: 0.22, h: 1.2, d: 0.16 } });
+        }
+        entries.push({ lot: cLot(2), box: { x: wx, y: 1.5, z: wz, w: 3.7, h: 0.18, d: 2.3 } });
+        entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz + 1.35, w: 2.2, h: 0.14, d: 0.5 } });
+      } else if (cm.id === "greenhouse") {
+        entries.push({ lot: cLot(5), box: { x: wx, y: 0, z: wz, w: 2.8, h: 1.1, d: 1.6 } });
+        entries.push({ lot: cLot(2), box: { x: wx, y: 1.1, z: wz, w: 2.9, h: 0.1, d: 0.24 } });
+        entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 0.12, h: 1.25, d: 1.7 } });
+      } else if (cm.id === "teahouse") {
+        entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 1.7, h: 1.0, d: 1.3 } });
+        entries.push({ lot: cLot(2), box: { x: wx, y: 1.0, z: wz, w: 2.4, h: 0.14, d: 1.9 } });
+        entries.push({ lot: cLot(2), box: { x: wx + 1.35, y: 0, z: wz + 0.7, w: 0.07, h: 1.35, d: 0.07 } });
+        entries.push({ lot: cLot(3), box: { x: wx + 1.35, y: 1.35, z: wz + 0.7, w: 0.2, h: 0.24, d: 0.2 } });
+      } else if (cm.id === "belltower") {
+        entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 0.9, h: 4.2, d: 0.9 } });
+        entries.push({ lot: cLot(2), box: { x: wx, y: 4.2, z: wz, w: 1.2, h: 0.5, d: 1.2 } });
+        entries.push({ lot: cLot(3), box: { x: wx, y: 4.32, z: wz, w: 0.3, h: 0.28, d: 0.3 } });
+        entries.push({ lot: cLot(2), box: { x: wx, y: 4.7, z: wz, w: 0.7, h: 0.3, d: 0.7 } });
+      } else if (cm.id === "skybridge") {
+        for (const px3 of [-1.6, 1.6]) {
+          entries.push({ lot: cLot(2), box: { x: wx + px3, y: 0, z: wz, w: 0.4, h: 3.4, d: 0.4 } });
+        }
+        entries.push({ lot: cLot(2), box: { x: wx, y: 3.0, z: wz, w: 4.4, h: 0.16, d: 0.7 } });
+        entries.push({ lot: cLot(3), box: { x: wx, y: 3.16, z: wz + 0.28, w: 4.4, h: 0.1, d: 0.06 } });
+      } else if (cm.id === "planetarium") {
+        entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 2.6, h: 1.0, d: 2.2 } });
+        entries.push({ lot: cLot(2), box: { x: wx, y: 1.0, z: wz, w: 2.0, h: 0.6, d: 1.7 } });
+        entries.push({ lot: cLot(2), box: { x: wx, y: 1.6, z: wz, w: 1.3, h: 0.5, d: 1.1 } });
+        entries.push({ lot: cLot(3), box: { x: wx, y: 2.1, z: wz, w: 0.14, h: 0.4, d: 0.5 } });
+      }
+    }
+
     // streets live in the terrain map now — no geometry needed
 
     // streak: one small streetlight per consecutive night, newest block
@@ -1620,7 +1679,7 @@ export function City3D({
     centerRef.current.set((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2);
     loop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, extras, decor, skin, streak, weather]);
+  }, [plan, extras, decor, skin, streak, weather, commissions]);
 
   /* the Mirror: a new look recomposes your nine frames into the atlas.
      Texture and frame table swap in the same tick — they must never

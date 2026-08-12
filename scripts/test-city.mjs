@@ -15,6 +15,7 @@ for (const [entry, name] of [
   ["app/lib/city/sprites/parts.ts", "parts"],
   ["app/lib/game/bonds.ts", "bonds"],
   ["app/lib/city/metrics.ts", "metrics"],
+  ["app/lib/game/commissions.ts", "commissions"],
 ]) {
   execSync(`npx esbuild ${entry} --bundle --format=esm --outfile=${join(out, name + ".js")}`, {
     stdio: "pipe",
@@ -208,6 +209,36 @@ assert.strictEqual(dateAtCell("2026-02", 6, 4), null, "past month end is empty g
   assert.deepStrictEqual(linksOf(body), ["2026-08-01 Today", "散步筆記"], "wikilink targets, alias-safe");
   assert.deepStrictEqual(tagsOf(body), ["夜行", "city/走路", "end"], "unicode tags parse");
   assert.deepStrictEqual(linksOf("no links here"), [], "empty is empty");
+}
+
+// 14. commissions: real-time construction, idempotent merge, letters once
+{
+  const { resolveCommissions, mergeCommissions, progressOf, mergeLetters } = await import(
+    join(out, "commissions.js")
+  );
+  const t0 = 1754000000000;
+  const DAY = 86400000;
+  const lib = { id: "library", block: 0, placedAt: t0, completedAt: null, rewardClaimed: false };
+  assert.ok(progressOf(lib, t0 + DAY) > 0.3 && progressOf(lib, t0 + DAY) < 0.35, "a day of scaffolding");
+  const mid = resolveCommissions([lib], t0 + DAY);
+  assert.strictEqual(mid.scaffolds.length, 1, "still building after a day");
+  const done = resolveCommissions([lib], t0 + 4 * DAY);
+  assert.strictEqual(done.built.length, 1, "three days later the doors open");
+  // two devices ordered on different days: earliest placement wins, claim sticks
+  const m = mergeCommissions(
+    [{ ...lib, rewardClaimed: true, completedAt: t0 + 3 * DAY }],
+    [{ ...lib, placedAt: t0 + DAY, block: 2 }],
+  );
+  assert.strictEqual(m.length, 1, "one library, ever");
+  assert.strictEqual(m[0].placedAt, t0, "earliest placement wins");
+  assert.strictEqual(m[0].block, 0, "the winner keeps its block");
+  assert.ok(m[0].rewardClaimed, "a claimed letter stays claimed");
+  const L = mergeLetters(
+    [{ id: "library", date: "2026-08-05", read: true }],
+    [{ id: "library", date: "2026-08-06", read: false }],
+  );
+  assert.strictEqual(L.length, 1, "one letter per opening");
+  assert.ok(L[0].read && L[0].date === "2026-08-05", "earliest date, read sticks");
 }
 
 console.log("city tests: all passed");

@@ -37,6 +37,8 @@ import type { YouLook } from "../city/sprites/compose";
 import { DEFAULT_LOOK } from "../city/sprites/compose";
 import type { Bonds } from "./bonds";
 import { mergeBonds } from "./bonds";
+import type { Commission, Letter } from "./commissions";
+import { mergeCommissions, mergeLetters } from "./commissions";
 
 export type GameState = {
   spent: number;
@@ -49,6 +51,10 @@ export type GameState = {
   bonds: Bonds;
   /** highest Watts total ever derived — deleting notes never shrinks the city */
   earnedFloor: number;
+  /** public works ordered with Watts, built on real time */
+  commissions: Commission[];
+  /** letters from caretakers — stored here, never written to the vault */
+  letters: Letter[];
   updatedAt: number;
 };
 
@@ -60,6 +66,8 @@ export const EMPTY_STATE: GameState = {
   look: DEFAULT_LOOK,
   bonds: {},
   earnedFloor: 0,
+  commissions: [],
+  letters: [],
   updatedAt: 0,
 };
 
@@ -81,6 +89,8 @@ function mergeStates(a: GameState, b: GameState): GameState {
     look: newer.look, // an outfit is one decision, not a union of parts
     bonds: mergeBonds(a.bonds, b.bonds),
     earnedFloor: Math.max(a.earnedFloor ?? 0, b.earnedFloor ?? 0),
+    commissions: mergeCommissions(a.commissions, b.commissions),
+    letters: mergeLetters(a.letters, b.letters),
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }
@@ -114,6 +124,8 @@ async function loadLocalState(): Promise<GameState> {
                 look: raw.look ?? DEFAULT_LOOK,
                 bonds: raw.bonds ?? {},
                 earnedFloor: raw.earnedFloor ?? 0,
+                commissions: raw.commissions ?? [],
+                letters: raw.letters ?? [],
                 updatedAt: raw.updatedAt ?? 0,
               }
             : EMPTY_STATE,
@@ -143,6 +155,8 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
       look: remote.look ?? DEFAULT_LOOK,
       bonds: remote.bonds ?? {},
       earnedFloor: remote.earnedFloor ?? 0,
+      commissions: remote.commissions ?? [],
+      letters: remote.letters ?? [],
       updatedAt: remote.updatedAt ?? 0,
     });
     void saveGameState(merged); // heal the local copy
