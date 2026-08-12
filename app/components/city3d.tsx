@@ -560,6 +560,10 @@ export function City3D({
     ),
   );
   const stateRef = useRef({ plan, focus, matches, weather, levelCap, writeMode, emote, trackKey });
+  const onMeetRef = useRef(onEncounterMeet);
+  useEffect(() => {
+    onMeetRef.current = onEncounterMeet;
+  }, [onEncounterMeet]);
 
   useEffect(() => {
     stateRef.current = { plan, focus, matches, weather, levelCap, writeMode, emote, trackKey };
@@ -780,7 +784,7 @@ export function City3D({
             if (!enc.notified) {
               enc.notified = true;
               const tc = h.creatures[tIdx];
-              onEncounterMeet({ key: tc.key, kind: tc.kind, seed: tc.seed });
+              onMeetRef.current({ key: tc.key, kind: tc.kind, seed: tc.seed });
             }
           }
         } else if (enc.phase === "meet" && enc.meetAt) {
@@ -899,7 +903,7 @@ export function City3D({
     rect.needsUpdate = true;
     param.needsUpdate = true;
     return true;
-  }, [onEncounterMeet]);
+  }, []);
 
   const applyWeather = useCallback((now: number) => {
     const h = hRef.current;
@@ -1083,7 +1087,8 @@ export function City3D({
       // while the yaw glide or zoom ease is in flight.
       if (
         Math.abs(yawRef.current - yawTargetRef.current) < 1e-4 &&
-        viewGoalRef.current === null
+        viewGoalRef.current === null &&
+        (!encRef.current || encRef.current.blend < 0.01 || encRef.current.blend > 0.99)
       ) {
         h.camera.updateMatrixWorld();
         const me = h.camera.matrixWorld.elements;
@@ -1198,6 +1203,9 @@ export function City3D({
     if (!h) return;
     const now = lastDrawRef.current / 1000;
     if (encounterKey) {
+      // idempotent: a rerender must never reset a meeting in progress —
+      // that was the shaking-and-scrambled-dialogue bug
+      if (encRef.current?.key === encounterKey) return;
       const target = h.creatures.find((c) => c.key === encounterKey);
       const you = h.creatures.find((c) => c.kind === "you");
       if (!target || !you) return;
@@ -1220,8 +1228,8 @@ export function City3D({
     } else if (encRef.current && encRef.current.phase !== "leave") {
       encRef.current.phase = "leave";
     }
-    loop();
-  }, [encounterKey, loop]);
+    loopRef.current?.();
+  }, [encounterKey]);
 
 
 

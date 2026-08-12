@@ -309,7 +309,11 @@ export default function Home() {
   }, []);
 
   /** a click during the meeting turns the conversation one page */
+  const lastAdvanceRef = useRef(0);
   const advanceEncounter = useCallback(() => {
+    // double-fired pointer events must not skip a page of dialogue
+    if (Date.now() - lastAdvanceRef.current < 300) return;
+    lastAdvanceRef.current = Date.now();
     if (encStageRef.current === "their") {
       encStageRef.current = "reply";
       hum().click();
@@ -350,6 +354,7 @@ export default function Home() {
   /** you arrived: the exchange — their line, your reply, then goodbye */
   const onEncounterMeet = useCallback(
     (hit: { key: string; kind: string; seed: number }) => {
+      if (encStageRef.current !== null) return; // already exchanged
       const kind = hit.kind as CreatureKind;
       const now = Date.now();
       const d = new Date(now);
