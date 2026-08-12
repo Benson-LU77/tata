@@ -782,8 +782,19 @@ export function City3D({
       const frame = p.moving ? beat : "i";
       // wardrobe variety: each resident keeps one of three looks for life
       const look2 = c.kind === "person" ? PERSON_LOOKS[c.seed % PERSON_LOOKS.length] : c.kind;
+      let sname = `${look2}_${dir}_${frame}`;
+      // standing people facing you blink now and then
+      if (
+        !p.moving &&
+        dir === "S" &&
+        (c.kind === "person" || c.kind === "you") &&
+        (t + (c.seed % 7)) % 4.3 < 0.16
+      ) {
+        sname = `${look2}_S_i_blink`;
+      }
+      if (!h.spriteFrames[sname]) sname = `${look2}_${dir}_i`;
       place(
-        `${look2}_${dir}_${frame}`,
+        sname,
         p.x,
         p.y,
         p.z,

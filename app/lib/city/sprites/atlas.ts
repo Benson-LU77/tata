@@ -18,6 +18,42 @@ export type SpriteAtlas = {
   frames: Record<string, SpriteFrame>;
 };
 
+/** creatures whose sprites get the automatic finishing passes */
+const WALKER_RE = /^(person\d?|you|cat|dog)_/;
+
+/** a '1' pixel with face ('6') on both sides is an eye */
+function blinkOf(rows: string[]): string[] | null {
+  let found = false;
+  const out = rows.map((row) => {
+    const chars = row.split("");
+    for (let x = 1; x < chars.length - 1; x += 1) {
+      if (chars[x] === "1" && chars[x - 1] === "6" && chars[x + 1] === "6") {
+        chars[x] = "6";
+        found = true;
+      }
+    }
+    return chars.join("");
+  });
+  return found ? out : null;
+}
+
+/** fill the gap between the feet on the last row with a contact shadow */
+function groundShadow(rows: string[]): string[] {
+  const last = rows[rows.length - 1];
+  let lo = -1;
+  let hi = -1;
+  for (let x = 0; x < last.length; x += 1) {
+    if (last[x] !== ".") {
+      if (lo < 0) lo = x;
+      hi = x;
+    }
+  }
+  if (lo < 0 || hi - lo < 2) return rows;
+  const chars = last.split("");
+  for (let x = lo; x <= hi; x += 1) if (chars[x] === ".") chars[x] = "1";
+  return [...rows.slice(0, -1), chars.join("")];
+}
+
 export function buildAtlas(extra?: Record<string, string[]>): SpriteAtlas {
   const size = 128;
   const data = new Uint8Array(size * size * 4);
@@ -26,7 +62,16 @@ export function buildAtlas(extra?: Record<string, string[]>): SpriteAtlas {
   let cx = 1;
   let cy = 1;
   let shelf = 0;
-  for (const [name, rows] of Object.entries({ ...SPRITES, ...(extra ?? {}) })) {
+  const sheet: Record<string, string[]> = { ...SPRITES, ...(extra ?? {}) };
+  for (const [name, rows] of Object.entries(sheet)) {
+    if (!WALKER_RE.test(name)) continue;
+    sheet[name] = groundShadow(rows);
+    if (/_S_i$/.test(name)) {
+      const blink = blinkOf(sheet[name]);
+      if (blink) sheet[`${name}_blink`] = blink;
+    }
+  }
+  for (const [name, rows] of Object.entries(sheet)) {
     const w = rows[0].length;
     const h = rows.length;
     for (const r of rows) {
