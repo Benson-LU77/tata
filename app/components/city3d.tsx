@@ -254,8 +254,9 @@ void main() {
         float term = cos(6.28318 * uMoon) * sq;
         bool litp = uMoon < 0.5 ? nx >= term : nx <= -term;
         float mare = hash21(floor(mdp * 0.9) + 55.0);
-        lum = litp ? 0.56 + mare * 0.18 : 0.045;
-        if (mdist > 4.8) lum *= 0.75;
+        // earthshine: the dark side stays findable on any night
+        lum = litp ? 0.56 + mare * 0.18 : 0.14 + mare * 0.04;
+        if (mdist > 4.8) lum = litp ? lum * 0.75 : max(lum, 0.19);
       }
     }
   }
