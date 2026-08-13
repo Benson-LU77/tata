@@ -282,6 +282,25 @@ function slashSource(
           selection: { anchor: from + text.length },
         });
       };
+    // list markers under a paragraph read as a setext underline (the
+    // paragraph turns into a heading) — pad a blank line when needed
+    const insertBlock = (text: string): Completion["apply"] =>
+      (view, _completion, from, to) => {
+        const line = view.state.doc.lineAt(from);
+        const prev = line.number > 1 ? view.state.doc.line(line.number - 1) : null;
+        const pad =
+          prev !== null &&
+          prev.text.trim() !== "" &&
+          !prev.text.match(PREFIX_RE)?.[2] &&
+          !prev.text.trimStart().startsWith(">")
+            ? "\n"
+            : "";
+        const t = pad + text;
+        view.dispatch({
+          changes: { from, to, insert: t },
+          selection: { anchor: from + t.length },
+        });
+      };
 
     const lang = getLang();
     const meta = (label: string) => {
@@ -293,9 +312,9 @@ function slashSource(
     // boost keeps the menu in most-used order (CM sorts alphabetically
     // otherwise) — and makes /todo, not /divider, the Enter default
     const options: Completion[] = [
-      { label: "/todo", ...meta("/todo"), boost: 9, apply: insert("- [ ] ") },
-      { label: "/list", ...meta("/list"), boost: 8, apply: insert("- ") },
-      { label: "/numbered", ...meta("/numbered"), boost: 7, apply: insert("1. ") },
+      { label: "/todo", ...meta("/todo"), boost: 9, apply: insertBlock("- [ ] ") },
+      { label: "/list", ...meta("/list"), boost: 8, apply: insertBlock("- ") },
+      { label: "/numbered", ...meta("/numbered"), boost: 7, apply: insertBlock("1. ") },
       { label: "/h2", ...meta("/h2"), boost: 6, apply: insert("## ") },
       { label: "/h3", ...meta("/h3"), boost: 5, apply: insert("### ") },
       { label: "/quote", ...meta("/quote"), boost: 4, apply: insert("> ") },
@@ -423,6 +442,20 @@ function toggleLines(view: EditorView, kind: "list" | "todo" | "heading") {
     mode = isTodo ? "none" : "todo";
   }
 
+  // markdown trap: a bare list marker straight under a paragraph reads
+  // as a setext underline and turns that paragraph into a heading — pad
+  // a blank line first, which is proper markdown style anyway
+  const firstLn = state.doc.line(fromLine);
+  const prevLn = fromLine > 1 ? state.doc.line(fromLine - 1) : null;
+  const setextRisk =
+    mode !== "none" &&
+    kind !== "heading" &&
+    firstLn.text.trim() === "" &&
+    prevLn !== null &&
+    prevLn.text.trim() !== "" &&
+    !prevLn.text.match(PREFIX_RE)?.[2] &&
+    !prevLn.text.trimStart().startsWith(">");
+
   const changes: { from: number; to: number; insert: string }[] = [];
   let index = 1;
   for (let n = fromLine; n <= toLine; n += 1) {
@@ -445,7 +478,7 @@ function toggleLines(view: EditorView, kind: "list" | "todo" | "heading") {
     changes.push({
       from: line.from,
       to: line.from + m[0].length,
-      insert: indent + target,
+      insert: (n === fromLine && setextRisk ? "\n" : "") + indent + target,
     });
   }
   view.dispatch({ changes });
