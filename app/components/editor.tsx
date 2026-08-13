@@ -290,14 +290,31 @@ function slashSource(
         ? { detail: lang === "zh" ? d.zh : d.en, info: d.preview }
         : { detail: "", info: "" };
     };
+    // boost keeps the menu in most-used order (CM sorts alphabetically
+    // otherwise) — and makes /todo, not /divider, the Enter default
     const options: Completion[] = [
-      { label: "/todo", ...meta("/todo"), apply: insert("- [ ] ") },
-      { label: "/list", ...meta("/list"), apply: insert("- ") },
-      { label: "/numbered", ...meta("/numbered"), apply: insert("1. ") },
-      { label: "/h2", ...meta("/h2"), apply: insert("## ") },
-      { label: "/h3", ...meta("/h3"), apply: insert("### ") },
-      { label: "/quote", ...meta("/quote"), apply: insert("> ") },
-      { label: "/divider", ...meta("/divider"), apply: insert("---\n") },
+      { label: "/todo", ...meta("/todo"), boost: 9, apply: insert("- [ ] ") },
+      { label: "/list", ...meta("/list"), boost: 8, apply: insert("- ") },
+      { label: "/numbered", ...meta("/numbered"), boost: 7, apply: insert("1. ") },
+      { label: "/h2", ...meta("/h2"), boost: 6, apply: insert("## ") },
+      { label: "/h3", ...meta("/h3"), boost: 5, apply: insert("### ") },
+      { label: "/quote", ...meta("/quote"), boost: 4, apply: insert("> ") },
+      {
+        label: "/divider",
+        ...meta("/divider"),
+        boost: 3,
+        // markdown trap: "---" straight under text turns that text into a
+        // setext heading — pad a blank line so it stays a divider
+        apply: (view, _completion, from, to) => {
+          const line = view.state.doc.lineAt(from);
+          const prevFilled = line.number > 1 && view.state.doc.line(line.number - 1).text.trim() !== "";
+          const text = (prevFilled ? "\n" : "") + "---\n";
+          view.dispatch({
+            changes: { from, to, insert: text },
+            selection: { anchor: from + text.length },
+          });
+        },
+      },
       ...getTemplates().map((tpl) => ({
         label: `/${tpl.name}`,
         detail: lang === "zh" ? "自訂模板" : "your template",
@@ -307,6 +324,7 @@ function slashSource(
       {
         label: "/now",
         ...meta("/now"),
+        boost: 2,
         apply: (view, _completion, from, to) => {
           const text = stamp();
           view.dispatch({
