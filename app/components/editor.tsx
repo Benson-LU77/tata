@@ -252,9 +252,6 @@ const SLASH_DEFS: { label: string; en: string; zh: string; preview: string }[] =
   { label: "/h3", en: "small heading", zh: "小標題", preview: "### …" },
   { label: "/quote", en: "quote block", zh: "引言區塊", preview: "> …" },
   { label: "/divider", en: "horizontal divider", zh: "分隔線", preview: "———" },
-  { label: "/dream", en: "dream log template", zh: "夢境記錄模板", preview: "## Dream log + 清單" },
-  { label: "/3things", en: "three good things template", zh: "三件好事模板", preview: "## Three good things + 1. 2. 3." },
-  { label: "/tomorrow", en: "plan for tomorrow", zh: "明日待辦模板", preview: "## Tomorrow + 待辦" },
   { label: "/now", en: "current time stamp", zh: "現在時間戳記", preview: "> 21:30" },
 ];
 
@@ -301,13 +298,6 @@ function slashSource(
       { label: "/h3", ...meta("/h3"), apply: insert("### ") },
       { label: "/quote", ...meta("/quote"), apply: insert("> ") },
       { label: "/divider", ...meta("/divider"), apply: insert("---\n") },
-      { label: "/dream", ...meta("/dream"), apply: insert("## Dream log\n\n- ") },
-      {
-        label: "/3things",
-        ...meta("/3things"),
-        apply: insert("## Three good things\n\n1. \n2. \n3. "),
-      },
-      { label: "/tomorrow", ...meta("/tomorrow"), apply: insert("## Tomorrow\n\n- [ ] ") },
       ...getTemplates().map((tpl) => ({
         label: `/${tpl.name}`,
         detail: lang === "zh" ? "自訂模板" : "your template",
