@@ -399,6 +399,8 @@ type Handles = {
   buildingMat: THREE.ShaderMaterial | null;
   lotOfInstance: Lot[];
   boxesPerInstance: { lot: Lot; box: { x: number; y: number; z: number; w: number; h: number; d: number }; leaf?: boolean }[];
+  /** bought groves — static sprites placed by the sprite pass */
+  trees: { x: number; z: number; name: string; mirror: number }[];
   spriteMesh: THREE.InstancedMesh | null;
   spriteMat: THREE.ShaderMaterial | null;
   spriteFrames: Record<string, { x: number; y: number; w: number; h: number }>;
@@ -937,6 +939,10 @@ export function City3D({
         place("emote_notice", p.x, p.y + (SPRITE_WORLD_H[look2] ?? 1.4) * encScale + 0.3, p.z, 0.5, 0, 0);
       }
     }
+    // the groves stand still — same pass, same pixel grid
+    for (const tr of h.trees) {
+      place(tr.name, tr.x, 0, tr.z, SPRITE_WORLD_H[tr.name] ?? 1.4, tr.mirror, 0);
+    }
     for (; si < h.spriteMesh.count; si += 1) rect.setXYZW(si, 0, 0, 0, 0);
     h.spriteMesh.instanceMatrix.needsUpdate = true;
     rect.needsUpdate = true;
@@ -1334,6 +1340,7 @@ export function City3D({
         fragmentShader: GROUND_FRAG,
       }),
       creatures: [],
+      trees: [],
       weatherMesh: null,
       beam: null,
       buildingMat: new THREE.ShaderMaterial({
@@ -1602,43 +1609,26 @@ export function City3D({
       return f;
     };
 
+    // pocket groves are hand-drawn sprites now (boxes never read as trees) —
+    // scattered on the free days of each month, drawn by the sprite pass
+    const trees: Handles["trees"] = [];
     if (decor.trees) {
+      const species = ["tree_round", "tree_pine", "tree_slim"];
       plan.blocks.forEach((block, bi) => {
         const rand = rng(hashBlock(block.month));
         const free = freeOf(bi);
         for (let t = 0; t < 6 && free.length > 0; t += 1) {
           const cell = free.splice(Math.floor(rand() * free.length), 1)[0];
-          const tx = cell.cx + (rand() - 0.5) * 1.0;
-          const tz = cell.cz + (rand() - 0.5) * 1.0;
-          const shape = Math.floor(rand() * 3);
-          entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.18, h: 0.08, d: 0.18 } }); // root flare
-          if (shape === 0) {
-            // round — broad crown in three steps
-            entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.1, h: 0.4, d: 0.1 } });
-            const cw2 = 0.5 + rand() * 0.2;
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.4, z: tz, w: cw2, h: 0.42, d: cw2 }, leaf: true });
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx + 0.08, y: 0.82, z: tz - 0.05, w: cw2 * 0.6, h: 0.3, d: cw2 * 0.6 }, leaf: true });
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx - 0.05, y: 1.12, z: tz, w: cw2 * 0.28, h: 0.16, d: cw2 * 0.28 }, leaf: true });
-          } else if (shape === 1) {
-            // pine — four shrinking tiers to a point
-            entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.09, h: 0.3, d: 0.09 } });
-            let ty = 0.3;
-            for (let tier = 0; tier < 4; tier += 1) {
-              const tw = 0.62 - tier * 0.14;
-              const th = 0.3 - tier * 0.03;
-              entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: ty, z: tz, w: tw, h: th, d: tw }, leaf: true });
-              ty += th;
-            }
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: ty, z: tz, w: 0.08, h: 0.14, d: 0.08 }, leaf: true });
-          } else {
-            // columnar — a tall slender cypress
-            entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.08, h: 0.2, d: 0.08 } });
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.2, z: tz, w: 0.3, h: 0.95, d: 0.3 }, leaf: true });
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 1.15, z: tz, w: 0.16, h: 0.3, d: 0.16 }, leaf: true });
-          }
+          trees.push({
+            x: cell.cx + (rand() - 0.5) * 1.2,
+            z: cell.cz + (rand() - 0.5) * 1.2,
+            name: species[Math.floor(rand() * species.length)],
+            mirror: rand() < 0.5 ? 1 : 0,
+          });
         }
       });
     }
+    h.trees = trees;
     if (decor.fountain && plan.blocks.length > 0) {
       const first = plan.blocks[0];
       // the plaza of your first month: the free cell nearest its heart
@@ -1734,7 +1724,7 @@ export function City3D({
       h.spriteMesh.geometry.dispose(); // material and atlas live on
     }
     const creatures = creaturesFor(plan, plan.lots.length, extras);
-    const slots = creatures.length * 2 + 8; // umbrellas + a few emotes
+    const slots = creatures.length * 2 + 8 + h.trees.length; // umbrellas, emotes, groves
     if (slots > 0 && h.spriteMat) {
       const g = new THREE.PlaneGeometry(1, 1);
       g.translate(0, 0.5, 0);
