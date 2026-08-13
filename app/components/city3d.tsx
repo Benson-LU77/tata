@@ -238,6 +238,19 @@ void main() {
   // unlit three-tone faces: top brightest, x-side dark, z-front mid
   float tone = (n.y > 0.5 ? 0.68 : (n.x > n.z ? 0.38 : 0.58)) * uSkin;
   float amber = step(1.9, vTint.r);
+
+  // foliage: crowns are leaves, not masonry — no windows, no roof tiles,
+  // just a dark speckled clump that dithers into leafy texture
+  if (vTint.g > 1.9) {
+    float g2 = vTint.g - 2.0;
+    vec3 p3 = floor(vWorld * 3.5);
+    float sp = hash(p3.xz + p3.y * 7.7);
+    float shade = n.y > 0.5 ? 0.5 : (n.x > n.z ? 0.3 : 0.42);
+    vec3 leafc = vec3(g2 * shade * uSkin * (0.7 + sp * 0.55));
+    leafc *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, 0.3, vWorld.y));
+    gl_FragColor = vec4(leafc, 1.0);
+    return;
+  }
   vec3 base = amber > 0.5 ? vec3(0.55, 0.38, 0.16) : vTint * tone;
 
   if (n.y > 0.5) {
@@ -385,7 +398,7 @@ type Handles = {
   mesh: THREE.InstancedMesh | null;
   buildingMat: THREE.ShaderMaterial | null;
   lotOfInstance: Lot[];
-  boxesPerInstance: { lot: Lot; box: { x: number; y: number; z: number; w: number; h: number; d: number } }[];
+  boxesPerInstance: { lot: Lot; box: { x: number; y: number; z: number; w: number; h: number; d: number }; leaf?: boolean }[];
   spriteMesh: THREE.InstancedMesh | null;
   spriteMat: THREE.ShaderMaterial | null;
   spriteFrames: Record<string, { x: number; y: number; w: number; h: number }>;
@@ -1447,18 +1460,20 @@ export function City3D({
       }
     }
     if (decor.observatory && plan.blocks.length > 0) {
-      // a dome on the newest block's far corner, watching the galaxy
+      // a dome on the meadow past the newest block's far corner,
+      // clear of the ring road, watching the galaxy
       const nb = plan.blocks[plan.blocks.length - 1];
-      const ox2 = nb.x + 7.6 * CELL;
-      const oz2 = nb.z - 0.6 * CELL;
+      const ox2 = nb.x + 8.7 * CELL;
+      const oz2 = nb.z - 1.6 * CELL;
       entries.push({ lot: decorLot(ox2, oz2), box: { x: ox2, y: 0, z: oz2, w: 1.3, h: 2.6, d: 1.3 } });
       entries.push({ lot: { ...decorLot(ox2, oz2), seed: 3 }, box: { x: ox2, y: 2.6, z: oz2, w: 1.0, h: 0.7, d: 1.0 } });
       entries.push({ lot: { ...decorLot(ox2, oz2), seed: 5 }, box: { x: ox2 + 0.3, y: 3.3, z: oz2, w: 0.18, h: 0.55, d: 0.18 } });
     }
 
-    // street furniture: two benches and a planter per month, always there
+    // street furniture: two benches and a planter per month, always there,
+    // on the grass verge just south of the ring road
     for (const block of plan.blocks) {
-      const bz = block.z + 6.5 * CELL;
+      const bz = block.z + 7.1 * CELL;
       for (const fx2 of [1.8, 5.2]) {
         const bx = block.x + fx2 * CELL;
         entries.push({ lot: decorLot(bx, bz), box: { x: bx, y: 0.14, z: bz, w: 0.62, h: 0.07, d: 0.22 } }); // seat
@@ -1561,21 +1576,49 @@ export function City3D({
         }
       }
     }
+    // free calendar cells of each block — days not yet written are the
+    // city's pocket parks, where bought decor actually belongs
+    const freeCellCache = new Map<number, { cx: number; cz: number }[]>();
+    const freeOf = (bi: number): { cx: number; cz: number }[] => {
+      let f = freeCellCache.get(bi);
+      if (f === undefined) {
+        const blk = plan.blocks[bi];
+        const used = new Set<string>();
+        for (const lot of plan.lots) {
+          const c = Math.round((lot.x - blk.x - CELL / 2) / CELL);
+          const r = Math.round((lot.z - blk.z - CELL / 2) / CELL);
+          if (c >= 0 && c < 7 && r >= 0 && r < 6) used.add(`${c},${r}`);
+        }
+        f = [];
+        for (let r = 0; r < 6; r += 1) {
+          for (let c = 0; c < 7; c += 1) {
+            if (!used.has(`${c},${r}`)) {
+              f.push({ cx: blk.x + c * CELL + CELL / 2, cz: blk.z + r * CELL + CELL / 2 });
+            }
+          }
+        }
+        freeCellCache.set(bi, f);
+      }
+      return f;
+    };
+
     if (decor.trees) {
-      for (const block of plan.blocks) {
+      plan.blocks.forEach((block, bi) => {
         const rand = rng(hashBlock(block.month));
-        for (let t = 0; t < 6; t += 1) {
-          const tx = block.x + rand() * 7 * CELL;
-          const tz = block.z + 6 * CELL + CELL * 0.42;
+        const free = freeOf(bi);
+        for (let t = 0; t < 6 && free.length > 0; t += 1) {
+          const cell = free.splice(Math.floor(rand() * free.length), 1)[0];
+          const tx = cell.cx + (rand() - 0.5) * 1.0;
+          const tz = cell.cz + (rand() - 0.5) * 1.0;
           const shape = Math.floor(rand() * 3);
           entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.18, h: 0.08, d: 0.18 } }); // root flare
           if (shape === 0) {
             // round — broad crown in three steps
             entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.1, h: 0.4, d: 0.1 } });
             const cw2 = 0.5 + rand() * 0.2;
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.4, z: tz, w: cw2, h: 0.42, d: cw2 } });
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.82, z: tz, w: cw2 * 0.6, h: 0.3, d: cw2 * 0.6 } });
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 1.12, z: tz, w: cw2 * 0.28, h: 0.16, d: cw2 * 0.28 } });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.4, z: tz, w: cw2, h: 0.42, d: cw2 }, leaf: true });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx + 0.08, y: 0.82, z: tz - 0.05, w: cw2 * 0.6, h: 0.3, d: cw2 * 0.6 }, leaf: true });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx - 0.05, y: 1.12, z: tz, w: cw2 * 0.28, h: 0.16, d: cw2 * 0.28 }, leaf: true });
           } else if (shape === 1) {
             // pine — four shrinking tiers to a point
             entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.09, h: 0.3, d: 0.09 } });
@@ -1583,23 +1626,38 @@ export function City3D({
             for (let tier = 0; tier < 4; tier += 1) {
               const tw = 0.62 - tier * 0.14;
               const th = 0.3 - tier * 0.03;
-              entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: ty, z: tz, w: tw, h: th, d: tw } });
+              entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: ty, z: tz, w: tw, h: th, d: tw }, leaf: true });
               ty += th;
             }
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: ty, z: tz, w: 0.08, h: 0.14, d: 0.08 } });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: ty, z: tz, w: 0.08, h: 0.14, d: 0.08 }, leaf: true });
           } else {
             // columnar — a tall slender cypress
             entries.push({ lot: decorLot(tx, tz), box: { x: tx, y: 0, z: tz, w: 0.08, h: 0.2, d: 0.08 } });
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.2, z: tz, w: 0.3, h: 0.95, d: 0.3 } });
-            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 1.15, z: tz, w: 0.16, h: 0.3, d: 0.16 } });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 0.2, z: tz, w: 0.3, h: 0.95, d: 0.3 }, leaf: true });
+            entries.push({ lot: { ...decorLot(tx, tz), seed: 4 }, box: { x: tx, y: 1.15, z: tz, w: 0.16, h: 0.3, d: 0.16 }, leaf: true });
           }
         }
-      }
+      });
     }
     if (decor.fountain && plan.blocks.length > 0) {
       const first = plan.blocks[0];
-      const fx = first.x + 3.5 * CELL;
-      const fz = first.z - CELL * 0.5;
+      // the plaza of your first month: the free cell nearest its heart
+      const free = freeOf(0);
+      let fx = first.x + 1.6 * CELL;
+      let fz = first.z - CELL * 1.5; // meadow fallback for a fully built month
+      if (free.length > 0) {
+        const cx0 = first.x + 3.5 * CELL;
+        const cz0 = first.z + 3 * CELL;
+        let best = 0;
+        let bd = Infinity;
+        free.forEach((c, i) => {
+          const d2 = (c.cx - cx0) * (c.cx - cx0) + (c.cz - cz0) * (c.cz - cz0);
+          if (d2 < bd) { bd = d2; best = i; }
+        });
+        const cell = free.splice(best, 1)[0];
+        fx = cell.cx;
+        fz = cell.cz;
+      }
       entries.push({ lot: decorLot(fx, fz), box: { x: fx, y: 0, z: fz, w: 1.4, h: 0.18, d: 1.4 } });
       entries.push({ lot: { ...decorLot(fx, fz), seed: 4 }, box: { x: fx, y: 0.18, z: fz, w: 0.95, h: 0.08, d: 0.95 } }); // inner ring
       entries.push({ lot: decorLot(fx, fz), box: { x: fx, y: 0.18, z: fz, w: 0.24, h: 0.55, d: 0.24 } });
@@ -1646,7 +1704,7 @@ export function City3D({
     entries.forEach((e, i) => {
       const grey = 0.72 + ((e.lot.seed >>> 8) % 100) / 400; // per-building variance
       tints[i * 3] = grey;
-      tints[i * 3 + 1] = grey;
+      tints[i * 3 + 1] = e.leaf ? 2.0 + grey : grey; // g>1.9 flags foliage
       tints[i * 3 + 2] = grey * 1.04;
       infos[i * 2] = e.lot.lit;
       infos[i * 2 + 1] = ((e.lot.seed >>> 4) % 1000) / 1000;
