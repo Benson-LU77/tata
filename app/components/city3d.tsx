@@ -118,20 +118,31 @@ void main() {
     vec2 vp = floor(vUv * uRes);
     lum = 0.008;
 
-    // the galaxy: a rich diagonal river of dust and stars
+    // the whole field drifts, one pixel at a time — the station turning
+    vec2 sp = vp + floor(vec2(uTime * 1.1, uTime * 0.28));
+
+    // the galaxy: a rich diagonal river of dust and stars, flowing
     vec2 gdir = normalize(vec2(0.42, 1.0));
     float gd = abs(dot(vUv - vec2(0.5, 0.62), gdir));
     float gband = smoothstep(0.34, 0.0, gd);
-    vec2 cell = floor(vp / 3.0);
+    vec2 cell = floor((vp + gdir * uTime * 2.2) / 3.0);
     float gn = hash21(cell) * 0.6 + hash21(cell + 31.0) * 0.4;
-    lum += gband * gband * (0.13 + gn * 0.22);
+    float shimmer = 0.88 + 0.12 * sin(uTime * 0.5 + hash21(cell + 17.0) * 6.283);
+    lum += gband * gband * (0.13 + gn * 0.22) * shimmer;
 
-    // stars: a faint under-layer, much denser inside the band
-    float s = hash21(vp);
-    if (s > 0.994) lum = max(lum, 0.08 + 0.1 * hash21(vp + 3.0));
-    if (s > 0.9982) lum = max(lum, 0.22 + 0.5 * hash21(vp + 7.0));
-    if (gband > 0.2 && s > 0.972) lum = max(lum, 0.16 + 0.34 * hash21(vp + 13.0));
-    if (s > 0.9993 && gband > 0.15) lum = 0.85; // jewels inside the band
+    // stars: a faint under-layer, much denser inside the band;
+    // the bright ones twinkle in quantised steps, like they should
+    float s = hash21(sp);
+    if (s > 0.994) lum = max(lum, 0.08 + 0.1 * hash21(sp + 3.0));
+    if (s > 0.9982) {
+      float tw = 0.7 + 0.3 * sin(uTime * (0.8 + hash21(sp + 5.0) * 1.6) + hash21(sp + 9.0) * 6.283);
+      lum = max(lum, (0.22 + 0.5 * hash21(sp + 7.0)) * tw);
+    }
+    if (gband > 0.2 && s > 0.972) lum = max(lum, 0.16 + 0.34 * hash21(sp + 13.0));
+    if (s > 0.9993 && gband > 0.15) {
+      // jewels inside the band, breathing
+      lum = 0.85 * (0.8 + 0.2 * sin(uTime * (1.2 + hash21(sp + 4.0)) + hash21(sp + 11.0) * 6.283));
+    }
 
     // a far gas giant, top left — it rotates
     vec2 pd = (vUv - vec2(0.16, 0.78)) * uRes;
@@ -161,6 +172,21 @@ void main() {
       float off = abs(dot(rel, vec2(-dir2.y, dir2.x)));
       if (off < 0.8 && along > 0.0 && along < 7.0) {
         lum = max(lum, 0.8 - along * 0.11);
+      }
+    }
+
+    // a second, fainter one on the opposite diagonal, out of phase
+    float cyc2 = floor((uTime + 14.5) / 29.0);
+    float ct2 = mod(uTime + 14.5, 29.0);
+    if (ct2 < 0.8) {
+      vec2 a2 = vec2(0.9 - hash21(vec2(cyc2, 2.0)) * 0.65, 0.92);
+      vec2 dir3 = normalize(vec2(-0.5, -1.0));
+      vec2 head2 = a2 + dir3 * (ct2 / 0.8) * 0.42;
+      vec2 rel2 = (vUv - head2) * uRes;
+      float along2 = dot(rel2, -dir3);
+      float off2 = abs(dot(rel2, vec2(-dir3.y, dir3.x)));
+      if (off2 < 0.7 && along2 > 0.0 && along2 < 5.5) {
+        lum = max(lum, 0.55 - along2 * 0.09);
       }
     }
   }
