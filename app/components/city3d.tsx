@@ -70,6 +70,9 @@ uniform vec3 uAmber;
 uniform vec3 uAmberDim;
 uniform float uFog;
 uniform float uTime;
+uniform float uMoon;  // real lunar phase 0..1 (0 = new, 0.5 = full)
+uniform float uLevel; // constellations lit, one per level, never dark
+uniform vec2 uSky;    // owned sky: x sister planet, y periodic comet
 
 float bayer(vec2 p) {
   int x = int(mod(p.x, 4.0));
@@ -187,6 +190,72 @@ void main() {
       float off2 = abs(dot(rel2, vec2(-dir3.y, dir3.x)));
       if (off2 < 0.7 && along2 > 0.0 && along2 < 5.5) {
         lum = max(lum, 0.55 - along2 * 0.09);
+      }
+    }
+
+    // constellations: one lights per level and never goes dark —
+    // the sky is a record, like everything else here
+    for (int ci = 0; ci < 12; ci++) {
+      if (float(ci) >= min(uLevel, 12.0)) break;
+      float fi = float(ci);
+      vec2 cc = vec2(0.05 + hash21(vec2(fi, 41.0)) * 0.9, 0.48 + hash21(vec2(fi, 87.0)) * 0.47);
+      if (distance(cc, vec2(0.16, 0.78)) < 0.15) cc.x += 0.3;  // clear of the gas giant
+      if (distance(cc, vec2(0.84, 0.84)) < 0.11) cc.y -= 0.2;  // clear of the moon
+      for (int si = 0; si < 5; si++) {
+        float fs = float(si);
+        vec2 off4 = (vec2(hash21(vec2(fi * 7.0 + fs, 3.0)), hash21(vec2(fs, fi * 11.0 + 5.0))) - 0.5) * 0.07;
+        vec2 dpx = (vUv - (cc + off4)) * uRes;
+        float ax = abs(dpx.x);
+        float ay = abs(dpx.y);
+        if (ax < 0.9 && ay < 0.9) lum = max(lum, 0.9);
+        else if ((ax < 0.55 && ay < 2.3) || (ay < 0.55 && ax < 2.3)) lum = max(lum, 0.26);
+      }
+    }
+
+    // a bought neighbour: pale banded disc, no ring, minding its own orbit
+    if (uSky.x > 0.5) {
+      vec2 sd = (vUv - vec2(0.60, 0.93)) * uRes;
+      float sdist = length(sd);
+      if (sdist < 4.2) {
+        float slat = sd.y / 4.2;
+        lum = 0.3 + (sin(slat * 9.0 + 1.7) * 0.5 + 0.5) * 0.14 - (sd.x + sd.y) * 0.02;
+        if (sdist > 3.2) lum *= 0.8;
+      }
+    }
+
+    // a bought comet: every 3.5 minutes it keeps its appointment
+    if (uSky.y > 0.5) {
+      float cyc3 = floor(uTime / 210.0);
+      float ct3 = mod(uTime, 210.0);
+      if (ct3 < 7.0) {
+        float cp = ct3 / 7.0;
+        vec2 a3 = vec2(-0.05, 0.55 + hash21(vec2(cyc3, 9.0)) * 0.35);
+        vec2 pos3 = mix(a3, vec2(1.05, a3.y + 0.25), cp);
+        pos3.y += sin(cp * 3.14159) * 0.06;
+        vec2 rel3 = (vUv - pos3) * uRes;
+        vec2 tdir = normalize(vec2(1.0, 0.22));
+        float along3 = dot(rel3, -tdir);
+        float off5 = abs(dot(rel3, vec2(-tdir.y, tdir.x)));
+        if (length(rel3) < 1.6) lum = max(lum, 0.95);
+        else if (along3 > 0.0 && along3 < 14.0 && off5 < 0.9 + along3 * 0.12) {
+          lum = max(lum, 0.55 * (1.0 - along3 / 14.0) * (0.6 + 0.4 * hash21(floor(rel3) + cyc3)));
+        }
+      }
+    }
+
+    // the moon, in tonight's real phase — drawn last, it owns its pixels
+    {
+      vec2 mdp = (vUv - vec2(0.84, 0.84)) * uRes;
+      float mdist = length(mdp);
+      if (mdist < 6.0) {
+        float nx = mdp.x / 6.0;
+        float ny = mdp.y / 6.0;
+        float sq = sqrt(max(0.0, 1.0 - ny * ny));
+        float term = cos(6.28318 * uMoon) * sq;
+        bool litp = uMoon < 0.5 ? nx >= term : nx <= -term;
+        float mare = hash21(floor(mdp * 0.9) + 55.0);
+        lum = litp ? 0.56 + mare * 0.18 : 0.045;
+        if (mdist > 4.8) lum *= 0.75;
       }
     }
   }
@@ -502,6 +571,8 @@ export type CityDecor = {
   harbor: boolean;
   viaduct: boolean;
   observatory: boolean;
+  sister: boolean;
+  comet: boolean;
 };
 export type CityWeather = "none" | "rain" | "snow" | "fog";
 
@@ -518,6 +589,7 @@ export function City3D({
   goMonth,
   ceremony,
   levelCap,
+  level,
   streak,
   commissions,
   onHover,
@@ -545,6 +617,7 @@ export function City3D({
   ceremony: { file: string; n: number } | null;
   /** skyline height limit in floors — levelling up lets the city grow */
   levelCap: number;
+  level: number;
   /** consecutive nights written — streetlights on the newest block */
   streak: number;
   /** public works: id + block + construction progress (1 = open) */
@@ -1194,6 +1267,9 @@ export function City3D({
       // two-pass: scene → low-res RT → quantise to screen (centered
       // integer-multiple blit; the margin stays background)
       h.quantMat.uniforms.uTime.value = now / 1000;
+      // tonight's real moon — synodic month from the Jan 2000 new moon
+      h.quantMat.uniforms.uMoon.value =
+        (((now + performance.timeOrigin - 947182440000) % 2551442877) + 2551442877) % 2551442877 / 2551442877;
       h.renderer.setRenderTarget(h.rt);
       h.renderer.render(h.scene, h.camera);
       h.renderer.setRenderTarget(null);
@@ -1304,6 +1380,9 @@ export function City3D({
         uAmberDim: { value: new THREE.Color("#8a6c3c") },
         uFog: { value: 0 },
         uTime: { value: 0 },
+        uMoon: { value: 0 },
+        uLevel: { value: 1 },
+        uSky: { value: new THREE.Vector2(0, 0) },
       },
       vertexShader:
         "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
@@ -1753,7 +1832,9 @@ export function City3D({
     centerRef.current.set((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2);
     loop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, extras, decor, skin, streak, weather, commissions]);
+    h.quantMat!.uniforms.uLevel.value = level;
+    (h.quantMat!.uniforms.uSky.value as THREE.Vector2).set(decor.sister ? 1 : 0, decor.comet ? 1 : 0);
+  }, [plan, extras, decor, skin, streak, weather, commissions, level]);
 
   /* the Mirror: a new look recomposes your nine frames into the atlas.
      Texture and frame table swap in the same tick — they must never

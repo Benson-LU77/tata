@@ -26,6 +26,8 @@ export const CATALOG: ShopItem[] = [
   { id: "harbor", name: "The harbor", line: "A dock on the island's edge.", cost: 350, kind: "decor", minLevel: 3 },
   { id: "viaduct", name: "The viaduct", line: "A high road between months.", cost: 650, kind: "decor", minLevel: 6 },
   { id: "observatory", name: "The observatory", line: "A dome watching the galaxy.", cost: 1000, kind: "decor", minLevel: 10 },
+  { id: "sister", name: "Sister planet", line: "A pale neighbour, far out.", cost: 300, kind: "decor" },
+  { id: "comet", name: "Periodic comet", line: "It keeps its appointments.", cost: 250, kind: "decor" },
   { id: "rain", name: "Night rain", line: "Thin rain over the rooftops.", cost: 150, kind: "weather" },
   { id: "snow", name: "First snow", line: "Slow flakes, soft streets.", cost: 150, kind: "weather" },
   { id: "fog", name: "Sea fog", line: "The far blocks half-dissolve.", cost: 120, kind: "weather" },

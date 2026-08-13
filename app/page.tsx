@@ -623,6 +623,8 @@ export default function Home() {
       harbor: game.owned.includes("harbor"),
       viaduct: game.owned.includes("viaduct"),
       observatory: game.owned.includes("observatory"),
+      sister: game.owned.includes("sister"),
+      comet: game.owned.includes("comet"),
     }),
     [game.owned],
   );
@@ -968,6 +970,7 @@ export default function Home() {
             goMonth={goMonth}
             ceremony={ceremony}
             levelCap={levelCap}
+            level={level}
             streak={bestStreak}
             commissions={works}
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
