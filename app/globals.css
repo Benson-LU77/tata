@@ -1755,3 +1755,14 @@ button:focus-visible, input:focus-visible {
   cursor: pointer;
   min-height: 44px;
 }
+
+/* every card shows its goods before you pay */
+.depot-item { position: relative; padding-right: 56px; }
+.depot-thumb {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  image-rendering: pixelated;
+  opacity: .9;
+}

@@ -27,6 +27,8 @@ import {
   resolveCommissions,
 } from "./lib/game/commissions";
 import { REPLY_LINES } from "./lib/game/bonds-lines";
+import { iconOf } from "./lib/game/icons";
+import { PixelIcon } from "./components/pixel-icon";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
 import type { Lang } from "./lib/i18n";
 
@@ -1642,6 +1644,10 @@ export default function Home() {
                 disabled={!clickable}
                 onClick={() => buy(item.id)}
               >
+                {(() => {
+                  const ic = iconOf(item.id);
+                  return ic ? <PixelIcon rows={ic} /> : null;
+                })()}
                 <strong>{itemName}</strong>
                 <em>{itemLine}</em>
                 <span>
@@ -1678,6 +1684,10 @@ export default function Home() {
                 disabled={Boolean(mine) || locked || !affordable}
                 onClick={() => orderCommission(def.id)}
               >
+                {(() => {
+                  const ic = iconOf(def.id);
+                  return ic ? <PixelIcon rows={ic} /> : null;
+                })()}
                 <strong>{t("comm." + def.id + ".name")}</strong>
                 <em>{t("comm." + def.id + ".line")}</em>
                 <span>
