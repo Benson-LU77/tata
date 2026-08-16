@@ -184,7 +184,8 @@ button:focus-visible, input:focus-visible {
 /* ---------- shared chrome ---------- */
 
 .immersion-ui { transition: opacity .7s ease, transform .7s var(--ease); }
-.ui-hidden .immersion-ui { opacity: 0; pointer-events: none; }
+.ui-hidden .immersion-ui { opacity: .35; }
+.zen .immersion-ui { opacity: 0; pointer-events: none; }
 
 .topbar {
   position: absolute;
@@ -317,7 +318,7 @@ button:focus-visible, input:focus-visible {
   position: absolute;
   z-index: 10;
   left: 50%;
-  bottom: clamp(20px, 4vh, 40px);
+  bottom: calc(clamp(20px, 4vh, 40px) + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   display: grid;
   justify-items: center;
@@ -368,7 +369,7 @@ button:focus-visible, input:focus-visible {
   position: absolute;
   z-index: 10;
   left: clamp(22px, 3vw, 40px);
-  bottom: clamp(20px, 4vh, 40px);
+  bottom: calc(clamp(20px, 4vh, 40px) + env(safe-area-inset-bottom, 0px));
   padding: 12px 22px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -392,7 +393,7 @@ button:focus-visible, input:focus-visible {
   position: absolute;
   z-index: 10;
   right: clamp(22px, 3vw, 40px);
-  bottom: clamp(20px, 4vh, 40px);
+  bottom: calc(clamp(20px, 4vh, 40px) + env(safe-area-inset-bottom, 0px));
   display: grid;
   justify-items: end;
   gap: 6px;
@@ -1016,7 +1017,7 @@ button:focus-visible, input:focus-visible {
   .settings-panel[aria-hidden="false"] { transform: translateY(0); }
 
   .city-app .notes-panel {
-    height: 78dvh;
+    height: min(78dvh, calc(var(--vvh, 100dvh) - 56px));
     padding: 20px 22px calc(18px + env(safe-area-inset-bottom));
   }
   .writing .city-field { height: 22dvh; }
@@ -1193,7 +1194,7 @@ button:focus-visible, input:focus-visible {
   position: absolute;
   z-index: 10;
   left: 50%;
-  bottom: clamp(20px, 4vh, 40px);
+  bottom: calc(clamp(20px, 4vh, 40px) + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -1582,4 +1583,16 @@ button:focus-visible, input:focus-visible {
   border-radius: 50%;
   background: var(--amber);
   box-shadow: 0 0 6px rgba(224, 168, 79, .8);
+}
+
+
+/* touch: type at 16px so iOS stops zooming the page; hit targets at 44px */
+@media (pointer: coarse) {
+  .notes-editor.size-s .cm-scroller,
+  .notes-editor.size-m .cm-scroller { font-size: 16px; }
+  .search-veil input,
+  .notes-setup input { font-size: 16px; }
+  .month-nav button,
+  .topbar button,
+  .notes-gear { min-width: 44px; min-height: 44px; }
 }

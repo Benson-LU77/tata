@@ -726,12 +726,14 @@ export default function Home() {
 
   useEffect(() => {
     const saved = loadLang();
+    document.documentElement.lang = saved === "zh" ? "zh-Hant" : "en";
     if (saved !== "en") window.setTimeout(() => setLang(saved), 0);
   }, []);
 
   const changeLang = useCallback((next: Lang) => {
     saveLang(next);
     setLang(next);
+    document.documentElement.lang = next === "zh" ? "zh-Hant" : "en";
   }, []);
 
   /* ---------- sound prefs ---------- */

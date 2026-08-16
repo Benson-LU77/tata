@@ -11,7 +11,9 @@ export function loadLang(): Lang {
   if (typeof window === "undefined") return "en";
   try {
     const saved = window.localStorage.getItem(LANG_KEY);
-    return saved === "zh" ? "zh" : "en";
+    if (saved === "zh" || saved === "en") return saved;
+    // first visit: follow the system language
+    return navigator.language?.toLowerCase().startsWith("zh") ? "zh" : "en";
   } catch {
     return "en";
   }

@@ -655,7 +655,16 @@ export function City3D({
   const lastDrawRef = useRef(0);
   const dragRef = useRef<{ x: number; y: number; yaw: number; moved: boolean; pan: boolean; px: number; pz: number } | null>(null);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
-  const pinchRef = useRef<{ dist: number; view: number } | null>(null);
+  const pinchRef = useRef<{
+    dist: number;
+    view: number;
+    cx: number;
+    cy: number;
+    px: number;
+    pz: number;
+    ang: number;
+    yaw: number;
+  } | null>(null);
   /** per-file eased floor count — new buildings rise, edits grow smoothly */
   const growRef = useRef(new Map<string, number>());
   const knownFilesRef = useRef<Set<string> | null>(null);
@@ -1987,7 +1996,16 @@ export function City3D({
     if (pointersRef.current.size === 2) {
       // second finger: switch from drag to pinch-zoom
       const [a, b] = [...pointersRef.current.values()];
-      pinchRef.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), view: viewRef.current };
+      pinchRef.current = {
+        dist: Math.hypot(a.x - b.x, a.y - b.y),
+        view: viewRef.current,
+        cx: (a.x + b.x) / 2,
+        cy: (a.y + b.y) / 2,
+        px: panRef.current.x,
+        pz: panRef.current.z,
+        ang: Math.atan2(b.y - a.y, b.x - a.x),
+        yaw: yawRef.current,
+      };
       dragRef.current = null;
       return;
     }
@@ -1996,7 +2014,7 @@ export function City3D({
       y: event.clientY,
       yaw: yawRef.current,
       moved: false,
-      pan: event.shiftKey || event.button === 1,
+      pan: event.shiftKey || event.button === 1 || event.pointerType === "touch",
       px: panRef.current.x,
       pz: panRef.current.z,
     };
@@ -2014,12 +2032,28 @@ export function City3D({
       }
       if (pinchRef.current && pointersRef.current.size >= 2) {
         const [a, b] = [...pointersRef.current.values()];
+        const pinch = pinchRef.current;
         const dist = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinchRef.current.dist > 0 && dist > 0) {
+        if (pinch.dist > 0 && dist > 0) {
           viewGoalRef.current = null;
-          viewRef.current = clampView(pinchRef.current.view * (pinchRef.current.dist / dist));
-          loop();
+          viewRef.current = clampView(pinch.view * (pinch.dist / dist));
         }
+        // two-finger twist steers the camera
+        const ang = Math.atan2(b.y - a.y, b.x - a.x);
+        yawRef.current = pinch.yaw + (ang - pinch.ang);
+        yawTargetRef.current = yawRef.current;
+        // and the centroid drags the city, like any map
+        const cx = (a.x + b.x) / 2;
+        const cy = (a.y + b.y) / 2;
+        const dcx = cx - pinch.cx;
+        const dcy = cy - pinch.cy;
+        panTargetRef.current = null;
+        const h2 = hRef.current;
+        const world = h2 ? (h2.camera.right - h2.camera.left) / (canvasRef.current?.clientWidth ?? 1) : 0.1;
+        const yaw2 = yawRef.current;
+        panRef.current.x = pinch.px - (dcx * Math.cos(yaw2) - dcy * Math.sin(yaw2)) * world;
+        panRef.current.z = pinch.pz - (-dcx * Math.sin(yaw2) - dcy * Math.cos(yaw2)) * world;
+        loop();
         return;
       }
       const drag = dragRef.current;
