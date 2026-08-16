@@ -22,6 +22,7 @@ import {
   COMMISSION_CATALOG,
   commissionDef,
   letterBody,
+  monthlyLetterBody,
   progressOf,
   resolveCommissions,
 } from "./lib/game/commissions";
@@ -613,6 +614,30 @@ export default function Home() {
     // nowTs: an open page re-checks each minute, so opening day arrives live
   }, [game.commissions, nowTs, hum]);
 
+  /* the archive writes a ledger for last month, once, when it has pages */
+  useEffect(() => {
+    if (!today || metrics.length === 0) return;
+    const d = new Date(today + "T00:00:00Z");
+    d.setUTCMonth(d.getUTCMonth() - 1);
+    const prevMonth = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const id2 = `month-${prevMonth}`;
+    const pages = metrics.filter((m) => m.date.startsWith(prevMonth) && !m.file.startsWith("__")).length;
+    if (pages === 0) return;
+    const timer = window.setTimeout(() => {
+      setGame((prev) => {
+        if ((prev.letters ?? []).some((l) => l.id === id2)) return prev;
+        const next: GameState = {
+          ...prev,
+          letters: [...(prev.letters ?? []), { id: id2, date: today, read: false }],
+          updatedAt: Date.now(),
+        };
+        void saveGameState(next, clientRef.current);
+        return next;
+      });
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [metrics, today]);
+
   const orderCommission = useCallback(
     (id: string) => {
       const def = commissionDef(id);
@@ -644,19 +669,48 @@ export default function Home() {
     [earned, level, hum, cityPlan.blocks.length],
   );
 
+  /** stats of one calendar month — pages, nights, longest run */
+  const monthStats = useCallback(
+    (month: string) => {
+      const days = [...new Set(
+        metrics.filter((m) => m.date.startsWith(month) && !m.file.startsWith("__")).map((m) => m.date),
+      )].sort();
+      const set = new Set(days);
+      let best = 0;
+      for (const d of days) {
+        let run = 1;
+        let cur = d;
+        for (;;) {
+          const t2 = new Date(cur + "T00:00:00Z").getTime() + 86400000;
+          const nd = new Date(t2);
+          cur = `${nd.getUTCFullYear()}-${String(nd.getUTCMonth() + 1).padStart(2, "0")}-${String(nd.getUTCDate()).padStart(2, "0")}`;
+          if (!set.has(cur)) break;
+          run += 1;
+        }
+        best = Math.max(best, run);
+      }
+      const pages = metrics.filter((m) => m.date.startsWith(month) && !m.file.startsWith("__")).length;
+      return { pages, days: days.length, streak: best };
+    },
+    [metrics],
+  );
+
+  const bodyOf = useCallback(
+    (id: string, date: string) =>
+      id.startsWith("month-")
+        ? monthlyLetterBody(id.slice(6), monthStats(id.slice(6)), lang)
+        : letterBody(id, { months: cityPlan.blocks.length, pages: metrics.length, date }, lang),
+    [monthStats, cityPlan.blocks.length, metrics.length, lang],
+  );
+
   const exportLetter = useCallback(
     (id: string) => {
       const client = clientRef.current;
       const letter = (game.letters ?? []).find((l) => l.id === id);
       if (!client || !letter) return;
-      const body = letterBody(
-        id,
-        { months: cityPlan.blocks.length, pages: metrics.length, date: letter.date },
-        lang,
-      );
-      void client.write(`Letters/${letter.date} ${id}.md`, body + "\n").catch(() => {});
+      void client.write(`Letters/${letter.date} ${id}.md`, bodyOf(id, letter.date) + "\n").catch(() => {});
     },
-    [game.letters, cityPlan.blocks.length, metrics.length, lang],
+    [game.letters, bodyOf],
   );
 
   const extras = useMemo(
@@ -871,7 +925,7 @@ export default function Home() {
       } else {
         // backfill: a page for a day that stayed dark — the bridge's true path
         hum().click();
-        openWrite(`${date} Today.md`);
+        openWrite(date === today ? `${date} Today.md` : `${date}.md`);
       }
     },
     [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, advanceEncounter],
@@ -1286,15 +1340,7 @@ export default function Home() {
         <div className="letter-veil" role="dialog" aria-label={t("letters.title")} onClick={() => setLetterOpen(null)}>
           <div className="letter-paper" onClick={(e) => e.stopPropagation()}>
             <pre>
-              {letterBody(
-                letterOpen,
-                {
-                  months: cityPlan.blocks.length,
-                  pages: metrics.length,
-                  date: (game.letters ?? []).find((l) => l.id === letterOpen)?.date ?? "",
-                },
-                lang,
-              )}
+              {bodyOf(letterOpen, (game.letters ?? []).find((l) => l.id === letterOpen)?.date ?? "")}
             </pre>
             <div className="letter-actions">
               {synced === "live" && (
@@ -1311,6 +1357,21 @@ export default function Home() {
       )}
       {monthListOpen && !writeOpen && (
         <div className="month-list immersion-ui" role="dialog" aria-label={t("months.list")}>
+          <div className="month-jump">
+            {cityPlan.blocks.map((b, i) => (
+              <button
+                key={b.month}
+                type="button"
+                className={i === monthIx ? "active" : ""}
+                onClick={() => {
+                  setMonthIx(i);
+                  setGoMonth({ x: b.x, z: b.z, n: Date.now() });
+                }}
+              >
+                {b.month}
+              </button>
+            ))}
+          </div>
           {metrics
             .filter((m) => m.date.startsWith(cityPlan.blocks[Math.max(0, monthIx)]?.month ?? "----"))
             .sort((a2, b2) => (a2.date < b2.date ? -1 : 1))
@@ -1461,7 +1522,9 @@ export default function Home() {
                   }}
                 >
                   <strong>
-                    {commissionDef(l.id)?.caretaker} · {t("comm." + l.id + ".name")}
+                    {l.id.startsWith("month-")
+                      ? `${t("letters.archive")} · ${l.id.slice(6)}`
+                      : `${commissionDef(l.id)?.caretaker} · ${t("comm." + l.id + ".name")}`}
                   </strong>
                   <em>{l.date}</em>
                 </button>

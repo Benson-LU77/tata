@@ -146,3 +146,15 @@ export function letterBody(
   };
   return (lang === "zh" ? zh : en)[id] ?? `${name} · ${ctx.date}`;
 }
+
+/** the month ledger — written by the archive on the 1st, from real stats */
+export function monthlyLetterBody(
+  month: string,
+  ctx: { pages: number; days: number; streak: number },
+  lang: "en" | "zh",
+): string {
+  if (lang === "zh") {
+    return `寫字的人。\n\n${month} 結算：${ctx.pages} 頁，寫了 ${ctx.days} 個夜晚，最長連寫 ${ctx.streak} 天。\n這些字現在都站在街上了，隨時可以回去看。\n\n新的一個月，地基已經劃好。\n\n—— 城市檔案室`;
+  }
+  return `To the one who writes.\n\nThe ledger for ${month}: ${ctx.pages} pages, over ${ctx.days} nights, longest run ${ctx.streak} days.\nAll of it stands in the streets now, any time you want to walk back.\n\nA new month — the ground is already marked out.\n\n— The city archive`;
+}

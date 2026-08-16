@@ -1679,3 +1679,27 @@ button:focus-visible, input:focus-visible {
   margin-right: 14px;
   color: var(--v3);
 }
+
+/* jump straight to any month */
+.month-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.month-jump button {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  font: 400 10.5px/1 var(--mono);
+  letter-spacing: .06em;
+  color: var(--v5);
+  cursor: pointer;
+  min-height: 32px;
+}
+.month-jump button.active {
+  border-color: var(--amber);
+  color: var(--amber);
+}

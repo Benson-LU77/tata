@@ -175,7 +175,7 @@ const markHideField = StateField.define<DecorationSet>({
 });
 
 const taskClick = EditorView.domEventHandlers({
-  mousedown(event, view) {
+  pointerdown(event, view) {
     const target = event.target as HTMLElement;
     if (!target.classList.contains("cm-taskbox")) return false;
     const pos = view.posAtDOM(target);
@@ -195,7 +195,7 @@ const taskClick = EditorView.domEventHandlers({
 /** [[wikilink]] click-to-open — click inside the brackets jumps pages */
 function wikiClick(getOpen: () => ((name: string) => void) | undefined) {
   return EditorView.domEventHandlers({
-    mousedown(event, view) {
+    pointerdown(event, view) {
       const open = getOpen();
       if (!open) return false;
       const target = event.target as HTMLElement;
@@ -219,7 +219,7 @@ function wikiClick(getOpen: () => ((name: string) => void) | undefined) {
 /** #tag click-to-search */
 function tagClick(getOpen: () => ((tag: string) => void) | undefined) {
   return EditorView.domEventHandlers({
-    mousedown(event, view) {
+    pointerdown(event, view) {
       const open = getOpen();
       if (!open) return false;
       const target = event.target as HTMLElement;
