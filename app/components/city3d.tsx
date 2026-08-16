@@ -302,12 +302,16 @@ float hash(vec2 p) {
 }
 
 uniform float uSkin;
+uniform float uTime;
 
 void main() {
   vec3 n = abs(vNormal);
   // unlit three-tone faces: top brightest, x-side dark, z-front mid
   float tone = (n.y > 0.5 ? 0.68 : (n.x > n.z ? 0.38 : 0.58)) * uSkin;
-  float amber = step(1.9, vTint.r);
+  float lampf = step(1.9, vTint.b);
+  vec3 vTint2 = vTint;
+  if (lampf > 0.5) vTint2.b -= 2.0;
+  float amber = step(1.9, vTint2.r);
 
   // foliage: crowns are leaves, not masonry — no windows, no roof tiles,
   // just a dark speckled clump that dithers into leafy texture
@@ -321,7 +325,13 @@ void main() {
     gl_FragColor = vec4(leafc, 1.0);
     return;
   }
-  vec3 base = amber > 0.5 ? vec3(0.55, 0.38, 0.16) : vTint * tone;
+  vec3 base = amber > 0.5 ? vec3(0.55, 0.38, 0.16) : vTint2 * tone;
+  // a street lamp breathes once in a long while — barely, like a real bulb
+  if (lampf > 0.5) {
+    float fl = hash(vec2(floor(uTime * 2.0), floor(vWorld.x * 3.7) + floor(vWorld.z * 7.1)));
+    base *= 1.0 - 0.5 * step(0.982, fl);
+    base *= 1.35; // the head glows above plain concrete
+  }
 
   if (n.y > 0.5) {
     // roofs carry weight up here: tile rows with seams, a hash per tile
@@ -468,9 +478,18 @@ type Handles = {
   mesh: THREE.InstancedMesh | null;
   buildingMat: THREE.ShaderMaterial | null;
   lotOfInstance: Lot[];
-  boxesPerInstance: { lot: Lot; box: { x: number; y: number; z: number; w: number; h: number; d: number }; leaf?: boolean }[];
-  /** bought groves — static sprites placed by the sprite pass */
+  boxesPerInstance: { lot: Lot; box: { x: number; y: number; z: number; w: number; h: number; d: number }; leaf?: boolean; lampHead?: boolean }[];
+  /** bought groves — sprites placed by the sprite pass, swaying in gusts */
   trees: { x: number; z: number; name: string; mirror: number }[];
+  /** fixed-point animations: fountains, boats, lanterns, bells, dust */
+  animSpots: {
+    x: number;
+    y: number;
+    z: number;
+    worldH: number;
+    frames: string[];
+    pick: (t: number) => number;
+  }[];
   spriteMesh: THREE.InstancedMesh | null;
   spriteMat: THREE.ShaderMaterial | null;
   spriteFrames: Record<string, { x: number; y: number; w: number; h: number }>;
@@ -1024,9 +1043,17 @@ export function City3D({
         place("emote_notice", p.x, p.y + (SPRITE_WORLD_H[look2] ?? 1.4) * encScale + 0.3, p.z, 0.5, 0, 0);
       }
     }
-    // the groves stand still — same pass, same pixel grid
+    // the groves sway in travelling gusts — a wave of wind, not a metronome
     for (const tr of h.trees) {
-      place(tr.name, tr.x, 0, tr.z, SPRITE_WORLD_H[tr.name] ?? 1.4, tr.mirror, 0);
+      const gust = Math.sin(t * 0.9 - (tr.x + tr.z) * 0.22) > 0.86;
+      const nm = gust && h.spriteFrames[tr.name + "_b"] ? tr.name + "_b" : tr.name;
+      place(nm, tr.x, 0, tr.z, SPRITE_WORLD_H[tr.name] ?? 1.4, tr.mirror, 0);
+    }
+    // fixed-point animations: water, boats, lanterns, the hourly bell
+    for (const sp of h.animSpots) {
+      const fi = sp.pick(t);
+      if (fi < 0) continue;
+      place(sp.frames[fi] ?? sp.frames[0], sp.x, sp.y, sp.z, sp.worldH, 0, 0);
     }
     for (; si < h.spriteMesh.count; si += 1) rect.setXYZW(si, 0, 0, 0, 0);
     h.spriteMesh.instanceMatrix.needsUpdate = true;
@@ -1279,6 +1306,7 @@ export function City3D({
       // two-pass: scene → low-res RT → quantise to screen (centered
       // integer-multiple blit; the margin stays background)
       h.quantMat.uniforms.uTime.value = now / 1000;
+      h.buildingMat!.uniforms.uTime.value = now / 1000;
       // tonight's real moon — synodic month from the Jan 2000 new moon
       h.quantMat.uniforms.uMoon.value =
         (((now + performance.timeOrigin - 947182440000) % 2551442877) + 2551442877) % 2551442877 / 2551442877;
@@ -1432,10 +1460,11 @@ export function City3D({
       }),
       creatures: [],
       trees: [],
+      animSpots: [],
       weatherMesh: null,
       beam: null,
       buildingMat: new THREE.ShaderMaterial({
-        uniforms: { uFloorH: { value: FLOOR_H }, uSkin: { value: 1 } },
+        uniforms: { uFloorH: { value: FLOOR_H }, uSkin: { value: 1 }, uTime: { value: 0 } },
         vertexShader: BUILDING_VERT,
         fragmentShader: BUILDING_FRAG,
       }),
@@ -1519,6 +1548,7 @@ export function City3D({
       h.mesh.geometry.dispose(); // material is shared and lives on
     }
     const entries: Handles["boxesPerInstance"] = [];
+    const spots: Handles["animSpots"] = [];
     for (const lot of plan.lots) {
       for (const box of massing(lot)) entries.push({ lot, box });
     }
@@ -1541,6 +1571,11 @@ export function City3D({
       entries.push({ lot: { ...decorLot(hx, hz), seed: 3 }, box: { x: hx - 1.6, y: 0.15, z: hz - 0.6, w: 0.14, h: 1.7, d: 0.14 } });
       entries.push({ lot: { ...decorLot(hx, hz), seed: 3 }, box: { x: hx - 1.6, y: 1.85, z: hz - 0.6, w: 1.2, h: 0.12, d: 0.12 } });
       entries.push({ lot: decorLot(hx, hz), box: { x: hx + 1.4, y: 0.15, z: hz + 0.5, w: 0.8, h: 0.5, d: 0.8 } });
+      spots.push({
+        x: hx - 2.2, y: -0.08, z: hz + 1.5, worldH: 0.65,
+        frames: ["boat_a", "boat_b"],
+        pick: (t) => (Math.sin(t * 1.7) > 0 ? 0 : 1),
+      });
     }
     if (decor.viaduct && plan.blocks.length > 1) {
       // a high road linking the first two blocks
@@ -1605,6 +1640,15 @@ export function City3D({
         }
         entries.push({ lot: cLot(2), box: { x: wx - 1.2, y: hNow, z: wz - 0.8, w: 0.07, h: 0.9, d: 0.07 } });
         entries.push({ lot: cLot(3), box: { x: wx - 0.6, y: hNow + 0.82, z: wz - 0.8, w: 1.3, h: 0.07, d: 0.07 } });
+        const dustPhase = ((cm.block * 7919) % 100) / 10;
+        spots.push({
+          x: wx + 0.8, y: hNow + 0.15, z: wz - 0.4, worldH: 0.54,
+          frames: ["dust_a", "dust_b", "dust_c"],
+          pick: (t) => {
+            const c = (t + dustPhase) % 16;
+            return c < 1.8 ? Math.min(2, Math.floor(c / 0.6)) : -1;
+          },
+        });
       } else if (cm.id === "library") {
         entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 3.4, h: 1.5, d: 2.0 } });
         for (const cx2 of [-1.15, 0, 1.15]) {
@@ -1616,16 +1660,36 @@ export function City3D({
         entries.push({ lot: cLot(5), box: { x: wx, y: 0, z: wz, w: 2.8, h: 1.1, d: 1.6 } });
         entries.push({ lot: cLot(2), box: { x: wx, y: 1.1, z: wz, w: 2.9, h: 0.1, d: 0.24 } });
         entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 0.12, h: 1.25, d: 1.7 } });
+        spots.push({
+          x: wx + 0.7, y: 0.55, z: wz + 0.85, worldH: 0.54,
+          frames: ["glint_a", "glint_b"],
+          pick: (t) => {
+            const c = (t * 0.13) % 11;
+            return c < 0.5 ? (c < 0.25 ? 0 : 1) : -1;
+          },
+        });
       } else if (cm.id === "teahouse") {
         entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 1.7, h: 1.0, d: 1.3 } });
         entries.push({ lot: cLot(2), box: { x: wx, y: 1.0, z: wz, w: 2.4, h: 0.14, d: 1.9 } });
         entries.push({ lot: cLot(2), box: { x: wx + 1.35, y: 0, z: wz + 0.7, w: 0.07, h: 1.35, d: 0.07 } });
-        entries.push({ lot: cLot(3), box: { x: wx + 1.35, y: 1.35, z: wz + 0.7, w: 0.2, h: 0.24, d: 0.2 } });
+        spots.push({
+          x: wx + 1.35, y: 1.0, z: wz + 0.72, worldH: 0.65,
+          frames: ["lantern_a", "lantern_b"],
+          pick: (t) => (Math.sin(t * 1.2) > 0.2 ? 0 : 1),
+        });
       } else if (cm.id === "belltower") {
         entries.push({ lot: cLot(2), box: { x: wx, y: 0, z: wz, w: 0.9, h: 4.2, d: 0.9 } });
         entries.push({ lot: cLot(2), box: { x: wx, y: 4.2, z: wz, w: 1.2, h: 0.5, d: 1.2 } });
-        entries.push({ lot: cLot(3), box: { x: wx, y: 4.32, z: wz, w: 0.3, h: 0.28, d: 0.3 } });
         entries.push({ lot: cLot(2), box: { x: wx, y: 4.7, z: wz, w: 0.7, h: 0.3, d: 0.7 } });
+        spots.push({
+          x: wx, y: 4.14, z: wz + 0.62, worldH: 0.76,
+          frames: ["bell_a", "bell_b", "bell_c"],
+          pick: (t) => {
+            const d2 = new Date(performance.timeOrigin + t * 1000);
+            const intoHour = d2.getMinutes() * 60 + d2.getSeconds();
+            return intoHour < 8 ? 1 + (Math.floor(t * 3) % 2) : 0;
+          },
+        });
       } else if (cm.id === "skybridge") {
         for (const px3 of [-1.6, 1.6]) {
           entries.push({ lot: cLot(2), box: { x: wx + px3, y: 0, z: wz, w: 0.4, h: 3.4, d: 0.4 } });
@@ -1668,7 +1732,7 @@ export function City3D({
           entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 0, z: lz, w: 0.09, h: 1.5, d: 0.09 } });
           entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 0, z: lz, w: 0.2, h: 0.12, d: 0.2 } }); // pedestal
           entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 1.42, z: lz, w: 0.3, h: 0.05, d: 0.3 } }); // bracket
-          entries.push({ lot: { ...decorLot(lx, lz), seed: 3 }, box: { x: lx, y: 1.5, z: lz, w: 0.22, h: 0.18, d: 0.22 } });
+          entries.push({ lot: { ...decorLot(lx, lz), seed: 3 }, box: { x: lx, y: 1.5, z: lz, w: 0.22, h: 0.18, d: 0.22 }, lampHead: true });
           entries.push({ lot: decorLot(lx, lz), box: { x: lx, y: 1.68, z: lz, w: 0.12, h: 0.06, d: 0.12 } }); // cap
           entries.push({ lot: { ...decorLot(lx, lz), seed: 7 }, box: { x: lx, y: 0.012, z: lz, w: 0.85, h: 0.02, d: 0.85 } }); // light pool
         }
@@ -1720,6 +1784,7 @@ export function City3D({
       });
     }
     h.trees = trees;
+    h.animSpots = spots;
     if (decor.fountain && plan.blocks.length > 0) {
       const first = plan.blocks[0];
       // the plaza of your first month: the free cell nearest its heart
@@ -1743,6 +1808,11 @@ export function City3D({
       entries.push({ lot: { ...decorLot(fx, fz), seed: 4 }, box: { x: fx, y: 0.18, z: fz, w: 0.95, h: 0.08, d: 0.95 } }); // inner ring
       entries.push({ lot: decorLot(fx, fz), box: { x: fx, y: 0.18, z: fz, w: 0.24, h: 0.55, d: 0.24 } });
       entries.push({ lot: { ...decorLot(fx, fz), seed: 5 }, box: { x: fx, y: 0.73, z: fz, w: 0.16, h: 0.16, d: 0.16 } });
+      spots.push({
+        x: fx, y: 0.5, z: fz, worldH: 0.87,
+        frames: ["fountain_w_a", "fountain_w_b", "fountain_w_c"],
+        pick: (t) => Math.floor(t * 5) % 3,
+      });
     }
 
     // the island itself: a terrain-mapped plane with an organic coastline
@@ -1786,7 +1856,7 @@ export function City3D({
       const grey = 0.72 + ((e.lot.seed >>> 8) % 100) / 400; // per-building variance
       tints[i * 3] = grey;
       tints[i * 3 + 1] = e.leaf ? 2.0 + grey : grey; // g>1.9 flags foliage
-      tints[i * 3 + 2] = grey * 1.04;
+      tints[i * 3 + 2] = e.lampHead ? 2.0 + grey * 1.04 : grey * 1.04; // b>1.9 flags a lamp head
       infos[i * 2] = e.lot.lit;
       infos[i * 2 + 1] = ((e.lot.seed >>> 4) % 1000) / 1000;
     });
@@ -1815,7 +1885,7 @@ export function City3D({
       h.spriteMesh.geometry.dispose(); // material and atlas live on
     }
     const creatures = creaturesFor(plan, plan.lots.length, extras);
-    const slots = creatures.length * 2 + 8 + h.trees.length; // umbrellas, emotes, groves
+    const slots = creatures.length * 2 + 8 + h.trees.length + h.animSpots.length; // umbrellas, emotes, groves, spot animations
     if (slots > 0 && h.spriteMat) {
       const g = new THREE.PlaneGeometry(1, 1);
       g.translate(0, 0.5, 0);
