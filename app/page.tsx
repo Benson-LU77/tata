@@ -81,6 +81,7 @@ export default function Home() {
   const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [foundToast, setFoundToast] = useState(false);
   const [swApply, setSwApply] = useState<(() => void) | null>(null);
+  const [touchPick, setTouchPick] = useState<string | null>(null);
   const [encounterKey, setEncounterKey] = useState<string | null>(null);
   const encTimersRef = useRef<number[]>([]);
   const encStageRef = useRef<"their" | "reply" | null>(null);
@@ -307,12 +308,32 @@ export default function Home() {
   );
   const dex = useMemo(() => {
     const count = (a: number) => cityPlan.lots.filter((l) => l.arch === a).length;
-    return [
-      { id: 10, name: t("dex.lighthouse.name"), line: t("dex.lighthouse.line"), n: count(10) },
-      { id: 11, name: t("dex.arch.name"), line: t("dex.arch.line"), n: count(11) },
-      { id: 12, name: t("dex.chapel.name"), line: t("dex.chapel.line"), n: count(12) },
+    const own = (id: string, n: number) => (game.owned.includes(id) ? n : 0);
+    const builtWorks = resolveCommissions(game.commissions ?? [], nowTs || 0).built.map((b) => b.id);
+    const entries: { id: string; name: string; line: string; n: number; icon?: string[] | null }[] = [
+      { id: "a10", name: t("dex.lighthouse.name"), line: t("dex.lighthouse.line"), n: count(10) },
+      { id: "a11", name: t("dex.arch.name"), line: t("dex.arch.line"), n: count(11) },
+      { id: "a12", name: t("dex.chapel.name"), line: t("dex.chapel.line"), n: count(12) },
+      { id: "constellations", name: t("dex.constellations.name"), line: t("dex.constellations.line"), n: Math.min(level, 12), icon: null },
+      { id: "moon", name: t("dex.moon.name"), line: t("dex.moon.line"), n: 1, icon: null },
+      { id: "cats", name: t("shop.cats.name"), line: t("shop.cats.line"), n: own("cats", 4), icon: iconOf("cats") },
+      { id: "birds", name: t("shop.birds.name"), line: t("shop.birds.line"), n: own("birds", 6), icon: iconOf("birds") },
+      { id: "dog", name: t("shop.dog.name"), line: t("shop.dog.line"), n: own("dog", 1), icon: iconOf("dog") },
     ];
-  }, [cityPlan.lots, t]);
+    for (const id of ["trees", "lamps", "fountain", "harbor", "viaduct", "observatory", "sister", "comet"]) {
+      entries.push({ id, name: t("shop." + id + ".name"), line: t("shop." + id + ".line"), n: own(id, 1), icon: iconOf(id) });
+    }
+    for (const def of COMMISSION_CATALOG) {
+      entries.push({
+        id: def.id,
+        name: t("comm." + def.id + ".name"),
+        line: t("comm." + def.id + ".line"),
+        n: builtWorks.includes(def.id) ? 1 : 0,
+        icon: iconOf(def.id),
+      });
+    }
+    return entries;
+  }, [cityPlan.lots, game.owned, game.commissions, nowTs, level, t]);
 
   const buy = useCallback(
     (id: string) => {
@@ -1095,8 +1116,16 @@ export default function Home() {
             level={level}
             streak={bestStreak}
             commissions={works}
+            ariaLabel={t("city.aria")}
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
-            onOpen={(file) => openWrite(file)}
+            onOpen={(file) => {
+              if (window.matchMedia("(pointer: coarse)").matches && touchPick !== file) {
+                setTouchPick(file);
+                return;
+              }
+              setTouchPick(null);
+              openWrite(file);
+            }}
             onCreatureTap={onCreatureTap}
             onGroundTap={onGroundTap}
             encounterKey={encounterKey}
@@ -1119,6 +1148,29 @@ export default function Home() {
         {worksToast && (
           <div className="levelup-toast" role="status">
             {t("works.done.toast")}
+          </div>
+        )}
+        {touchPick && !writeOpen && (
+          <div className="pick-chip" role="dialog">
+            <strong>{touchPick.replace(/\.md$/, "")}</strong>
+            <em>
+              {metrics.find((m) => m.file === touchPick)?.words ?? 0}
+              {t("notes.wordunit")}
+            </em>
+            <button
+              type="button"
+              className="pick-open"
+              onClick={() => {
+                const f = touchPick;
+                setTouchPick(null);
+                openWrite(f);
+              }}
+            >
+              {t("pick.open")}
+            </button>
+            <button type="button" onClick={() => setTouchPick(null)} aria-label={t("common.close")}>
+              ×
+            </button>
           </div>
         )}
         {foundToast && (
@@ -1512,8 +1564,9 @@ export default function Home() {
         <div className="dex-items">
           {dex.map((d) => (
             <div key={d.id} className={"dex-item" + (d.n > 0 ? " found" : "")}>
+              {d.icon && d.n > 0 && <PixelIcon rows={d.icon} size={26} />}
               <strong>{d.n > 0 ? d.name : t("registry.unknown")}</strong>
-              <em>{d.line}</em>
+              <em>{d.n > 0 ? d.line : "…"}</em>
               <span>{d.n > 0 ? `${t("registry.standing")}${d.n}` : t("registry.notbuilt")}</span>
             </div>
           ))}
@@ -1524,10 +1577,12 @@ export default function Home() {
               <span>{t("registry.neighbours")}</span>
             </div>
             <div className="dex-items">
-              {knownResidents.map((r) => (
+              {knownResidents.map((r, i) => (
                 <div key={r.key} className="dex-item found">
                   <strong>
                     {r.name}
+                    {knownResidents.some((o, j) => o.name === r.name && j < i) &&
+                      ` ${"Ⅱ Ⅲ Ⅳ Ⅴ".split(" ")[Math.min(3, knownResidents.filter((o, j) => o.name === r.name && j < i).length - 1)] ?? "Ⅴ"}`}
                     {r.prof && <span className="dex-prof"> · {t("prof." + r.prof)}</span>}
                   </strong>
                   <em>

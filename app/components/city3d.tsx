@@ -593,6 +593,7 @@ export function City3D({
   level,
   streak,
   commissions,
+  ariaLabel,
   onHover,
   onOpen,
   onCreatureTap,
@@ -623,6 +624,7 @@ export function City3D({
   streak: number;
   /** public works: id + block + construction progress (1 = open) */
   commissions: { id: string; block: number; progress: number }[];
+  ariaLabel?: string;
   onHover: (file: string | null, x: number, y: number) => void;
   onOpen: (file: string) => void;
   /** a resident was tapped (never fires for ships) */
@@ -2245,7 +2247,7 @@ export function City3D({
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerLeave}
       onWheel={onWheel}
-      aria-label="Your city of notes"
+      aria-label={ariaLabel ?? "Your city of notes"}
       role="img"
     />
   );

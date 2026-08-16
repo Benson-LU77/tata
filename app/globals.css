@@ -1766,3 +1766,41 @@ button:focus-visible, input:focus-visible {
   image-rendering: pixelated;
   opacity: .9;
 }
+
+/* touch pick: read the label, then decide */
+.pick-chip {
+  position: absolute;
+  z-index: 14;
+  left: 50%;
+  bottom: calc(clamp(20px, 4vh, 40px) + env(safe-area-inset-bottom, 0px) + 56px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--v3);
+  background: rgba(10, 12, 16, .94);
+  max-width: calc(100vw - 32px);
+}
+.pick-chip strong {
+  font: 400 12px/1.3 var(--mono);
+  color: var(--v6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pick-chip em { font: 400 10.5px/1 var(--mono); color: var(--v4); font-style: normal; white-space: nowrap; }
+.pick-chip button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--v6);
+  font: 400 11px/1 var(--mono);
+  padding: 8px 12px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.pick-chip .pick-open { border-color: var(--amber); color: var(--amber); }
+
+/* dex rows wear their icons like the depot does */
+.dex-item { position: relative; }
+.dex-item .depot-thumb { right: 10px; }
