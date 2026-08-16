@@ -1804,3 +1804,44 @@ button:focus-visible, input:focus-visible {
 /* dex rows wear their icons like the depot does */
 .dex-item { position: relative; }
 .dex-item .depot-thumb { right: 10px; }
+
+/* stash & move: the pocket and the moving day */
+.depot-cell { position: relative; display: grid; }
+.depot-item.stashed { opacity: .55; }
+.move-chip {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 5px 10px;
+  border: 1px solid rgba(224, 168, 79, .4);
+  background: rgba(10, 12, 16, .9);
+  font: 400 10px/1 var(--mono);
+  letter-spacing: .08em;
+  color: var(--amber);
+  cursor: pointer;
+}
+.move-banner {
+  position: absolute;
+  z-index: 16;
+  left: 50%;
+  top: clamp(16px, 4vh, 40px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border: 1px solid var(--amber);
+  background: rgba(10, 12, 16, .94);
+  font: 400 11.5px/1.4 var(--mono);
+  color: var(--amber);
+  max-width: calc(100vw - 32px);
+}
+.move-banner button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--v5);
+  font: 400 12px/1 var(--mono);
+  min-width: 30px;
+  min-height: 30px;
+  cursor: pointer;
+}

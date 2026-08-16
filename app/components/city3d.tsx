@@ -612,6 +612,7 @@ export function City3D({
   level,
   streak,
   commissions,
+  placements,
   ariaLabel,
   onHover,
   onOpen,
@@ -643,6 +644,7 @@ export function City3D({
   streak: number;
   /** public works: id + block + construction progress (1 = open) */
   commissions: { id: string; block: number; progress: number }[];
+  placements?: Record<string, { x: number; z: number }>;
   ariaLabel?: string;
   onHover: (file: string | null, x: number, y: number) => void;
   onOpen: (file: string) => void;
@@ -1596,8 +1598,13 @@ export function City3D({
       // a dome on the meadow past the newest block's far corner,
       // clear of the ring road, watching the galaxy
       const nb = plan.blocks[plan.blocks.length - 1];
-      const ox2 = nb.x + 8.7 * CELL;
-      const oz2 = nb.z - 1.6 * CELL;
+      let ox2 = nb.x + 8.7 * CELL;
+      let oz2 = nb.z - 1.6 * CELL;
+      const forcedO = placements?.["observatory"];
+      if (forcedO) {
+        ox2 = forcedO.x;
+        oz2 = forcedO.z;
+      }
       entries.push({ lot: decorLot(ox2, oz2), box: { x: ox2, y: 0, z: oz2, w: 1.3, h: 2.6, d: 1.3 } });
       entries.push({ lot: { ...decorLot(ox2, oz2), seed: 3 }, box: { x: ox2, y: 2.6, z: oz2, w: 1.0, h: 0.7, d: 1.0 } });
       entries.push({ lot: { ...decorLot(ox2, oz2), seed: 5 }, box: { x: ox2 + 0.3, y: 3.3, z: oz2, w: 0.18, h: 0.55, d: 0.18 } });
@@ -1624,8 +1631,9 @@ export function City3D({
     for (const cm of commissions) {
       const blk = plan.blocks[Math.min(cm.block, plan.blocks.length - 1)];
       if (!blk) continue;
-      const wx = blk.x + 3.5 * CELL;
-      const wz = blk.z - CELL * 2.1;
+      const forcedW = placements?.[cm.id];
+      const wx = forcedW?.x ?? blk.x + 3.5 * CELL;
+      const wz = forcedW?.z ?? blk.z - CELL * 2.1;
       const cLot = (seed: number): Lot => ({ ...decorLot(wx, wz), seed });
       if (cm.progress < 1) {
         // scaffold: four posts, platforms stacked with progress, a crane arm
@@ -1804,6 +1812,11 @@ export function City3D({
         fx = cell.cx;
         fz = cell.cz;
       }
+      const forcedF = placements?.["fountain"];
+      if (forcedF) {
+        fx = forcedF.x;
+        fz = forcedF.z;
+      }
       entries.push({ lot: decorLot(fx, fz), box: { x: fx, y: 0, z: fz, w: 1.4, h: 0.18, d: 1.4 } });
       entries.push({ lot: { ...decorLot(fx, fz), seed: 4 }, box: { x: fx, y: 0.18, z: fz, w: 0.95, h: 0.08, d: 0.95 } }); // inner ring
       entries.push({ lot: decorLot(fx, fz), box: { x: fx, y: 0.18, z: fz, w: 0.24, h: 0.55, d: 0.24 } });
@@ -1916,7 +1929,7 @@ export function City3D({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     h.quantMat!.uniforms.uLevel.value = level;
     (h.quantMat!.uniforms.uSky.value as THREE.Vector2).set(decor.sister ? 1 : 0, decor.comet ? 1 : 0);
-  }, [plan, extras, decor, skin, streak, weather, commissions, level]);
+  }, [plan, extras, decor, skin, streak, weather, commissions, level, placements]);
 
   /* the Mirror: a new look recomposes your nine frames into the atlas.
      Texture and frame table swap in the same tick — they must never

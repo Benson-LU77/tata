@@ -82,6 +82,8 @@ export default function Home() {
   const [foundToast, setFoundToast] = useState(false);
   const [swApply, setSwApply] = useState<(() => void) | null>(null);
   const [touchPick, setTouchPick] = useState<string | null>(null);
+  const [moveMode, setMoveMode] = useState<string | null>(null);
+  const [moveToast, setMoveToast] = useState<string | null>(null);
   const [encounterKey, setEncounterKey] = useState<string | null>(null);
   const encTimersRef = useRef<number[]>([]);
   const encStageRef = useRef<"their" | "reply" | null>(null);
@@ -353,6 +355,15 @@ export default function Home() {
           }
           if (item.kind === "skin" && prev.skin !== id) {
             const next: GameState = { ...prev, skin: id as GameState["skin"], updatedAt: Date.now() };
+            void saveGameState(next, clientRef.current);
+            return next;
+          }
+          if (item.kind === "decor" || item.kind === "creature") {
+            // stash or bring back out — never lost, never resold
+            const pocket = (prev.stashed ?? []).includes(id)
+              ? (prev.stashed ?? []).filter((s) => s !== id)
+              : [...(prev.stashed ?? []), id];
+            const next: GameState = { ...prev, stashed: pocket, updatedAt: Date.now() };
             void saveGameState(next, clientRef.current);
             return next;
           }
@@ -736,27 +747,27 @@ export default function Home() {
     [game.letters, bodyOf],
   );
 
-  const extras = useMemo(
-    () => ({
-      cats: game.owned.includes("cats") ? 4 : 0,
-      birds: game.owned.includes("birds") ? 6 : 0,
-      dogs: game.owned.includes("dog") ? 1 : 0,
-    }),
-    [game.owned],
-  );
-  const decor = useMemo(
-    () => ({
-      lamps: game.owned.includes("lamps"),
-      trees: game.owned.includes("trees"),
-      fountain: game.owned.includes("fountain"),
-      harbor: game.owned.includes("harbor"),
-      viaduct: game.owned.includes("viaduct"),
-      observatory: game.owned.includes("observatory"),
-      sister: game.owned.includes("sister"),
-      comet: game.owned.includes("comet"),
-    }),
-    [game.owned],
-  );
+  const extras = useMemo(() => {
+    const on = (id: string) => game.owned.includes(id) && !(game.stashed ?? []).includes(id);
+    return {
+      cats: on("cats") ? 4 : 0,
+      birds: on("birds") ? 6 : 0,
+      dogs: on("dog") ? 1 : 0,
+    };
+  }, [game.owned, game.stashed]);
+  const decor = useMemo(() => {
+    const on = (id: string) => game.owned.includes(id) && !(game.stashed ?? []).includes(id);
+    return {
+      lamps: on("lamps"),
+      trees: on("trees"),
+      fountain: on("fountain"),
+      harbor: on("harbor"),
+      viaduct: on("viaduct"),
+      observatory: on("observatory"),
+      sister: on("sister"),
+      comet: on("comet"),
+    };
+  }, [game.owned, game.stashed]);
 
   /* ---------- search lights up the city ---------- */
 
@@ -820,6 +831,15 @@ export default function Home() {
     },
     [cityPlan.blocks],
   );
+
+  useEffect(() => {
+    if (!moveMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMoveMode(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moveMode]);
 
   /* ---------- intro ---------- */
 
@@ -927,6 +947,46 @@ export default function Home() {
     if (file) setRequestOpen({ file, n: Date.now() });
   }, [clearEncounterTimers]);
 
+  /** landmark placements in world coords — a written day evicts the guest */
+  const placements = useMemo(() => {
+    const CELL = 3;
+    const out: Record<string, { x: number; z: number }> = {};
+    for (const [id, cell] of Object.entries(game.placedAt ?? {})) {
+      const block = cityPlan.blocks.find((b) => b.month === cell.month);
+      if (!block) continue;
+      const date = dateAtCell(cell.month, cell.col, cell.row);
+      if (date !== null && metrics.some((m) => m.date === date)) continue; // words win
+      out[id] = { x: block.x + cell.col * CELL + CELL / 2, z: block.z + cell.row * CELL + CELL / 2 };
+    }
+    return out;
+  }, [game.placedAt, cityPlan.blocks, metrics]);
+
+  /* a new building claimed a chosen cell — the landmark steps aside, told */
+  useEffect(() => {
+    const evicted = Object.entries(game.placedAt ?? {}).filter(([, cell]) => {
+      const date = dateAtCell(cell.month, cell.col, cell.row);
+      return date !== null && metrics.some((m) => m.date === date);
+    });
+    if (evicted.length === 0) return;
+    const timer = window.setTimeout(() => {
+      setGame((prev) => {
+        const left = Object.fromEntries(
+          Object.entries(prev.placedAt ?? {}).filter(([, cell]) => {
+            const date = dateAtCell(cell.month, cell.col, cell.row);
+            return !(date !== null && metrics.some((m) => m.date === date));
+          }),
+        );
+        if (Object.keys(left).length === Object.keys(prev.placedAt ?? {}).length) return prev;
+        const next: GameState = { ...prev, placedAt: left, updatedAt: Date.now() };
+        void saveGameState(next, clientRef.current);
+        return next;
+      });
+      setMoveToast(t("move.yield"));
+      window.setTimeout(() => setMoveToast(null), 5200);
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [game.placedAt, metrics, t]);
+
   const onGroundTap = useCallback(
     (x: number, z: number) => {
       if (encounterKey) {
@@ -941,6 +1001,26 @@ export default function Home() {
       const col = Math.floor((x - block.x) / CELL);
       const row = Math.floor((z - block.z) / CELL);
       const date = dateAtCell(block.month, col, row);
+      if (moveMode) {
+        if (date !== null && metrics.some((m) => m.date === date)) {
+          setMoveToast(t("move.blocked"));
+          window.setTimeout(() => setMoveToast(null), 3200);
+          return;
+        }
+        const id2 = moveMode;
+        hum().settle();
+        setMoveMode(null);
+        setGame((prev) => {
+          const next: GameState = {
+            ...prev,
+            placedAt: { ...(prev.placedAt ?? {}), [id2]: { month: block.month, col, row } },
+            updatedAt: Date.now(),
+          };
+          void saveGameState(next, clientRef.current);
+          return next;
+        });
+        return;
+      }
       if (!date || !today || date > today) return; // the future stays empty
       const existing = metrics.filter((m) => m.date === date);
       if (existing.length > 0) {
@@ -951,7 +1031,7 @@ export default function Home() {
         openWrite(date === today ? `${date} Today.md` : `${date}.md`);
       }
     },
-    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, advanceEncounter],
+    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, advanceEncounter, moveMode, t],
   );
 
 
@@ -1116,6 +1196,7 @@ export default function Home() {
             level={level}
             streak={bestStreak}
             commissions={works}
+            placements={placements}
             ariaLabel={t("city.aria")}
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
             onOpen={(file) => {
@@ -1148,6 +1229,25 @@ export default function Home() {
         {worksToast && (
           <div className="levelup-toast" role="status">
             {t("works.done.toast")}
+          </div>
+        )}
+        {moveMode && (
+          <div className="move-banner" role="status">
+            <span>
+              {t("move.banner.pre")}
+              {commissionDef(moveMode)
+                ? t("comm." + moveMode + ".name")
+                : t("shop." + moveMode + ".name")}
+              {t("move.banner.post")}
+            </span>
+            <button type="button" onClick={() => setMoveMode(null)} aria-label={t("common.close")}>
+              ×
+            </button>
+          </div>
+        )}
+        {moveToast && (
+          <div className="levelup-toast" role="status">
+            {moveToast}
           </div>
         )}
         {touchPick && !writeOpen && (
@@ -1680,9 +1780,14 @@ export default function Home() {
             const active =
               (item.kind === "weather" && game.weather === item.id) ||
               (item.kind === "skin" && game.skin === item.id);
+            const stashed = (game.stashed ?? []).includes(item.id);
             const clickable = owned
-              ? item.kind === "weather" || (item.kind === "skin" && !active)
+              ? item.kind === "weather" ||
+                (item.kind === "skin" && !active) ||
+                item.kind === "decor" ||
+                item.kind === "creature"
               : affordable && !locked;
+            const movable = owned && (item.id === "fountain" || item.id === "observatory");
             const itemName =
               t("shop." + item.id + ".name") !== "shop." + item.id + ".name"
                 ? t("shop." + item.id + ".name")
@@ -1692,10 +1797,10 @@ export default function Home() {
                 ? t("shop." + item.id + ".line")
                 : item.line;
             return (
+              <div key={item.id} className="depot-cell">
               <button
-                key={item.id}
                 type="button"
-                className={"depot-item" + (owned ? " owned" : "") + (active ? " active" : "")}
+                className={"depot-item" + (owned ? " owned" : "") + (active ? " active" : "") + (stashed ? " stashed" : "")}
                 disabled={!clickable}
                 onClick={() => buy(item.id)}
               >
@@ -1709,12 +1814,30 @@ export default function Home() {
                   {active
                     ? t("depot.state.tonight")
                     : owned
-                      ? t("depot.state.owned")
+                      ? (item.kind === "decor" || item.kind === "creature")
+                        ? stashed
+                          ? t("depot.state.stashed")
+                          : t("depot.state.shown")
+                        : t("depot.state.owned")
                       : locked
                         ? `${t("depot.balance.level")} ${item.minLevel}`
                         : `${item.cost} ${t("depot.unit.w")}`}
                 </span>
               </button>
+              {movable && !stashed && (
+                <button
+                  type="button"
+                  className="move-chip"
+                  onClick={() => {
+                    hum().click();
+                    setMoveMode(item.id);
+                    setShopOpen(false);
+                  }}
+                >
+                  {t("depot.move")}
+                </button>
+              )}
+              </div>
             );
           })}
         </div>
@@ -1728,8 +1851,8 @@ export default function Home() {
             const affordable = balance >= def.cost;
             const locked = def.minLevel > level;
             return (
+              <div key={def.id} className="depot-cell">
               <button
-                key={def.id}
                 type="button"
                 className={
                   "depot-item" +
@@ -1758,6 +1881,20 @@ export default function Home() {
                       : `${def.cost} W · ${def.days} ${t("works.days")}`}
                 </span>
               </button>
+              {mine && prog >= 1 && (
+                <button
+                  type="button"
+                  className="move-chip"
+                  onClick={() => {
+                    hum().click();
+                    setMoveMode(def.id);
+                    setShopOpen(false);
+                  }}
+                >
+                  {t("depot.move")}
+                </button>
+              )}
+              </div>
             );
           })}
         </div>
