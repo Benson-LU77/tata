@@ -195,6 +195,10 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "notes.error.safari":
       "Safari blocks the http port. In the plugin, enable the encrypted server, open https://127.0.0.1:27124/ once and trust its certificate, then set the Url here to https://127.0.0.1:27124.",
     "notes.error.open": "Couldn't open that note.",
+    "notes.floor.pre": "",
+    "notes.floor.post": " words to the next floor",
+    "notes.tonight": "tonight +",
+    "hud.nights": " nights",
     "notes.status.saving": "saving",
     "notes.status.saved": "saved",
     "notes.status.offline": "saved locally",
@@ -458,6 +462,10 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "notes.error.safari":
       "Safari 封鎖了 http 連接埠。請在外掛中啟用加密伺服器，開啟一次 https://127.0.0.1:27124/ 並信任其憑證，再把這裡的網址設為 https://127.0.0.1:27124。",
     "notes.error.open": "無法開啟這則筆記。",
+    "notes.floor.pre": "再 ",
+    "notes.floor.post": " 字多一層樓",
+    "notes.tonight": "今晚 +",
+    "hud.nights": " 夜",
     "notes.status.saving": "儲存中",
     "notes.status.saved": "已儲存",
     "notes.status.offline": "已儲存在本機",

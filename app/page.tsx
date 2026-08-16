@@ -9,7 +9,7 @@ import { demoMetrics, loadCityMetrics, dateOf } from "./lib/city/metrics";
 import type { NoteMetric } from "./lib/city/metrics";
 import { ObsidianClient, loadConfig } from "./lib/obsidian";
 import { cityCache } from "./lib/drafts";
-import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, streakOf, workOrders } from "./lib/game/watts";
+import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
 import { dateAtCell, floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
@@ -266,7 +266,10 @@ export default function Home() {
   }, [game.weather, today]);
 
 
-  const earnedDerived = useMemo(() => earnedWatts(metrics) + orderBonus(metrics), [metrics]);
+  const earnedDerived = useMemo(
+    () => earnedWatts(metrics) + orderBonus(metrics) + streakBonus(metrics),
+    [metrics],
+  );
   // the iron rule, enforced: deleting notes in the vault never shrinks the
   // city — the floor only ever rises, and it lives in tata.json
   const earned = Math.max(earnedDerived, game.earnedFloor);
@@ -1354,6 +1357,17 @@ export default function Home() {
       )}
 
       <Clock />
+
+      {!empty && (
+        <div className="city-hud immersion-ui" aria-hidden="true">
+          <span>{Math.floor(balance)} W</span>
+          <span>
+            {streakOf(metrics, today)}
+            {t("hud.nights")}
+          </span>
+          <span>LV {level}</span>
+        </div>
+      )}
 
       <NotesPanel
         open={writeOpen}

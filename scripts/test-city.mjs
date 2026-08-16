@@ -85,6 +85,17 @@ const more = [...metrics, { file: "2026-08-04 Today.md", date: "2026-08-04", wor
 const after = ew(more) + ob(more);
 assert.ok(after >= before, "the city never shrinks overnight");
 
+// 7b. streaks pay: consecutive nights earn more than scattered ones,
+// and extending history never lowers the bonus
+{
+  const { streakBonus } = await import(join(out, "watts.js"));
+  const run = ["01","02","03","04"].map((d) => ({ file: `${d}.md`, date: `2026-08-${d}`, words: 100, mtime: 1 }));
+  const scattered = ["01","03","05","07"].map((d) => ({ file: `${d}.md`, date: `2026-08-${d}`, words: 100, mtime: 1 }));
+  assert.ok(streakBonus(run) > streakBonus(scattered), "a run beats scattered nights");
+  const longer = [...run, { file: "05.md", date: "2026-08-05", words: 100, mtime: 1 }];
+  assert.ok(streakBonus(longer) >= streakBonus(run), "the bonus never shrinks");
+}
+
 // 8. nobody moonwalks: every moving creature faces its velocity,
 // whichever way it circles its block
 {

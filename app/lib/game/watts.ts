@@ -28,6 +28,25 @@ export function earnedWatts(metrics: NoteMetric[]): number {
   return Math.floor(total);
 }
 
+/** consecutive nights finally pay: each day of a run beyond the first
+ *  earns a little extra, capped at a week's momentum — the streetlights
+ *  stop being pure advertising */
+export function streakBonus(metrics: NoteMetric[]): number {
+  const days = [...new Set(metrics.map((m) => m.date))];
+  const set = new Set(days);
+  let total = 0;
+  for (const d of days) {
+    let run = 0;
+    let cur = d;
+    while (set.has(cur) && run <= 7) {
+      run += 1;
+      cur = prevDate(cur);
+    }
+    total += Math.min(run - 1, 6) * 3;
+  }
+  return total;
+}
+
 /** cost to go from level n to n+1 — early levels come fast, later ones slow */
 export function levelCost(n: number): number {
   return Math.round(70 * n ** 1.6);

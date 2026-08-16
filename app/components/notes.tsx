@@ -10,6 +10,8 @@ import {
 import type { ObsidianConfig } from "../lib/obsidian";
 import { drafts, metaCache, migrateLegacyDraft } from "../lib/drafts";
 import { countWords } from "../lib/city/metrics";
+import { floorsOf } from "../lib/city/plan";
+import { wordWatts } from "../lib/game/watts";
 import { MarkdownEditor } from "./editor";
 import type { EditorApi } from "./editor";
 
@@ -805,7 +807,25 @@ export function NotesPanel({
             <strong>{activeFile ? prettyName(activeFile) : t("notes.today")}</strong>
             <span className="bar-side">
               <em>
-                {countWords(content) > 0 ? `${countWords(content)}${t("notes.wordunit")} · ` : ""}
+                {(() => {
+                  const w = countWords(content);
+                  if (w <= 0) return "";
+                  // the exact price of the next floor, spelled out
+                  const f = floorsOf(w);
+                  let need = 0;
+                  for (let probe = w + 1; probe <= w + 800; probe += 1) {
+                    if (floorsOf(probe) > f) {
+                      need = probe - w;
+                      break;
+                    }
+                  }
+                  const tonight = Math.floor(Math.min(105, wordWatts(w)) + 28);
+                  return (
+                    `${w}${t("notes.wordunit")} · ` +
+                    (need > 0 ? `${t("notes.floor.pre")}${need}${t("notes.floor.post")} · ` : "") +
+                    `${t("notes.tonight")}${tonight}W · `
+                  );
+                })()}
                 {statusLabel}
               </em>
               {connected && activeFile && (
