@@ -1291,34 +1291,67 @@ export default function Home() {
 
       {searchOpen && (
         <div className="search-veil immersion-ui">
-          <input
-            ref={searchInputRef}
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onBlur={() => {
-              // clicking back into the city puts the light away
-              window.setTimeout(() => {
+          <div className="search-box">
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && matches && matches.size > 0) {
+                  const best = metrics
+                    .filter((m) => matches.has(m.file))
+                    .sort((a, b) => b.mtime - a.mtime)[0];
+                  if (best) {
+                    openWrite(best.file);
+                    setSearchOpen(false);
+                    setQuery("");
+                  }
+                }
+              }}
+              placeholder={t("search.placeholder")}
+              spellCheck={false}
+              aria-label={t("search.aria")}
+            />
+            <button
+              type="button"
+              onClick={() => {
                 setSearchOpen(false);
                 setQuery("");
-              }, 120);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && matches && matches.size > 0) {
-                const best = metrics
-                  .filter((m) => matches.has(m.file))
-                  .sort((a, b) => b.mtime - a.mtime)[0];
-                if (best) {
-                  openWrite(best.file);
-                  setSearchOpen(false);
-                  setQuery("");
-                }
-              }
-            }}
-            placeholder={t("search.placeholder")}
-            spellCheck={false}
-            aria-label={t("search.aria")}
-          />
+              }}
+              aria-label={t("common.close")}
+            >
+              ×
+            </button>
+          </div>
+          {matches && matches.size > 0 && (
+            <div className="search-results">
+              {metrics
+                .filter((m) => matches.has(m.file))
+                .sort((a, b) => b.mtime - a.mtime)
+                .slice(0, 12)
+                .map((m) => (
+                  <button
+                    key={m.file}
+                    type="button"
+                    onClick={() => {
+                      openWrite(m.file);
+                      setSearchOpen(false);
+                      setQuery("");
+                    }}
+                  >
+                    <strong>{m.file.replace(/\.md$/, "")}</strong>
+                    <em>
+                      {m.words}
+                      {t("notes.wordunit")}
+                    </em>
+                  </button>
+                ))}
+            </div>
+          )}
+          {query.trim() !== "" && matches && matches.size === 0 && (
+            <p className="search-empty">{t("search.empty")}</p>
+          )}
         </div>
       )}
 
@@ -1464,6 +1497,16 @@ export default function Home() {
             ×
           </button>
         </div>
+        <button
+          type="button"
+          className="dex-mirror"
+          onClick={() => {
+            setDexOpen(false);
+            setMirrorOpen(true);
+          }}
+        >
+          {t("registry.mirror")}
+        </button>
         <div className="dex-items">
           {dex.map((d) => (
             <div key={d.id} className={"dex-item" + (d.n > 0 ? " found" : "")}>

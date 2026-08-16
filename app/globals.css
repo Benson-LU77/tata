@@ -1703,3 +1703,55 @@ button:focus-visible, input:focus-visible {
   border-color: var(--amber);
   color: var(--amber);
 }
+
+/* search grows a results list — recognition over recall */
+.search-box { display: flex; gap: 8px; align-items: center; }
+.search-box button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--v5);
+  font: 400 14px/1 var(--mono);
+  min-width: 36px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.search-results {
+  margin-top: 10px;
+  display: grid;
+  gap: 4px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.search-results button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  background: rgba(13, 15, 19, .8);
+  font: 400 11.5px/1.3 var(--mono);
+  color: var(--v6);
+  cursor: pointer;
+  text-align: left;
+}
+.search-results button:hover { border-color: var(--v4); }
+.search-results em { color: var(--v4); font-style: normal; white-space: nowrap; }
+.search-empty {
+  margin-top: 10px;
+  font: 400 11px/1.6 var(--mono);
+  color: var(--v4);
+  letter-spacing: .05em;
+}
+
+/* the mirror, reachable without a keyboard */
+.dex-mirror {
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  background: transparent;
+  font: 400 11px/1 var(--mono);
+  letter-spacing: .08em;
+  color: var(--amber);
+  border-color: rgba(224, 168, 79, .4);
+  cursor: pointer;
+  min-height: 44px;
+}
