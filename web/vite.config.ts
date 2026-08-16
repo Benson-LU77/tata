@@ -12,7 +12,8 @@ export default defineConfig({
     // offline app shell: everything is local anyway (drafts in IndexedDB,
     // fonts bundled, Obsidian on 127.0.0.1) — the shell should be too
     VitePWA({
-      registerType: "autoUpdate",
+      // prompt, never autoUpdate: a writing app must not reload mid-sentence
+      registerType: "prompt",
       manifest: false, // public/manifest.webmanifest already exists
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2,webmanifest}"],

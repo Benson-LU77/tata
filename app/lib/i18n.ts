@@ -62,6 +62,15 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "nogl.body": "Your notes and the editor still work — press N to write.",
 
     /* first structure */
+    "sw.line": "A new version of Tata is ready.",
+    "sw.do": "Update",
+    "sw.later": "Later",
+    "welcome.l1": "Write a page each day, and a building rises.",
+    "welcome.l2": "Keep a streak, and the streetlights come on.",
+    "welcome.l3": "Your notes live in your own Obsidian vault.",
+    "welcome.write": "Write the first page",
+    "welcome.demo": "See a sample city",
+    "found.toast": "The city received its first page. Write again tomorrow — the first streetlight comes on.",
     "city.first": "the first structure",
 
     /* registry */
@@ -303,6 +312,15 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "nogl.body": "筆記與編輯器仍可使用 — 按 N 開始書寫。",
 
     /* first structure */
+    "sw.line": "Tata 有新版本了。",
+    "sw.do": "更新",
+    "sw.later": "稍後",
+    "welcome.l1": "每天寫一頁，就多一棟樓。",
+    "welcome.l2": "連續寫，街燈就會亮起來。",
+    "welcome.l3": "筆記存在你自己的 Obsidian 裡。",
+    "welcome.write": "寫第一頁",
+    "welcome.demo": "先看看示範城市",
+    "found.toast": "城市收到了第一頁。明天再寫，第一盞街燈就會亮。",
     "city.first": "第一座建築",
 
     /* registry */

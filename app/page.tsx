@@ -75,6 +75,9 @@ export default function Home() {
   const [mirrorOpen, setMirrorOpen] = useState(false);
   const [monthListOpen, setMonthListOpen] = useState(false);
   const [letterOpen, setLetterOpen] = useState<string | null>(null);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [foundToast, setFoundToast] = useState(false);
+  const [swApply, setSwApply] = useState<(() => void) | null>(null);
   const [encounterKey, setEncounterKey] = useState<string | null>(null);
   const encTimersRef = useRef<number[]>([]);
   const encStageRef = useRef<"their" | "reply" | null>(null);
@@ -153,6 +156,34 @@ export default function Home() {
   }, [resync]);
 
   /* ---------- data ---------- */
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    let disposed = false;
+    const offer = (reg: ServiceWorkerRegistration) => {
+      if (!reg.waiting || disposed) return;
+      const waiting = reg.waiting;
+      setSwApply(() => () => {
+        navigator.serviceWorker.addEventListener(
+          "controllerchange",
+          () => window.location.reload(),
+          { once: true },
+        );
+        waiting.postMessage({ type: "SKIP_WAITING" });
+      });
+    };
+    void navigator.serviceWorker.getRegistration().then((reg) => {
+      if (!reg || disposed) return;
+      offer(reg);
+      reg.addEventListener("updatefound", () => {
+        const nw = reg.installing;
+        nw?.addEventListener("statechange", () => offer(reg));
+      });
+    });
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   // the city's clock ticks by the minute: crossing midnight, commission
   // progress, moon and weather all follow real time on an open page
@@ -586,6 +617,7 @@ export default function Home() {
       setGame((prev) => {
         if ((prev.commissions ?? []).some((c) => c.id === id)) return prev;
         if (earned - prev.spent < def.cost) return prev;
+        if (def.minLevel > level) return prev;
         const next: GameState = {
           ...prev,
           spent: prev.spent + def.cost,
@@ -606,7 +638,7 @@ export default function Home() {
         return next;
       });
     },
-    [earned, hum, cityPlan.blocks.length],
+    [earned, level, hum, cityPlan.blocks.length],
   );
 
   const exportLetter = useCallback(
@@ -714,11 +746,16 @@ export default function Home() {
   useEffect(() => {
     const seen = window.localStorage.getItem("tata.visited");
     window.localStorage.setItem("tata.visited", "1");
+    let welcomeTimer: number | null = null;
+    if (!seen && !new URLSearchParams(window.location.search).get("demo")) {
+      welcomeTimer = window.setTimeout(() => setWelcomeOpen(true), 0);
+    }
     const t1 = window.setTimeout(() => setIntro(true), seen ? 40 : 150);
     const t2 = window.setTimeout(() => setIntroDone(true), seen ? 420 : 2100);
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
+      if (welcomeTimer !== null) window.clearTimeout(welcomeTimer);
     };
   }, []);
 
@@ -868,6 +905,13 @@ export default function Home() {
       if (isNew) {
         hum().settle();
         setCeremony({ file, n: Date.now() });
+        setMetrics((prev) => {
+          if (prev.filter((m) => !m.file.startsWith("__")).length === 1) {
+            setFoundToast(true);
+            window.setTimeout(() => setFoundToast(false), 7000);
+          }
+          return prev;
+        });
       }
       setMetrics((prev) => {
         const m = prev.find((x) => x.file === file);
@@ -1018,6 +1062,18 @@ export default function Home() {
             {t("works.done.toast")}
           </div>
         )}
+        {foundToast && (
+          <div className="levelup-toast" role="status">
+            {t("found.toast")}
+          </div>
+        )}
+        {swApply && !writeOpen && (
+          <div className="levelup-toast sw-toast" role="status">
+            <span>{t("sw.line")}</span>
+            <button type="button" onClick={swApply}>{t("sw.do")}</button>
+            <button type="button" onClick={() => setSwApply(null)}>{t("sw.later")}</button>
+          </div>
+        )}
         {bubble && (
           <div className="city-bubble city-bubble--docked" aria-live="polite">
             <strong>{bubble.name}</strong>
@@ -1033,11 +1089,38 @@ export default function Home() {
             {hover.file.replace(/\.md$/, "")}
           </div>
         )}
-        {empty && introDone && (
+        {empty && introDone && !welcomeOpen && (
           <button type="button" className="city-first" onClick={() => openWrite()}>
             <span className="first-foundation" aria-hidden="true" />
             {t("city.first")}
           </button>
+        )}
+        {welcomeOpen && introDone && (
+          <div className="welcome-card" role="dialog" aria-label="Tata">
+            <p>{t("welcome.l1")}</p>
+            <p>{t("welcome.l2")}</p>
+            <p>{t("welcome.l3")}</p>
+            <div className="welcome-actions">
+              <button
+                type="button"
+                className="welcome-write"
+                onClick={() => {
+                  setWelcomeOpen(false);
+                  openWrite();
+                }}
+              >
+                {t("welcome.write")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.search = "?demo=40";
+                }}
+              >
+                {t("welcome.demo")}
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
