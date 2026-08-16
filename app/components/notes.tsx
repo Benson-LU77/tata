@@ -23,6 +23,16 @@ const isSafari =
   /safari/i.test(navigator.userAgent) &&
   !/chrome|chromium|crios|android|edg/i.test(navigator.userAgent);
 
+/* an iPhone/iPad can never reach the Mac's 127.0.0.1 — be honest about it */
+const isIOS =
+  typeof navigator !== "undefined" &&
+  (/iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+/* Safari refuses plain http to 127.0.0.1 from an https page — the plugin's
+   https port is the road that actually opens */
+const SAFARI_OBSIDIAN_URL = "https://127.0.0.1:27124";
+
 type FontSize = "s" | "m" | "l";
 const SIZE_KEY = "yeyufm.notesize";
 const SIZE_ORDER: FontSize[] = ["s", "m", "l"];
@@ -121,7 +131,7 @@ export function NotesPanel({
 }) {
   const [view, setView] = useState<View>("edit");
   const [connected, setConnected] = useState(false);
-  const [url, setUrl] = useState(DEFAULT_OBSIDIAN_URL);
+  const [url, setUrl] = useState(isSafari && !isIOS ? SAFARI_OBSIDIAN_URL : DEFAULT_OBSIDIAN_URL);
   const [key, setKey] = useState("");
   const [folder, setFolder] = useState("");
   const [advanced, setAdvanced] = useState(false);
@@ -270,7 +280,7 @@ export function NotesPanel({
      on our own — and push any waiting words the moment it heals */
   const flushRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
-    if (!open || connected || view === "setup") return;
+    if (!open || connected || view === "setup" || isIOS) return;
     const id = window.setInterval(() => {
       const client = clientRef.current;
       if (!client || document.hidden) return;
@@ -462,7 +472,7 @@ export function NotesPanel({
 
   const connect = useCallback(() => {
     const config: ObsidianConfig = {
-      url: url.trim() || DEFAULT_OBSIDIAN_URL,
+      url: url.trim() || (isSafari && !isIOS ? SAFARI_OBSIDIAN_URL : DEFAULT_OBSIDIAN_URL),
       key: key.trim(),
       folder: folder.trim(),
     };
@@ -714,9 +724,24 @@ export function NotesPanel({
         </div>
       </div>
 
-      {view === "setup" && (
+      {view === "setup" && isIOS && (
+        <div className="notes-setup">
+          <p className="notes-help">{t("notes.setup.ios")}</p>
+          <button type="button" className="notes-primary" onClick={onClose}>
+            {t("notes.setup.ios.ok")}
+          </button>
+        </div>
+      )}
+      {view === "setup" && !isIOS && (
         <div className="notes-setup">
           <p className="notes-help">{t("notes.setup.help")}</p>
+          {isSafari && (
+            <ol className="notes-steps">
+              <li>{t("notes.setup.safari.1")}</li>
+              <li>{t("notes.setup.safari.2")}</li>
+              <li>{t("notes.setup.safari.3")}</li>
+            </ol>
+          )}
           <label>
             <span>{t("notes.setup.apikey")}</span>
             <input

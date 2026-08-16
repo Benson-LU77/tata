@@ -177,6 +177,11 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "notes.back": "Back to writing",
     "notes.setup.help":
       "Notes are saved into your Obsidian vault through the Local REST API plugin. Enable its HTTP server, then paste the key below.",
+    "notes.setup.ios": "On a phone, Tata keeps your pages in this browser. Open Tata on the Mac beside Obsidian and everything you wrote here syncs into your vault.",
+    "notes.setup.ios.ok": "Got it — write locally",
+    "notes.setup.safari.1": "In Obsidian's Local REST API plugin, enable the encrypted (HTTPS) server — port 27124.",
+    "notes.setup.safari.2": "Open https://127.0.0.1:27124 in a new tab once and accept the certificate.",
+    "notes.setup.safari.3": "Paste the API key below and connect.",
     "notes.setup.apikey": "Api key",
     "notes.setup.url": "Url",
     "notes.setup.folder": "Folder",
@@ -435,6 +440,11 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "notes.back": "回到書寫",
     "notes.setup.help":
       "筆記會透過 Local REST API 外掛存入你的 Obsidian 保管庫。請先啟用它的 HTTP 伺服器，再貼上下方的金鑰。",
+    "notes.setup.ios": "在手機上，Tata 會把筆記保存在這個瀏覽器裡。回到 Mac 上、開著 Obsidian 打開 Tata，這裡寫的每一頁都會同步進你的 vault。",
+    "notes.setup.ios.ok": "了解，先在本機寫",
+    "notes.setup.safari.1": "在 Obsidian 的 Local REST API 外掛裡，開啟加密（HTTPS）伺服器——連接埠 27124。",
+    "notes.setup.safari.2": "先在新分頁打開一次 https://127.0.0.1:27124，並信任憑證。",
+    "notes.setup.safari.3": "回來貼上 API 金鑰，按連接。",
     "notes.setup.apikey": "API 金鑰",
     "notes.setup.url": "網址",
     "notes.setup.folder": "資料夾",
