@@ -154,6 +154,13 @@ export default function Home() {
 
   /* ---------- data ---------- */
 
+  // the city's clock ticks by the minute: crossing midnight, commission
+  // progress, moon and weather all follow real time on an open page
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   useEffect(() => {
     void Promise.resolve().then(() => {
       const now = Date.now();
@@ -181,9 +188,15 @@ export default function Home() {
 
   /* ---------- derived city ---------- */
 
+  // day-granular: the plan only re-lays when the date turns, not each tick
+  const dayTs = useMemo(() => {
+    if (!nowTs) return 0;
+    const d = new Date(nowTs);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  }, [nowTs]);
   const cityPlan = useMemo(
-    () => planCity(metrics, nowTs, ARCH_PINS),
-    [metrics, nowTs],
+    () => planCity(metrics, dayTs, ARCH_PINS),
+    [metrics, dayTs],
   );
   useEffect(() => {
     const pins = ARCH_PINS;
@@ -497,6 +510,7 @@ export default function Home() {
      growth wave city3d already plays */
   const prevLevelRef = useRef<number | null>(null);
   const [levelToast, setLevelToast] = useState(false);
+  const [worksToast, setWorksToast] = useState(false);
   useEffect(() => {
     const prev = prevLevelRef.current;
     prevLevelRef.current = level;
@@ -558,9 +572,12 @@ export default function Home() {
         return next;
       });
       hum().levelUp();
+      setWorksToast(true);
+      window.setTimeout(() => setWorksToast(false), 5200);
     }, 600);
     return () => window.clearTimeout(id);
-  }, [game.commissions, hum]);
+    // nowTs: an open page re-checks each minute, so opening day arrives live
+  }, [game.commissions, nowTs, hum]);
 
   const orderCommission = useCallback(
     (id: string) => {
@@ -994,6 +1011,11 @@ export default function Home() {
             {t("levelup.line")}
           </div>
         )}
+        {worksToast && (
+          <div className="levelup-toast" role="status">
+            {t("works.done.toast")}
+          </div>
+        )}
         {bubble && (
           <div className="city-bubble city-bubble--docked" aria-live="polite">
             <strong>{bubble.name}</strong>
@@ -1091,6 +1113,9 @@ export default function Home() {
             aria-label={t("topbar.registry")}
             aria-expanded={dexOpen}
           >
+            {(game.letters ?? []).some((l) => !l.read) && (
+              <span className="unread-dot" aria-hidden="true" />
+            )}
             <span className="icon-registry" aria-hidden="true">
               <i />
               <i />

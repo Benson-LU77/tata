@@ -1571,3 +1571,15 @@ button:focus-visible, input:focus-visible {
   cursor: pointer;
 }
 .letter-actions button:first-child { border-color: var(--amber); color: var(--amber); }
+
+/* a small amber pulse on the registry button when a letter waits */
+.unread-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(224, 168, 79, .8);
+}

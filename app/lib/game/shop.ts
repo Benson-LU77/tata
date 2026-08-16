@@ -169,6 +169,10 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
 }
 
 export async function saveGameState(state: GameState, client?: VaultClient | null): Promise<void> {
+  // demo cities are stage sets: they must never write over a real save —
+  // demo skips LOADING state, so persisting would clobber it (and inflate
+  // the monotonic earnedFloor beyond repair)
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).has("demo")) return;
   try {
     const db = await openDb();
     if (db.objectStoreNames.contains("meta")) {
