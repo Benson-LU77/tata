@@ -211,7 +211,13 @@ button:focus-visible, input:focus-visible {
 }
 .brand-you:hover { border-color: rgba(224, 168, 79, .45); }
 .brand-you .depot-thumb { position: static; transform: none; }
-.brand-col { display: grid; gap: 6px; }
+.brand-col { display: grid; gap: 5px; }
+.brand-eyebrow {
+  font: 500 8.5px/1 var(--mono);
+  letter-spacing: .34em;
+  color: var(--v4);
+  text-transform: uppercase;
+}
 .brand-ledger {
   font: 400 9.5px/1 var(--mono);
   letter-spacing: .1em;
@@ -1657,7 +1663,7 @@ button:focus-visible, input:focus-visible {
   color: var(--amber);
 }
 
-.sw-toast { display: flex; gap: 12px; align-items: center; }
+.sw-toast { display: flex; gap: 12px; align-items: center; pointer-events: auto; }
 .sw-toast button {
   padding: 6px 12px;
   border: 1px solid var(--line);

@@ -1596,7 +1596,8 @@ export default function Home() {
             <PixelIcon rows={youRows} size={30} pal={AMBER_PAL} />
           </button>
           <div className="brand-col">
-          <span className="brand-word">Tata</span>
+          <span className="brand-eyebrow" aria-hidden="true">Tata</span>
+          <span className="brand-word">{game.name || t("mirror.name.placeholder")}</span>
           {!empty && (
             <span className="brand-ledger" aria-hidden="true">
               LV {level} · {Math.floor(balance)} W · {streakOf(metrics, today)}
