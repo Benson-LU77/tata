@@ -1954,3 +1954,73 @@ button:focus-visible, input:focus-visible {
   font: 400 16px/1 var(--mono);
   color: var(--v6);
 }
+
+/* the citizen card: an employee badge for a city of one employer — you */
+.id-card {
+  width: min(430px, calc(100vw - 40px));
+  border: 1px solid var(--v4);
+  outline: 1px solid var(--line);
+  outline-offset: 3px;
+  background: linear-gradient(160deg, rgba(16, 18, 23, .98), rgba(8, 9, 12, .99));
+  padding: 18px 20px 14px;
+  display: grid;
+  gap: 14px;
+}
+.id-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+.id-issuer {
+  font: 500 9.5px/1 var(--mono);
+  letter-spacing: .3em;
+  color: var(--v5);
+  text-transform: uppercase;
+}
+.id-seal {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(224, 168, 79, .55);
+  color: var(--amber);
+  font-size: 12px;
+  transform: rotate(8deg);
+}
+.id-body { display: flex; gap: 18px; align-items: center; }
+.id-photo {
+  border: 1px dashed var(--v3);
+  padding: 8px 12px;
+  background: rgba(224, 168, 79, .04);
+}
+.id-photo .depot-thumb { position: static; transform: none; }
+.id-fields { display: grid; gap: 7px; }
+.id-fields strong { font: 500 20px/1 var(--serif, Georgia, serif); color: var(--v7); letter-spacing: .04em; }
+.id-fields em { font: 400 10px/1 var(--mono); font-style: normal; color: var(--amber); letter-spacing: .18em; }
+.id-fields span { font: 400 10.5px/1.5 var(--mono); color: var(--v5); letter-spacing: .06em; }
+.id-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.id-barcode {
+  flex: 1;
+  height: 14px;
+  background: repeating-linear-gradient(90deg, var(--v4) 0 2px, transparent 2px 5px, var(--v3) 5px 6px, transparent 6px 10px);
+  opacity: .7;
+}
+.id-serial { font: 400 9.5px/1 var(--mono); letter-spacing: .12em; color: var(--v4); }
+.id-foot button {
+  padding: 7px 14px;
+  border: 1px solid rgba(224, 168, 79, .45);
+  background: transparent;
+  font: 400 10.5px/1 var(--mono);
+  letter-spacing: .08em;
+  color: var(--amber);
+  cursor: pointer;
+  min-height: 34px;
+}

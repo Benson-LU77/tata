@@ -85,6 +85,7 @@ export default function Home() {
   const [swApply, setSwApply] = useState<(() => void) | null>(null);
   const [touchPick, setTouchPick] = useState<string | null>(null);
   const [moveMode, setMoveMode] = useState<string | null>(null);
+  const [idOpen, setIdOpen] = useState(false);
   const [replayOn, setReplayOn] = useState(false);
   const [replayDate, setReplayDate] = useState<string | null>(null);
   const [moveToast, setMoveToast] = useState<string | null>(null);
@@ -334,6 +335,30 @@ export default function Home() {
     [metrics],
   );
   const youRows = useMemo(() => composeYou(game.look).you_S_i, [game.look]);
+
+  /* the citizen card: everything on it derives from the vault */
+  const citizen = useMemo(() => {
+    const days = [...new Set(metrics.filter((m) => !m.file.startsWith("__")).map((m) => m.date))].sort();
+    const first = days[0] ?? today;
+    const resident = first && today
+      ? Math.max(1, Math.round((new Date(today + "T00:00:00Z").getTime() - new Date(first + "T00:00:00Z").getTime()) / 86400000) + 1)
+      : 1;
+    const serial = (hash32((game.name || "citizen") + ":" + (first ?? "")) >>> 0)
+      .toString(16)
+      .toUpperCase()
+      .padStart(8, "0")
+      .slice(0, 8);
+    return {
+      first: first ?? "—",
+      resident,
+      pages: metrics.length,
+      nights: days.length,
+      best: bestStreakOf(metrics),
+      known: Object.keys(game.bonds ?? {}).length,
+      letters: (game.letters ?? []).length,
+      serial: `${serial.slice(0, 4)}-${serial.slice(4)}`,
+    };
+  }, [metrics, today, game.name, game.bonds, game.letters]);
 
 
   const dex = useMemo(() => {
@@ -1589,9 +1614,9 @@ export default function Home() {
           <button
             type="button"
             className="brand-you"
-            onClick={() => setMirrorOpen(true)}
-            title={t("registry.mirror")}
-            aria-label={t("registry.mirror")}
+            onClick={() => setIdOpen(true)}
+            title={t("id.title")}
+            aria-label={t("id.title")}
           >
             <PixelIcon rows={youRows} size={30} pal={AMBER_PAL} />
           </button>
@@ -1783,6 +1808,47 @@ export default function Home() {
         </button>
       )}
 
+      {idOpen && (
+        <div className="letter-veil" role="dialog" aria-label={t("id.title")} onClick={() => setIdOpen(false)}>
+          <div className="id-card" onClick={(e) => e.stopPropagation()}>
+            <div className="id-head">
+              <span className="id-issuer">TATA · {t("id.title")}</span>
+              <span className="id-seal" aria-hidden="true">✦</span>
+            </div>
+            <div className="id-body">
+              <div className="id-photo">
+                <PixelIcon rows={youRows} size={72} pal={AMBER_PAL} />
+              </div>
+              <div className="id-fields">
+                <strong>{game.name || t("mirror.name.placeholder")}</strong>
+                {game.name && <em>{t("id.subtitle")}</em>}
+                <span>
+                  {t("id.since")} {citizen.first} · {t("id.day.pre")}{citizen.resident}{t("id.day.post")}
+                </span>
+                <span>
+                  {citizen.pages}{t("id.pages")} · {citizen.nights}{t("id.nights")} · {t("id.best")}{citizen.best}{t("hud.nights")}
+                </span>
+                <span>
+                  LV {level} · {Math.floor(balance)} W · {t("id.known.pre")}{citizen.known}{t("id.known.post")}
+                </span>
+              </div>
+            </div>
+            <div className="id-foot">
+              <span className="id-barcode" aria-hidden="true" />
+              <span className="id-serial">NO. {citizen.serial}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIdOpen(false);
+                  setMirrorOpen(true);
+                }}
+              >
+                {t("id.dress")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {letterOpen && (
         <div className="letter-veil" role="dialog" aria-label={t("letters.title")} onClick={() => setLetterOpen(null)}>
           <div className="letter-paper" onClick={(e) => e.stopPropagation()}>
