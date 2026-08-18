@@ -2026,7 +2026,17 @@ button:focus-visible, input:focus-visible {
 }
 
 /* the archive: every page, grouped by month, without leaving the desk */
-.notes-archive-btn { color: var(--v4) !important; }
+.notes-archive-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 28px;
+  padding: 4px 6px !important;
+  opacity: .75;
+}
+.notes-archive-btn:hover { opacity: 1; }
+.notes-archive-btn .depot-thumb { position: static; transform: none; }
 .notes-tabs-row { display: flex; align-items: center; gap: 8px; }
 .notes-tabs-row .notes-recent { flex: 1; min-width: 0; }
 .archive-anchor { position: relative; display: inline-block; flex: none; }

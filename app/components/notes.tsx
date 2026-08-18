@@ -10,6 +10,8 @@ import {
 import type { ObsidianConfig } from "../lib/obsidian";
 import { drafts, metaCache, migrateLegacyDraft } from "../lib/drafts";
 import { countWords } from "../lib/city/metrics";
+import { CABINET_ICON } from "../lib/game/icons";
+import { PixelIcon } from "./pixel-icon";
 import { floorsOf } from "../lib/city/plan";
 import { wordWatts } from "../lib/game/watts";
 import { MarkdownEditor } from "./editor";
@@ -813,8 +815,9 @@ export function NotesPanel({
                     className="notes-archive-btn"
                     onClick={() => setArchiveOpen((v) => !v)}
                     aria-label={t("notes.archive")}
+                    title={t("notes.archive")}
                   >
-                    ⋯ {t("notes.archive")}
+                    <PixelIcon rows={CABINET_ICON} size={18} />
                   </button>
                   {archiveOpen && (
                     <div className="notes-archive" role="dialog" aria-label={t("notes.archive")}>

@@ -269,3 +269,20 @@ export function iconOf(id: string): string[] | null {
   if (id === "trees") return SPRITES.tree_round;
   return DRAWN[id] ?? null;
 }
+
+/** a three-drawer filing cabinet, for the editor's archive button */
+export const CABINET_ICON: string[] = [
+  "0000000000",
+  "0444444440",
+  "0444664440",
+  "0444444440",
+  "0000000000",
+  "0444444440",
+  "0444664440",
+  "0444444440",
+  "0000000000",
+  "0444444440",
+  "0444664440",
+  "0444444440",
+  "0000000000",
+];
