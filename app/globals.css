@@ -1661,24 +1661,39 @@ button:focus-visible, input:focus-visible {
   letter-spacing: .03em;
 }
 
-/* the quiet ledger: watts, streak, level — always in the corner */
+/* the character card: your amber self, level worn like a name */
 .city-hud {
   position: absolute;
   z-index: 10;
   right: calc(clamp(22px, 3vw, 40px));
   bottom: calc(clamp(20px, 4vh, 40px) + env(safe-area-inset-bottom, 0px) + 52px);
   display: flex;
-  gap: 14px;
-  font: 400 10.5px/1 var(--px, var(--mono));
-  font-family: var(--mono);
-  letter-spacing: .1em;
-  color: var(--v5);
-  text-transform: uppercase;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 8px 9px;
+  border: 1px solid var(--line);
+  background: rgba(10, 12, 16, .78);
+  cursor: pointer;
+  min-height: 44px;
 }
-.city-hud span + span::before {
-  content: "·";
-  margin-right: 14px;
-  color: var(--v3);
+.city-hud:hover { border-color: rgba(224, 168, 79, .45); }
+.city-hud .depot-thumb { position: static; transform: none; }
+.hud-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+.hud-col b {
+  font: 500 11px/1 var(--mono);
+  letter-spacing: .12em;
+  color: var(--amber);
+}
+.hud-col em {
+  font: 400 9.5px/1 var(--mono);
+  font-style: normal;
+  letter-spacing: .08em;
+  color: var(--v4);
 }
 
 /* jump straight to any month */

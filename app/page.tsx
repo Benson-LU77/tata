@@ -28,7 +28,8 @@ import {
 } from "./lib/game/commissions";
 import { CLOSER_LINES, PET_ACTIONS, REPLY_LINES } from "./lib/game/bonds-lines";
 import { iconOf } from "./lib/game/icons";
-import { PixelIcon } from "./components/pixel-icon";
+import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
+import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
 import type { Lang } from "./lib/i18n";
 
@@ -331,6 +332,8 @@ export default function Home() {
     () => [...metrics].sort((a, b) => b.mtime - a.mtime).slice(0, 6).map((m) => m.file),
     [metrics],
   );
+  const youRows = useMemo(() => composeYou(game.look).you_S_i, [game.look]);
+
   const dex = useMemo(() => {
     const count = (a: number) => cityPlan.lots.filter((l) => l.arch === a).length;
     const own = (id: string, n: number) => (game.owned.includes(id) ? n : 0);
@@ -1811,14 +1814,21 @@ export default function Home() {
       <Clock />
 
       {!empty && (
-        <div className="city-hud immersion-ui" aria-hidden="true">
-          <span>{Math.floor(balance)} W</span>
-          <span>
-            {streakOf(metrics, today)}
-            {t("hud.nights")}
+        <button
+          type="button"
+          className="city-hud immersion-ui"
+          onClick={() => setMirrorOpen(true)}
+          title={t("registry.mirror")}
+        >
+          <PixelIcon rows={youRows} size={34} pal={AMBER_PAL} />
+          <span className="hud-col">
+            <b>LV {level}</b>
+            <em>
+              {Math.floor(balance)} W · {streakOf(metrics, today)}
+              {t("hud.nights")}
+            </em>
           </span>
-          <span>LV {level}</span>
-        </div>
+        </button>
       )}
 
       <NotesPanel
