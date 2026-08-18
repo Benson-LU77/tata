@@ -16,6 +16,9 @@ export default defineConfig({
       registerType: "prompt",
       manifest: false, // public/manifest.webmanifest already exists
       workbox: {
+        // prompt flow: wait until told (no skipWaiting), but once told,
+        // claim the open pages so controllerchange fires and we reload
+        clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,svg,png,woff2,webmanifest}"],
         navigateFallback: "/tata/index.html",
         runtimeCaching: [],

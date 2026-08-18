@@ -198,7 +198,7 @@ button:focus-visible, input:focus-visible {
   justify-content: space-between;
   padding: 22px 28px;
 }
-.brand { display: flex; align-items: flex-start; gap: 12px; }
+.brand { display: flex; align-items: flex-start; gap: 16px; }
 .brand-you {
   border: 1px solid transparent;
   background: transparent;
@@ -211,16 +211,17 @@ button:focus-visible, input:focus-visible {
 }
 .brand-you:hover { border-color: rgba(224, 168, 79, .45); }
 .brand-you .depot-thumb { position: static; transform: none; }
-.brand-col { display: grid; gap: 5px; }
+.brand-col { display: grid; gap: 8px; padding-top: 2px; }
 .brand-eyebrow {
   font: 500 8.5px/1 var(--mono);
   letter-spacing: .34em;
   color: var(--v4);
   text-transform: uppercase;
+  margin-bottom: 1px;
 }
 .brand-ledger {
-  font: 400 9.5px/1 var(--mono);
-  letter-spacing: .1em;
+  font: 400 9.5px/1.4 var(--mono);
+  letter-spacing: .12em;
   color: var(--v4);
 }
 .brand-ledger { text-transform: uppercase; }
