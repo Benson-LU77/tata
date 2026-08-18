@@ -87,6 +87,7 @@ function firstLine(text: string) {
 export function NotesPanel({
   open,
   onClose,
+  onPin,
   requestOpen,
   requestToday,
   lang,
@@ -104,6 +105,7 @@ export function NotesPanel({
 }: {
   open: boolean;
   onClose: () => void;
+  onPin?: (text: string) => void;
   /** ask the panel to open a specific vault file (click on a building) */
   requestOpen: { file: string; n: number } | null;
   /** bumped when the user explicitly asks for today's page */
@@ -880,6 +882,16 @@ export function NotesPanel({
             >
               ☑
             </button>
+            {onPin && (
+              <button
+                type="button"
+                onClick={() => onPin(editorRef.current?.getSelection() ?? "")}
+                aria-label={t("notes.tool.pin")}
+                title={t("notes.tool.pin")}
+              >
+                {t("notes.tool.pin.icon")}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => editorRef.current?.toggle("heading")}

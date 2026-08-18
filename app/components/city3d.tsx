@@ -613,6 +613,8 @@ export function City3D({
   streak,
   commissions,
   placements,
+  billboard,
+  onBillboardTap,
   ariaLabel,
   onHover,
   onOpen,
@@ -645,6 +647,8 @@ export function City3D({
   /** public works: id + block + construction progress (1 = open) */
   commissions: { id: string; block: number; progress: number }[];
   placements?: Record<string, { x: number; z: number }>;
+  billboard?: boolean;
+  onBillboardTap?: () => void;
   ariaLabel?: string;
   onHover: (file: string | null, x: number, y: number) => void;
   onOpen: (file: string) => void;
@@ -1712,6 +1716,23 @@ export function City3D({
       }
     }
 
+    // the noticeboard: a pinned sentence stands at the newest month's gate
+    if (billboard && plan.blocks.length > 0) {
+      const bb2 = plan.blocks[plan.blocks.length - 1];
+      const bx3 = bb2.x + 0.6 * CELL;
+      const bz3 = bb2.z - CELL * 2.0;
+      const bLot: Lot = { file: "__billboard__", date: "", x: bx3, z: bz3, half: 0.9, floors: 0, seed: 5, lit: 1 };
+      for (const px4 of [-0.75, 0.75]) {
+        entries.push({ lot: bLot, box: { x: bx3 + px4, y: 0, z: bz3, w: 0.1, h: 1.3, d: 0.1 } });
+      }
+      entries.push({ lot: bLot, box: { x: bx3, y: 0.55, z: bz3, w: 1.9, h: 0.95, d: 0.1 } });
+      entries.push({ lot: { ...bLot, seed: 2 }, box: { x: bx3, y: 1.5, z: bz3, w: 2.05, h: 0.09, d: 0.16 } });
+      // the writing itself: three pale dithered lines
+      for (const [ly, lw] of [[1.22, 1.5], [1.0, 1.3], [0.78, 1.42]] as const) {
+        entries.push({ lot: { ...bLot, seed: 6 }, box: { x: bx3, y: ly, z: bz3 + 0.06, w: lw, h: 0.07, d: 0.02 }, leaf: false, lampHead: true });
+      }
+    }
+
     // streets live in the terrain map now — no geometry needed
 
     // streak: one small streetlight per consecutive night, newest block
@@ -1929,7 +1950,7 @@ export function City3D({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     h.quantMat!.uniforms.uLevel.value = level;
     (h.quantMat!.uniforms.uSky.value as THREE.Vector2).set(decor.sister ? 1 : 0, decor.comet ? 1 : 0);
-  }, [plan, extras, decor, skin, streak, weather, commissions, level, placements]);
+  }, [plan, extras, decor, skin, streak, weather, commissions, level, placements, billboard]);
 
   /* the Mirror: a new look recomposes your nine frames into the atlas.
      Texture and frame table swap in the same tick — they must never
@@ -2049,6 +2070,7 @@ export function City3D({
     const hit = caster.intersectObject(h.mesh, false)[0];
     if (hit?.instanceId === undefined) return null;
     const file = h.lotOfInstance[hit.instanceId]?.file ?? null;
+    if (file === "__billboard__") return file;
     return file && file.startsWith("__") ? null : file;
   }, []);
 
@@ -2242,6 +2264,10 @@ export function City3D({
         return;
       }
       const hit = raycast(event.clientX, event.clientY);
+      if (hit === "__billboard__") {
+        onBillboardTap?.();
+        return;
+      }
       if (hit && !hit.startsWith("demo/")) {
         onOpen(hit);
         return;
@@ -2251,7 +2277,7 @@ export function City3D({
         if (g) onGroundTap(g.x, g.z);
       }
     },
-    [loop, onOpen, raycast, scheduleViewSnap, pickCreature, onCreatureTap, groundPoint, onGroundTap],
+    [loop, onOpen, raycast, scheduleViewSnap, pickCreature, onCreatureTap, groundPoint, onGroundTap, onBillboardTap],
   );
 
   /** pan in camera-relative screen axes → world */

@@ -83,6 +83,8 @@ export default function Home() {
   const [swApply, setSwApply] = useState<(() => void) | null>(null);
   const [touchPick, setTouchPick] = useState<string | null>(null);
   const [moveMode, setMoveMode] = useState<string | null>(null);
+  const [replayOn, setReplayOn] = useState(false);
+  const [replayDate, setReplayDate] = useState<string | null>(null);
   const [moveToast, setMoveToast] = useState<string | null>(null);
   const [encounterKey, setEncounterKey] = useState<string | null>(null);
   const encTimersRef = useRef<number[]>([]);
@@ -242,8 +244,13 @@ export default function Home() {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   }, [nowTs]);
   const cityPlan = useMemo(
-    () => planCity(metrics, dayTs, ARCH_PINS),
-    [metrics, dayTs],
+    () =>
+      planCity(
+        replayDate ? metrics.filter((m) => m.date <= replayDate) : metrics,
+        dayTs,
+        ARCH_PINS,
+      ),
+    [metrics, dayTs, replayDate],
   );
   useEffect(() => {
     const pins = ARCH_PINS;
@@ -931,6 +938,37 @@ export default function Home() {
     return () => window.removeEventListener("keydown", onKey);
   }, [moveMode]);
 
+  /* the year rings: replay the city from its first page to tonight */
+  useEffect(() => {
+    if (!replayOn || metrics.length === 0 || !today) return;
+    const days = [...new Set(metrics.map((m) => m.date))].sort();
+    const startT = new Date(days[0] + "T00:00:00Z").getTime();
+    const endT = new Date(today + "T00:00:00Z").getTime();
+    const total = Math.max(1, Math.round((endT - startT) / 86400000));
+    const stepDays = Math.max(1, Math.ceil(total / 140));
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const fmt = (t2: number) => {
+      const d = new Date(t2);
+      return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+    };
+    let cur = startT;
+    const kick = window.setTimeout(() => setReplayDate(fmt(startT)), 0);
+    const id = window.setInterval(() => {
+      cur += stepDays * 86400000;
+      if (cur >= endT) {
+        setReplayOn(false);
+        setReplayDate(null);
+        return;
+      }
+      setReplayDate(fmt(cur));
+    }, 130);
+    return () => {
+      window.clearTimeout(kick);
+      window.clearInterval(id);
+      setReplayDate(null);
+    };
+  }, [replayOn, metrics, today]);
+
   /* ---------- intro ---------- */
 
   useEffect(() => {
@@ -1026,6 +1064,30 @@ export default function Home() {
   }, [registerActivity, scheduleIdle]);
 
   /* ---------- writing ---------- */
+
+  const pinSentence = useCallback(
+    (text: string) => {
+      const clean = text.trim().replace(/\s+/g, " ").slice(0, 120);
+      if (!clean) {
+        setMoveToast(t("board.empty"));
+        window.setTimeout(() => setMoveToast(null), 3200);
+        return;
+      }
+      setGame((prev) => {
+        const next: GameState = {
+          ...prev,
+          billboard: { text: clean, date: todayRef.current || "" },
+          updatedAt: Date.now(),
+        };
+        void saveGameState(next, clientRef.current);
+        return next;
+      });
+      hum().settle();
+      setMoveToast(t("board.pinned"));
+      window.setTimeout(() => setMoveToast(null), 3200);
+    },
+    [hum, t],
+  );
 
   const openWrite = useCallback((file?: string) => {
     if (file) {
@@ -1296,6 +1358,18 @@ export default function Home() {
             streak={bestStreak}
             commissions={works}
             placements={placements}
+            billboard={Boolean(game.billboard)}
+            onBillboardTap={() => {
+              const b = game.billboard;
+              if (!b) return;
+              hum().click();
+              setBubble({
+                key: "__board__",
+                name: t("board.name"),
+                text: `\u201c${b.text}\u201d — ${b.date}`,
+                until: Date.now() + 14000,
+              });
+            }}
             ariaLabel={t("city.aria")}
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
             onOpen={(file) => {
@@ -1340,6 +1414,20 @@ export default function Home() {
               {t("move.banner.post")}
             </span>
             <button type="button" onClick={() => setMoveMode(null)} aria-label={t("common.close")}>
+              ×
+            </button>
+          </div>
+        )}
+        {replayOn && replayDate && (
+          <div className="move-banner" role="status">
+            <span>{t("rings.watching")} {replayDate}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setReplayOn(false);
+              }}
+              aria-label={t("common.close")}
+            >
               ×
             </button>
           </div>
@@ -1405,7 +1493,7 @@ export default function Home() {
             style={{ left: hover.x, top: hover.y - 34 }}
             aria-hidden="true"
           >
-            {hover.file.replace(/\.md$/, "")}
+            {hover.file === "__billboard__" ? t("board.name") : hover.file.replace(/\.md$/, "")}
           </div>
         )}
         {empty && introDone && !welcomeOpen && (
@@ -1736,6 +1824,7 @@ export default function Home() {
       <NotesPanel
         open={writeOpen}
         onClose={closeWrite}
+        onPin={pinSentence}
         requestOpen={requestOpen}
         requestToday={requestToday}
         lang={lang}
@@ -1776,6 +1865,17 @@ export default function Home() {
           }}
         >
           {t("registry.mirror")}
+        </button>
+        <button
+          type="button"
+          className="dex-mirror"
+          onClick={() => {
+            setDexOpen(false);
+            hum().click();
+            setReplayOn(true);
+          }}
+        >
+          {t("registry.rings")}
         </button>
         <div className="dex-items">
           {dex.map((d) => (

@@ -21,6 +21,7 @@ import { tags } from "@lezer/highlight";
 
 export type EditorApi = {
   toggle: (kind: "list" | "todo" | "heading") => void;
+  getSelection: () => string;
   focus: () => void;
   cursorToEnd: () => void;
 };
@@ -709,6 +710,10 @@ export function MarkdownEditor({
 
     callbacksRef.current.onReady({
       toggle: (kind) => toggleLines(view, kind),
+      getSelection: () => {
+        const { from, to } = view.state.selection.main;
+        return view.state.sliceDoc(from, to);
+      },
       focus: () => view.focus(),
       cursorToEnd: () => {
         view.dispatch({ selection: { anchor: view.state.doc.length } });
