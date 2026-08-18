@@ -134,6 +134,7 @@ export function NotesPanel({
   t: (key: string) => string;
 }) {
   const [view, setView] = useState<View>("edit");
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [connected, setConnected] = useState(false);
   const [url, setUrl] = useState(isSafari && !isIOS ? SAFARI_OBSIDIAN_URL : DEFAULT_OBSIDIAN_URL);
   const [key, setKey] = useState("");
@@ -803,6 +804,49 @@ export function NotesPanel({
                   {prettyName(f)}
                 </button>
               ))}
+              {(pages?.length ?? 0) > 0 && (
+                <button
+                  type="button"
+                  className="notes-archive-btn"
+                  onClick={() => setArchiveOpen((v) => !v)}
+                  aria-label={t("notes.archive")}
+                >
+                  ⋯ {t("notes.archive")}
+                </button>
+              )}
+            </div>
+          )}
+          {archiveOpen && (
+            <div className="notes-archive" role="dialog" aria-label={t("notes.archive")}>
+              {(() => {
+                const groups = new Map<string, string[]>();
+                for (const f of pages ?? []) {
+                  const m = f.match(/^(\d{4}-\d{2})/);
+                  const key2 = m ? m[1] : "…";
+                  groups.set(key2, [...(groups.get(key2) ?? []), f]);
+                }
+                return [...groups.entries()]
+                  .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+                  .map(([month, files]) => (
+                    <div key={month} className="archive-month">
+                      <em>{month}</em>
+                      {files
+                        .sort((a, b) => (a < b ? 1 : -1))
+                        .map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => {
+                              setArchiveOpen(false);
+                              void openNote(f);
+                            }}
+                          >
+                            {prettyName(f)}
+                          </button>
+                        ))}
+                    </div>
+                  ));
+              })()}
             </div>
           )}
           <div className="notes-editor-bar">
