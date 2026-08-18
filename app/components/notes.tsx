@@ -793,6 +793,7 @@ export function NotesPanel({
       {view === "edit" && (
         <div className={"notes-editor size-" + fontSize}>
           {recent && recent.length > 1 && (
+            <div className="notes-tabs-row">
             <div className="notes-recent" aria-label={t("notes.recent.aria")}>
               {recent.map((f) => (
                 <button
@@ -804,20 +805,19 @@ export function NotesPanel({
                   {prettyName(f)}
                 </button>
               ))}
-              {(pages?.length ?? 0) > 0 && (
-                <button
-                  type="button"
-                  className="notes-archive-btn"
-                  onClick={() => setArchiveOpen((v) => !v)}
-                  aria-label={t("notes.archive")}
-                >
-                  ⋯ {t("notes.archive")}
-                </button>
-              )}
             </div>
-          )}
-          {archiveOpen && (
-            <div className="notes-archive" role="dialog" aria-label={t("notes.archive")}>
+              {(pages?.length ?? 0) > 0 && (
+                <span className="archive-anchor">
+                  <button
+                    type="button"
+                    className="notes-archive-btn"
+                    onClick={() => setArchiveOpen((v) => !v)}
+                    aria-label={t("notes.archive")}
+                  >
+                    ⋯ {t("notes.archive")}
+                  </button>
+                  {archiveOpen && (
+                    <div className="notes-archive" role="dialog" aria-label={t("notes.archive")}>
               {(() => {
                 const groups = new Map<string, string[]>();
                 for (const f of pages ?? []) {
@@ -847,6 +847,10 @@ export function NotesPanel({
                     </div>
                   ));
               })()}
+                    </div>
+                  )}
+                </span>
+              )}
             </div>
           )}
           <div className="notes-editor-bar">
