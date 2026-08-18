@@ -10,7 +10,7 @@
  */
 
 import type { CreatureKind } from "../city/residents";
-import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES } from "./bonds-lines";
+import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES, VOICE_LINES } from "./bonds-lines";
 
 export type Bond = {
   /** days greeted (one per calendar day at most) */
@@ -152,7 +152,7 @@ export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): s
         ? DOG_LINE_DEFS
         : ctx.firstMeet
           ? FIRST_MEET_LINES
-          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES];
+          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES, ...VOICE_LINES];
   const eligible = table.filter(
     (l) => (l.tier ?? 0) <= ctx.tier && (!l.when || l.when(ctx)),
   );

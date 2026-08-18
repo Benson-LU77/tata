@@ -1513,7 +1513,13 @@ export default function Home() {
           </div>
         )}
         {bubble && (
-          <div className="city-bubble city-bubble--docked" aria-live="polite">
+          <div
+            className="city-bubble city-bubble--docked"
+            aria-live="polite"
+            onClick={() => {
+              if (!bubble.choices && !encounterKey) setBubble(null);
+            }}
+          >
             <strong>{bubble.name}</strong>
             <span>{bubble.text}</span>
             {bubble.choices && (

@@ -560,3 +560,56 @@ export const MEMORY_LINES: LineDef[] = [
   { tier: 3, weight: 5, when: (c) => c.totalNotes >= 60,
     en: "I remember when this was three buildings and a cat. Look at it now.", zh: "我還記得這裡只有三棟樓和一隻貓的時候。你看看現在。" },
 ]
+
+/** twelve trades, twelve registers — the stationmaster clips her words,
+ *  the poet loses his, the lampkeeper barely spends any */
+export const VOICE_LINES: LineDef[] = [
+  // stationmaster — punctual, clipped, secretly warm
+  { weight: 4, when: (c) => c.profession === "stationmaster", en: "You're four minutes later than usual. Noted. Not judged.", zh: "你比平常晚了四分鐘。記下了,沒有要怪你。" },
+  { weight: 4, when: (c) => c.profession === "stationmaster", en: "Platform's swept. Night's on schedule. Go on.", zh: "月台掃過了,夜晚準點,去吧。" },
+  { weight: 4, when: (c) => c.profession === "stationmaster", tier: 3, en: "I hold the last train some nights. In case it's you.", zh: "有些晚上我會讓末班車多等一下。萬一是你要搭。" },
+  // gardener — slow, talks to plants
+  { weight: 4, when: (c) => c.profession === "gardener", en: "Shh. The cypress is sleeping. It had a long day of standing.", zh: "噓,柏樹在睡,它站了一整天,累了。" },
+  { weight: 4, when: (c) => c.profession === "gardener", en: "I told the flowers about you. They kept it to themselves.", zh: "我跟野花提過你,它們很守口。" },
+  { weight: 4, when: (c) => c.profession === "gardener", tier: 3, en: "Things grow slow here. You didn't. Look at all those floors.", zh: "這裡什麼都長得慢,就你不是。看看那些樓層。" },
+  // courier — hurried, gossipy, short
+  { weight: 4, when: (c) => c.profession === "courier", en: "Can't stop. Package for the belltower. It ticks. Probably fine.", zh: "不能停,有包裹要送鐘塔。會滴答響,應該沒事吧。" },
+  { weight: 4, when: (c) => c.profession === "courier", en: "Word travels. Yours travels furthest, lately.", zh: "消息傳得快,最近傳最遠的是你的。" },
+  { weight: 4, when: (c) => c.profession === "courier", tier: 3, en: "Saved your street for last. Best view on the route.", zh: "你這條街我留到最後送,整條路線就這裡風景最好。" },
+  // astronomer — numbers, vast romance
+  { weight: 4, when: (c) => c.profession === "astronomer", en: "Light from that star left before your first page. It arrived tonight.", zh: "那顆星的光,在你寫第一頁之前就出發了,今晚才到。" },
+  { weight: 4, when: (c) => c.profession === "astronomer", en: "Statistically, tonight is unremarkable. I don't believe it either.", zh: "統計上,今晚毫不特別。我也不信。" },
+  { weight: 4, when: (c) => c.profession === "astronomer", tier: 3, en: "I charted your windows against the constellations. Yours keep better time.", zh: "我把你的窗和星座畫在同一張圖上,你的窗比較準時。" },
+  // baker — food metaphors, motherly
+  { weight: 4, when: (c) => c.profession === "baker", en: "Words are like dough. Leave them overnight. Better in the morning.", zh: "字跟麵團一樣,放過夜,早上更好。" },
+  { weight: 4, when: (c) => c.profession === "baker", en: "You look underfed. Metaphorically. Go write something rich.", zh: "你看起來餓著了——我是說比喻上。去寫點紮實的。" },
+  { weight: 4, when: (c) => c.profession === "baker", tier: 3, en: "First warm roll is yours, the day this oven works.", zh: "哪天烤爐能用了,第一顆熱麵包是你的。" },
+  // shipwright — rough hands, plain truth
+  { weight: 4, when: (c) => c.profession === "shipwright", en: "Hull's dented, still flies. Same goes for people.", zh: "船身凹了,照樣飛。人也一樣。" },
+  { weight: 4, when: (c) => c.profession === "shipwright", en: "Don't polish it. Make it hold. That's writing, no?", zh: "別拋光,要耐用。寫字不也這樣?" },
+  { weight: 4, when: (c) => c.profession === "shipwright", tier: 3, en: "You'd make a decent shipwright. You already rebuild every night.", zh: "你當修船師會不錯,反正你每晚都在重建什麼。" },
+  // lampkeeper — spends few words
+  { weight: 4, when: (c) => c.profession === "lampkeeper", en: "Lit.", zh: "亮了。" },
+  { weight: 4, when: (c) => c.profession === "lampkeeper", en: "Wind tonight. Lamps held.", zh: "今晚有風,燈都撐住了。" },
+  { weight: 4, when: (c) => c.profession === "lampkeeper", tier: 3, en: "Yours burns steadiest. Didn't say that.", zh: "你那盞燒得最穩。我沒說過這句。" },
+  // poet — loses lines, self-mocking
+  { weight: 4, when: (c) => c.profession === "poet", en: "I rhymed 'moon' with 'you' again. Unforgivable. Accurate.", zh: "我又把「月」跟「你」押韻了。不可原諒,但很準。" },
+  { weight: 4, when: (c) => c.profession === "poet", en: "Your buildings scan better than my stanzas.", zh: "你的樓比我的詩節更有韻律。" },
+  { weight: 4, when: (c) => c.profession === "poet", tier: 3, en: "Steal my best line, I'll deny it's mine. Take it. Go.", zh: "偷走我最好的那句吧,我會否認是我寫的。拿去,快。" },
+  // tailor — notices everything, precise
+  { weight: 4, when: (c) => c.profession === "tailor", en: "Hem's off by a pixel. Yours, not mine. Endearing, somehow.", zh: "褲腳歪了一個像素。你的,不是我的。莫名可愛。" },
+  { weight: 4, when: (c) => c.profession === "tailor", en: "Night wears you well.", zh: "夜色很襯你。" },
+  { weight: 4, when: (c) => c.profession === "tailor", tier: 3, en: "I'd take in that coat for free. Friends don't pay for seams.", zh: "那件外套我免費幫你修。朋友之間,縫線不收錢。" },
+  // archivist — precise, citing
+  { weight: 4, when: (c) => c.profession === "archivist", en: "Filed under 'tonight': you, walking. Cross-referenced with 'good'.", zh: "歸檔在「今晚」條目下:你,散步中。交叉索引:「不錯」。" },
+  { weight: 4, when: (c) => c.profession === "archivist", en: "Page numbers lie. Order doesn't. Keep writing in order.", zh: "頁碼會騙人,順序不會。照順序寫下去。" },
+  { weight: 4, when: (c) => c.profession === "archivist", tier: 3, en: "Your earliest page is my favourite record. Don't ask which one.", zh: "你最早的那頁是我最愛的館藏。別問是哪一頁。" },
+  // stargazer — dreamy, looks up mid-sentence
+  { weight: 4, when: (c) => c.profession === "stargazer", en: "Sorry, what? The sky moved. It does that. What were we saying?", zh: "抱歉,你說什麼?天空剛剛動了一下。它常這樣。我們聊到哪了?" },
+  { weight: 4, when: (c) => c.profession === "stargazer", en: "If you stare long enough, the stars stare back. Politely.", zh: "盯著星星夠久,它們會回望你。很有禮貌地。" },
+  { weight: 4, when: (c) => c.profession === "stargazer", tier: 3, en: "I named a dim one after you. It's getting brighter. Coincidence?", zh: "我用你的名字命名了一顆很暗的星。它最近變亮了。巧合嗎?" },
+  // neighbour — plain homely warmth
+  { weight: 4, when: (c) => c.profession === "neighbour", en: "Ate anything tonight? Words don't count.", zh: "今晚吃過東西了嗎?字不算。" },
+  { weight: 4, when: (c) => c.profession === "neighbour", en: "My balcony gets your building's shadow now. I don't mind.", zh: "我陽台現在會被你的樓遮到影子了。我不介意。" },
+  { weight: 4, when: (c) => c.profession === "neighbour", tier: 3, en: "Knock anytime. The door's not real, but the welcome is.", zh: "隨時來敲門。門不是真的,歡迎是真的。" },
+]

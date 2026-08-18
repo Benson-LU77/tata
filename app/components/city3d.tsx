@@ -1724,9 +1724,11 @@ export function City3D({
 
     // the noticeboard: a pinned sentence stands at the newest month's gate
     if (billboard && plan.blocks.length > 0) {
-      const bb2 = plan.blocks[plan.blocks.length - 1];
-      const bx3 = bb2.x + 0.6 * CELL;
-      const bz3 = bb2.z - CELL * 2.0;
+      // a civic fixture: it stands by the first month's southwest corner
+      // and never moves again — landmarks you can give directions by
+      const bb2 = plan.blocks[0];
+      const bx3 = bb2.x - 1.6 * CELL;
+      const bz3 = bb2.z + 7.6 * CELL;
       const bLot: Lot = { file: "__billboard__", date: "", x: bx3, z: bz3, half: 0.9, floors: 0, seed: 5, lit: 1 };
       for (const px4 of [-0.75, 0.75]) {
         entries.push({ lot: bLot, box: { x: bx3 + px4, y: 0, z: bz3, w: 0.1, h: 1.3, d: 0.1 } });
