@@ -1845,3 +1845,21 @@ button:focus-visible, input:focus-visible {
   min-height: 30px;
   cursor: pointer;
 }
+
+/* the month list stays one hand tall — the jump strip rides on top,
+   the scroll starts at the newest page, the rail shows there is more */
+.month-list .month-jump {
+  position: sticky;
+  top: -8px;
+  z-index: 1;
+  background: rgba(13, 15, 19, .97);
+  padding-top: 8px;
+  margin-top: -8px;
+}
+.month-list::-webkit-scrollbar { width: 6px; }
+.month-list::-webkit-scrollbar-thumb {
+  background: var(--v3);
+  border-radius: 3px;
+}
+.month-list::-webkit-scrollbar-track { background: transparent; }
+.month-list { scrollbar-width: thin; scrollbar-color: var(--v3) transparent; }

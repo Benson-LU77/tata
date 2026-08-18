@@ -1543,7 +1543,15 @@ export default function Home() {
         </div>
       )}
       {monthListOpen && !writeOpen && (
-        <div className="month-list immersion-ui" role="dialog" aria-label={t("months.list")}>
+        <div
+          className="month-list immersion-ui"
+          role="dialog"
+          aria-label={t("months.list")}
+          ref={(el) => {
+            // a month opens on its newest page, not January of the scroll
+            if (el) el.scrollTop = el.scrollHeight;
+          }}
+        >
           <div className="month-jump">
             {cityPlan.blocks.map((b, i) => (
               <button
