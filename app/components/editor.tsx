@@ -13,7 +13,7 @@ import {
 import type { DecorationSet } from "@codemirror/view";
 import { history, defaultKeymap, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { syntaxHighlighting, HighlightStyle, syntaxTree } from "@codemirror/language";
-import { autocompletion } from "@codemirror/autocomplete";
+import { autocompletion, startCompletion } from "@codemirror/autocomplete";
 import type { CompletionContext, Completion } from "@codemirror/autocomplete";
 import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
 import { stampRows, stampMenu } from "../lib/city/sprites/stamps";
@@ -326,6 +326,7 @@ const SLASH_DEFS: { label: string; en: string; zh: string; preview: string }[] =
   { label: "/divider", en: "horizontal divider", zh: "分隔線", preview: "———" },
   { label: "/now", en: "current time stamp", zh: "現在時間戳記", preview: "> 21:30" },
   { label: "/capsule", en: "time capsule — sealed until a date", zh: "時間膠囊，封緘到指定日期", preview: "> [!capsule] 2027-08-18" },
+  { label: "/stamp", en: "pixel stamp picker", zh: "像素印章（也可直接輸入 ::）", preview: "::貓:: → 🐱" },
 ];
 
 function slashSource(
@@ -391,6 +392,33 @@ function slashSource(
       { label: "/h2", ...meta("/h2"), boost: 6, apply: insert("## ") },
       { label: "/h3", ...meta("/h3"), boost: 5, apply: insert("### ") },
       { label: "/quote", ...meta("/quote"), boost: 4, apply: insert("> ") },
+      {
+        label: "/stamp",
+        ...meta("/stamp"),
+        boost: 4.5,
+        apply: (view, _completion, from, to) => {
+          view.dispatch({
+            changes: { from, to, insert: "::" },
+            selection: { anchor: from + 2 },
+          });
+          window.setTimeout(() => startCompletion(view), 30);
+        },
+      },
+      {
+        label: "/capsule",
+        ...meta("/capsule"),
+        boost: 4.2,
+        apply: (view, _completion, from, to) => {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() + 1);
+          const pad2 = (n: number) => String(n).padStart(2, "0");
+          const text = `> [!capsule] ${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}\n\n`;
+          view.dispatch({
+            changes: { from, to, insert: text },
+            selection: { anchor: from + text.length },
+          });
+        },
+      },
       {
         label: "/divider",
         ...meta("/divider"),

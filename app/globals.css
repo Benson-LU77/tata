@@ -1487,6 +1487,7 @@ button:focus-visible, input:focus-visible {
 /* the dialogue box docks — a steady window, Pokemon-style */
 .city-bubble--docked {
   visibility: visible;
+  pointer-events: auto; /* the fork buttons must take real taps */
   left: 50%;
   top: auto;
   bottom: 88px;
