@@ -15,6 +15,7 @@ import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/s
 import type { GameState } from "./lib/game/shop";
 import { greet, tierOf, nameOf, lineFor, tierName } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
+import { creaturesFor } from "./lib/city/residents";
 import { hash32 } from "./lib/city/layout";
 import { MirrorPanel } from "./components/mirror";
 import { professionOf } from "./lib/city/npc";
@@ -26,7 +27,7 @@ import {
   progressOf,
   resolveCommissions,
 } from "./lib/game/commissions";
-import { CLOSER_LINES, PET_ACTIONS, REPLY_LINES } from "./lib/game/bonds-lines";
+import { CLOSER_LINES, PET_ACTIONS, QUEST_LINES, REPLY_LINES } from "./lib/game/bonds-lines";
 import { iconOf } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
@@ -334,6 +335,7 @@ export default function Home() {
   );
   const youRows = useMemo(() => composeYou(game.look).you_S_i, [game.look]);
 
+
   const dex = useMemo(() => {
     const count = (a: number) => cityPlan.lots.filter((l) => l.arch === a).length;
     const own = (id: string, n: number) => (game.owned.includes(id) ? n : 0);
@@ -511,7 +513,14 @@ export default function Home() {
       const sinceGreet = had
         ? Math.round((now - new Date(had.last + "T00:00:00").getTime()) / 86400000)
         : 0;
-      const line = lineFor(
+      const isGiver = quest !== null && hit.key === quest.key;
+      const questText = isGiver
+        ? (quest.done ? QUEST_LINES[quest.orderId]?.thanks : QUEST_LINES[quest.orderId]?.ask)
+        : undefined;
+      const addressed = questText
+        ? (game.name ? `${game.name}\uff0c` : "") + (lang === "zh" ? questText.zh : questText.en)
+        : null;
+      const line = addressed ?? lineFor(
         {
           kind,
           tier: tierAfter,
@@ -568,8 +577,15 @@ export default function Home() {
       setBubble({ key: hit.key, name: shownName, text: line, until: now + 30000, choices });
       setEmote({
         key: hit.key,
-        icon: !had ? "emote_dots" : tierAfter > tierBefore ? "emote_heart" : "emote_wave",
-        until: now + 1600,
+        icon:
+          isGiver && quest.done
+            ? "emote_heart"
+            : !had
+              ? "emote_dots"
+              : tierAfter > tierBefore
+                ? "emote_heart"
+                : "emote_wave",
+        until: now + 2200,
       });
       hum().greet(hit.seed);
       if (tierAfter > tierBefore) hum().settle();
@@ -830,11 +846,16 @@ export default function Home() {
           ? `寫字的人。\n\n你埋下的字醒了：「${file}」。\n它等到了自己的日子。去打開它——那是過去的你，寄給現在的你的信。\n\n—— 城市檔案室`
           : `To the one who writes.\n\nA page you buried has woken: "${file}".\nIt waited for its own day. Go open it — the person you were, writing to the person you are.\n\n— The city archive`;
       }
-      return id.startsWith("month-")
+      const body = id.startsWith("month-")
         ? monthlyLetterBody(id.slice(6), monthStats(id.slice(6)), lang)
         : letterBody(id, { months: cityPlan.blocks.length, pages: metrics.length, date }, lang);
+      return game.name
+        ? body
+            .replace(/^寫字的人。/, `${game.name}。`)
+            .replace(/^To the one who writes\./, `To ${game.name}.`)
+        : body;
     },
-    [monthStats, cityPlan.blocks.length, metrics.length, lang],
+    [monthStats, cityPlan.blocks.length, metrics.length, lang, game.name],
   );
 
   const exportLetter = useCallback(
@@ -855,6 +876,20 @@ export default function Home() {
       dogs: on("dog") ? 1 : 0,
     };
   }, [game.owned, game.stashed]);
+
+  /* the nightly favour: a resident claims one of tonight's work orders */
+  const quest = useMemo(() => {
+    if (!today || cityPlan.lots.length === 0) return null;
+    const orders = workOrders(metrics, today);
+    if (orders.length === 0) return null;
+    const order = orders[hash32(today + ":favour") % orders.length];
+    const persons = creaturesFor(cityPlan, cityPlan.lots.length, extras).filter(
+      (c) => c.kind === "person",
+    );
+    if (persons.length === 0) return null;
+    const giver = persons[hash32(today + ":giver") % persons.length];
+    return { key: giver.key, seed: giver.seed, orderId: order.id, done: order.done };
+  }, [metrics, today, cityPlan, extras]);
   const decor = useMemo(() => {
     const on = (id: string) => game.owned.includes(id) && !(game.stashed ?? []).includes(id);
     return {
@@ -1362,6 +1397,7 @@ export default function Home() {
             commissions={works}
             placements={placements}
             billboard={Boolean(game.billboard)}
+            quest={quest ? { key: quest.key, done: quest.done } : null}
             onBillboardTap={() => {
               const b = game.billboard;
               if (!b) return;
@@ -1972,6 +2008,14 @@ export default function Home() {
         onClose={() => setMirrorOpen(false)}
         onUnlock={unlockPart}
         onWear={wearLook}
+        name={game.name ?? ""}
+        onName={(next) => {
+          setGame((prev) => {
+            const g2: GameState = { ...prev, name: next, updatedAt: Date.now() };
+            void saveGameState(g2, clientRef.current);
+            return g2;
+          });
+        }}
         t={t}
       />
 

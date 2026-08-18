@@ -1925,3 +1925,25 @@ button:focus-visible, input:focus-visible {
   min-height: 38px;
 }
 .bubble-choices button:hover { background: rgba(224, 168, 79, .12); }
+
+/* your name, taken at the mirror */
+.mirror-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.mirror-name span {
+  font: 400 10.5px/1 var(--mono);
+  letter-spacing: .08em;
+  color: var(--v5);
+  text-transform: uppercase;
+}
+.mirror-name input {
+  flex: 1;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .03);
+  font: 400 16px/1 var(--mono);
+  color: var(--v6);
+}

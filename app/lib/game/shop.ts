@@ -63,6 +63,8 @@ export type GameState = {
   placedAt: Record<string, { month: string; col: number; row: number }>;
   /** the noticeboard: one sentence, pinned from a note, standing in the city */
   billboard: { text: string; date: string } | null;
+  /** what the residents call you — empty means "the one who writes" */
+  name: string;
   updatedAt: number;
 };
 
@@ -79,6 +81,7 @@ export const EMPTY_STATE: GameState = {
   stashed: [],
   placedAt: {},
   billboard: null,
+  name: "",
   updatedAt: 0,
 };
 
@@ -105,6 +108,7 @@ function mergeStates(a: GameState, b: GameState): GameState {
     stashed: newer.stashed ?? [], // arrangement is one decision, like the outfit
     placedAt: newer.placedAt ?? {},
     billboard: newer.billboard ?? null,
+    name: newer.name ?? "",
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }
@@ -143,6 +147,7 @@ async function loadLocalState(): Promise<GameState> {
                 stashed: raw.stashed ?? [],
                 placedAt: raw.placedAt ?? {},
                 billboard: raw.billboard ?? null,
+                name: raw.name ?? "",
                 updatedAt: raw.updatedAt ?? 0,
               }
             : EMPTY_STATE,
@@ -177,6 +182,7 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
       stashed: remote.stashed ?? [],
       placedAt: remote.placedAt ?? {},
       billboard: remote.billboard ?? null,
+      name: remote.name ?? "",
       updatedAt: remote.updatedAt ?? 0,
     });
     void saveGameState(merged); // heal the local copy

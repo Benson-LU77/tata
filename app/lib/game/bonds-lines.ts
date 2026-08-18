@@ -476,3 +476,47 @@ export const PET_ACTIONS: Record<
     },
   ],
 }
+
+/** the nightly favour: a resident claims tonight's work order and asks
+ *  you in person — completion earns their thanks, nothing else changes */
+export const QUEST_LINES: Record<
+  string,
+  { ask: { en: string; zh: string }; thanks: { en: string; zh: string } }
+> = {
+  write: {
+    ask: { en: "Do me a favour tonight — write anything at all. I like knowing the lights are on.", zh: "今晚幫我個忙——隨便寫點什麼都好。知道有燈亮著，我就安心。" },
+    thanks: { en: "You wrote. I saw the window light up.", zh: "你寫了。我看見那扇窗亮起來了。" },
+  },
+  w300: {
+    ask: { en: "Three hundred words tonight? I want to watch a tall one go up.", zh: "今晚寫滿三百字好嗎？我想看一棟高的長起來。" },
+    thanks: { en: "Three hundred. That one will catch the morning light first.", zh: "三百字。那棟樓明天會第一個接到晨光。" },
+  },
+  second: {
+    ask: { en: "Write a second page tonight — one thought deserves another.", zh: "今晚寫第二頁吧——一個念頭值得再多一個。" },
+    thanks: { en: "Two pages. The street feels wider already.", zh: "兩頁了。這條街感覺都寬了一點。" },
+  },
+  small: {
+    ask: { en: "If you're awake in the smallest hours, leave a line. The night shift gets lonely.", zh: "如果你在最深的凌晨還醒著，留一行字吧。夜班很寂寞的。" },
+    thanks: { en: "You were up with us. The chapel remembers.", zh: "你陪我們熬夜了。禮拜堂會記得。" },
+  },
+  brief: {
+    ask: { en: "Short is fine. Under a hundred words — a note, not a speech.", zh: "短短的就好。一百字以內——是便條，不是演講。" },
+    thanks: { en: "Brief and true. My favourite kind.", zh: "短而真。我最喜歡這種。" },
+  },
+  twonights: {
+    ask: { en: "You wrote last night. Come back tonight and make it two.", zh: "你昨晚寫了。今晚再來，就是連續兩晚。" },
+    thanks: { en: "Two nights running. The lamps burn steadier.", zh: "連續兩晚。街燈燒得更穩了。" },
+  },
+  backfill: {
+    ask: { en: "There's a dark day back there. Write it a page — late is fine.", zh: "後面有一天還是暗的。補它一頁吧——晚到也算到。" },
+    thanks: { en: "You went back for it. Bridges get built like that.", zh: "你回去補上了。橋就是這樣搭起來的。" },
+  },
+  settle: {
+    ask: { en: "A hundred and fifty words tonight — enough to put down roots.", zh: "今晚寫滿一百五十字——夠扎根了。" },
+    thanks: { en: "Rooted. It won't blow away now.", zh: "扎根了。現在吹不走了。" },
+  },
+  third: {
+    ask: { en: "Three pages in one night? Show the district how it's done.", zh: "一晚三頁？示範給整個街區看看。" },
+    thanks: { en: "Three pages. They'll talk about tonight.", zh: "三頁。大家會談論今晚的。" },
+  },
+}

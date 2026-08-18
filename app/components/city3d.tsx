@@ -615,6 +615,7 @@ export function City3D({
   placements,
   billboard,
   onBillboardTap,
+  quest,
   ariaLabel,
   onHover,
   onOpen,
@@ -649,6 +650,7 @@ export function City3D({
   placements?: Record<string, { x: number; z: number }>;
   billboard?: boolean;
   onBillboardTap?: () => void;
+  quest?: { key: string; done: boolean } | null;
   ariaLabel?: string;
   onHover: (file: string | null, x: number, y: number) => void;
   onOpen: (file: string) => void;
@@ -708,14 +710,14 @@ export function City3D({
       (c) => new THREE.Color(c),
     ),
   );
-  const stateRef = useRef({ plan, focus, matches, weather, levelCap, writeMode, emote });
+  const stateRef = useRef({ plan, focus, matches, weather, levelCap, writeMode, emote, quest });
   const onMeetRef = useRef(onEncounterMeet);
   useEffect(() => {
     onMeetRef.current = onEncounterMeet;
   }, [onEncounterMeet]);
 
   useEffect(() => {
-    stateRef.current = { plan, focus, matches, weather, levelCap, writeMode, emote };
+    stateRef.current = { plan, focus, matches, weather, levelCap, writeMode, emote, quest };
     loopRef.current?.();
   }, [plan, focus, matches, weather, levelCap, writeMode, emote]);
   const loopRef = useRef<(() => void) | null>(null);
@@ -1047,6 +1049,10 @@ export function City3D({
       }
       if (enc && enc.phase === "walk" && c.key === enc.key) {
         place("emote_notice", p.x, p.y + (SPRITE_WORLD_H[look2] ?? 1.4) * encScale + 0.3, p.z, 0.5, 0, 0);
+      }
+      const q = stateRef.current.quest;
+      if (q && !q.done && q.key === c.key && !(enc && enc.key === c.key)) {
+        place("emote_question", p.x, p.y + (SPRITE_WORLD_H[look2] ?? 1.4) * encScale + 0.3, p.z, 0.5, 0, 0);
       }
     }
     // the groves sway in travelling gusts — a wave of wind, not a metronome

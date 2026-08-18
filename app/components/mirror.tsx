@@ -32,18 +32,22 @@ export function MirrorPanel({
   look,
   owned,
   watts,
+  name,
   onClose,
   onUnlock,
   onWear,
+  onName,
   t,
 }: {
   open: boolean;
   look: YouLook;
   owned: string[];
   watts: number;
+  name: string;
   onClose: () => void;
   onUnlock: (id: string, cost: number) => void;
   onWear: (look: YouLook) => void;
+  onName: (name: string) => void;
   t: (key: string) => string;
 }) {
   const [draft, setDraft] = useState<YouLook>(look);
@@ -97,6 +101,20 @@ export function MirrorPanel({
           ×
         </button>
       </div>
+      <label className="mirror-name">
+        <span>{t("mirror.name")}</span>
+        <input
+          type="text"
+          defaultValue={name}
+          key={name + (open ? "1" : "0")}
+          maxLength={16}
+          placeholder={t("mirror.name.placeholder")}
+          onBlur={(e) => {
+            if (e.target.value.trim() !== name) onName(e.target.value.trim());
+          }}
+          spellCheck={false}
+        />
+      </label>
       <div className="mirror-body">
         <canvas ref={canvasRef} className="mirror-preview" width={96} height={156} aria-label="Your figure" />
         <div className="mirror-controls">
