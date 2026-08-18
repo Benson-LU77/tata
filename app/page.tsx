@@ -18,7 +18,7 @@ import type { CreatureKind } from "./lib/city/residents";
 import { creaturesFor } from "./lib/city/residents";
 import { hash32 } from "./lib/city/layout";
 import { MirrorPanel } from "./components/mirror";
-import { professionOf } from "./lib/city/npc";
+import { composeCitizens, professionOf } from "./lib/city/npc";
 import {
   COMMISSION_CATALOG,
   commissionDef,
@@ -87,6 +87,7 @@ export default function Home() {
   const [moveMode, setMoveMode] = useState<string | null>(null);
   const [idOpen, setIdOpen] = useState(false);
   const [dexPick, setDexPick] = useState<string | null>(null);
+  const [neighbourPick, setNeighbourPick] = useState<string | null>(null);
   const [replayOn, setReplayOn] = useState(false);
   const [replayDate, setReplayDate] = useState<string | null>(null);
   const [moveToast, setMoveToast] = useState<string | null>(null);
@@ -336,6 +337,7 @@ export default function Home() {
     [metrics],
   );
   const youRows = useMemo(() => composeYou(game.look).you_S_i, [game.look]);
+  const npcSheet = useMemo(() => composeCitizens(), []);
 
   /* the citizen card: everything on it derives from the vault */
   const citizen = useMemo(() => {
@@ -2032,20 +2034,38 @@ export default function Home() {
               <span>{t("registry.neighbours")}</span>
             </div>
             <div className="dex-items">
-              {knownResidents.map((r, i) => (
-                <div key={r.key} className="dex-item found">
-                  <strong>
-                    {r.name}
-                    {knownResidents.some((o, j) => o.name === r.name && j < i) &&
-                      ` ${"Ⅱ Ⅲ Ⅳ Ⅴ".split(" ")[Math.min(3, knownResidents.filter((o, j) => o.name === r.name && j < i).length - 1)] ?? "Ⅴ"}`}
-                    {r.prof && <span className="dex-prof"> · {t("prof." + r.prof)}</span>}
-                  </strong>
-                  <em>
-                    {"\u25a0".repeat(r.tier)}
+              <div className="dex-grid">
+                {knownResidents.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    className={"dex-tile found" + (neighbourPick === r.key ? " picked" : "")}
+                    onClick={() => setNeighbourPick((v) => (v === r.key ? null : r.key))}
+                    aria-label={r.name}
+                  >
+                    {r.kind === "person" ? (
+                      <PixelIcon rows={npcSheet[`npc${r.seed % 12}_S_i`] ?? youRows} size={24} />
+                    ) : (
+                      <PixelIcon rows={r.kind === "cat" ? iconOf("cats")! : iconOf("dog")!} size={22} />
+                    )}
+                  </button>
+                ))}
+              </div>
+              {(() => {
+                const i = knownResidents.findIndex((x) => x.key === neighbourPick);
+                if (i < 0) return null;
+                const r = knownResidents[i];
+                const numeral = knownResidents.some((o, j) => o.name === r.name && j < i)
+                  ? ` ${"Ⅱ Ⅲ Ⅳ Ⅴ".split(" ")[Math.min(3, knownResidents.filter((o, j) => o.name === r.name && j < i).length - 1)] ?? "Ⅴ"}`
+                  : "";
+                return (
+                  <p className="dex-caption">
+                    <strong>{r.name}{numeral}</strong>
+                    {r.prof ? ` · ${t("prof." + r.prof)}` : ""} — {"\u25a0".repeat(r.tier)}
                     {"\u25a1".repeat(4 - r.tier)} {tierName(r.tier, lang)}
-                  </em>
-                </div>
-              ))}
+                  </p>
+                );
+              })()}
             </div>
           </>
         )}
