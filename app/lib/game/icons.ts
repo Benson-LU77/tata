@@ -261,13 +261,54 @@ const DRAWN: Record<string, string[]> = {
   ],
 };
 
+const ARCH_ICONS: Record<string, string[]> = {
+  a10: [
+    "....44....",
+    "...4664...",
+    "....44....",
+    "...4444...",
+    "...4444...",
+    "...3333...",
+    "...3333...",
+    "...3333...",
+    "..333333..",
+    "..........",
+  ],
+  a11: [
+    "..........",
+    "..444444..",
+    ".44....44.",
+    "44......44",
+    "44......44",
+    "44......44",
+    "44......44",
+    "..........",
+    "..........",
+    "..........",
+  ],
+  a12: [
+    "....4.....",
+    "...444....",
+    "..44444...",
+    ".4444444..",
+    "..33333...",
+    "..33333...",
+    "..35553...",
+    "..35553...",
+    "..33333...",
+    "..........",
+  ],
+};
+
 /** rows for one depot/commission id — sprites for the living, icons for the built */
 export function iconOf(id: string): string[] | null {
   if (id === "cats") return SPRITES.cat_S_i;
   if (id === "dog") return SPRITES.dog_S_i;
   if (id === "birds") return SPRITES.ship_E_a;
   if (id === "trees") return SPRITES.tree_round;
-  return DRAWN[id] ?? null;
+  if (id === "constellations") return STAR_ICON;
+  if (id === "moon") return MOON_ICON;
+  return ARCH_ICONS[id] ?? DRAWN[id] ?? null;
 }
 
 /** a three-drawer filing cabinet, for the editor's archive button */
@@ -285,4 +326,25 @@ export const CABINET_ICON: string[] = [
   "0444664440",
   "0444444440",
   "0000000000",
+];
+
+const STAR_ICON: string[] = [
+  "....6....",
+  "...666...",
+  "666666666",
+  ".6666666.",
+  "..66666..",
+  "..6...6..",
+  ".6.....6.",
+  ".........",
+];
+const MOON_ICON: string[] = [
+  "...555...",
+  "..55.....",
+  ".555.....",
+  ".555.....",
+  ".555.....",
+  "..55.....",
+  "...555...",
+  ".........",
 ];

@@ -2076,3 +2076,37 @@ button:focus-visible, input:focus-visible {
   cursor: pointer;
 }
 .archive-month button:hover { background: rgba(255, 255, 255, .05); }
+
+/* the registry stops scrolling forever: a proper specimen grid */
+.dex-actions { display: flex; gap: 8px; }
+.dex-actions .dex-mirror { flex: 1; }
+.dex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 6px;
+}
+.dex-tile {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .02);
+  cursor: pointer;
+  min-height: 44px;
+}
+.dex-tile i {
+  font: 400 13px/1 var(--mono);
+  font-style: normal;
+  color: var(--v3);
+}
+.dex-tile.found { border-color: rgba(255, 255, 255, .14); }
+.dex-tile.found i { color: var(--v5); }
+.dex-tile.picked { border-color: var(--amber); }
+.dex-tile .depot-thumb { position: static; transform: none; }
+.dex-caption {
+  font: 400 11px/1.6 var(--mono);
+  color: var(--v5);
+  letter-spacing: .04em;
+  padding: 2px 2px 0;
+}
+.dex-caption strong { color: var(--v6); font-weight: 500; }

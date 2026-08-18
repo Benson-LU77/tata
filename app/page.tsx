@@ -86,6 +86,7 @@ export default function Home() {
   const [touchPick, setTouchPick] = useState<string | null>(null);
   const [moveMode, setMoveMode] = useState<string | null>(null);
   const [idOpen, setIdOpen] = useState(false);
+  const [dexPick, setDexPick] = useState<string | null>(null);
   const [replayOn, setReplayOn] = useState(false);
   const [replayDate, setReplayDate] = useState<string | null>(null);
   const [moveToast, setMoveToast] = useState<string | null>(null);
@@ -366,11 +367,11 @@ export default function Home() {
     const own = (id: string, n: number) => (game.owned.includes(id) ? n : 0);
     const builtWorks = resolveCommissions(game.commissions ?? [], nowTs || 0).built.map((b) => b.id);
     const entries: { id: string; name: string; line: string; n: number; icon?: string[] | null }[] = [
-      { id: "a10", name: t("dex.lighthouse.name"), line: t("dex.lighthouse.line"), n: count(10) },
-      { id: "a11", name: t("dex.arch.name"), line: t("dex.arch.line"), n: count(11) },
-      { id: "a12", name: t("dex.chapel.name"), line: t("dex.chapel.line"), n: count(12) },
-      { id: "constellations", name: t("dex.constellations.name"), line: t("dex.constellations.line"), n: Math.min(level, 12), icon: null },
-      { id: "moon", name: t("dex.moon.name"), line: t("dex.moon.line"), n: 1, icon: null },
+      { id: "a10", name: t("dex.lighthouse.name"), line: t("dex.lighthouse.line"), n: count(10), icon: iconOf("a10") },
+      { id: "a11", name: t("dex.arch.name"), line: t("dex.arch.line"), n: count(11), icon: iconOf("a11") },
+      { id: "a12", name: t("dex.chapel.name"), line: t("dex.chapel.line"), n: count(12), icon: iconOf("a12") },
+      { id: "constellations", name: t("dex.constellations.name"), line: t("dex.constellations.line"), n: Math.min(level, 12), icon: iconOf("constellations") },
+      { id: "moon", name: t("dex.moon.name"), line: t("dex.moon.line"), n: 1, icon: iconOf("moon") },
       { id: "cats", name: t("shop.cats.name"), line: t("shop.cats.line"), n: own("cats", 4), icon: iconOf("cats") },
       { id: "birds", name: t("shop.birds.name"), line: t("shop.birds.line"), n: own("birds", 6), icon: iconOf("birds") },
       { id: "dog", name: t("shop.dog.name"), line: t("shop.dog.line"), n: own("dog", 1), icon: iconOf("dog") },
@@ -1977,36 +1978,53 @@ export default function Home() {
             ×
           </button>
         </div>
-        <button
-          type="button"
-          className="dex-mirror"
-          onClick={() => {
-            setDexOpen(false);
-            setMirrorOpen(true);
-          }}
-        >
-          {t("registry.mirror")}
-        </button>
-        <button
-          type="button"
-          className="dex-mirror"
-          onClick={() => {
-            setDexOpen(false);
-            hum().click();
-            setReplayOn(true);
-          }}
-        >
-          {t("registry.rings")}
-        </button>
+        <div className="dex-actions">
+          <button
+            type="button"
+            className="dex-mirror"
+            onClick={() => {
+              setDexOpen(false);
+              setMirrorOpen(true);
+            }}
+          >
+            {t("registry.mirror")}
+          </button>
+          <button
+            type="button"
+            className="dex-mirror"
+            onClick={() => {
+              setDexOpen(false);
+              hum().click();
+              setReplayOn(true);
+            }}
+          >
+            {t("registry.rings")}
+          </button>
+        </div>
         <div className="dex-items">
-          {dex.map((d) => (
-            <div key={d.id} className={"dex-item" + (d.n > 0 ? " found" : "")}>
-              {d.icon && d.n > 0 && <PixelIcon rows={d.icon} size={26} />}
-              <strong>{d.n > 0 ? d.name : t("registry.unknown")}</strong>
-              <em>{d.n > 0 ? d.line : "…"}</em>
-              <span>{d.n > 0 ? `${t("registry.standing")}${d.n}` : t("registry.notbuilt")}</span>
-            </div>
-          ))}
+          <div className="dex-grid">
+            {dex.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                className={"dex-tile" + (d.n > 0 ? " found" : "") + (dexPick === d.id ? " picked" : "")}
+                onClick={() => setDexPick((v) => (v === d.id ? null : d.id))}
+                aria-label={d.n > 0 ? d.name : t("registry.unknown")}
+              >
+                {d.n > 0 && d.icon ? <PixelIcon rows={d.icon} size={24} /> : <i>{d.n > 0 ? "◆" : "?"}</i>}
+              </button>
+            ))}
+          </div>
+          {(() => {
+            const d = dex.find((x) => x.id === dexPick);
+            if (!d) return null;
+            return (
+              <p className="dex-caption">
+                <strong>{d.n > 0 ? d.name : t("registry.unknown")}</strong>
+                {d.n > 0 ? ` — ${d.line} · ${t("registry.standing")}${d.n}` : ` — ${t("registry.notbuilt")}`}
+              </p>
+            );
+          })()}
         </div>
         {knownResidents.length > 0 && (
           <>
