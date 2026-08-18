@@ -520,3 +520,43 @@ export const QUEST_LINES: Record<
     thanks: { en: "Three pages. They'll talk about tonight.", zh: "三頁。大家會談論今晚的。" },
   },
 }
+
+/** lines with a memory: real numbers, your name, and the nights they
+ *  actually noticed — these outweigh small talk when they apply */
+export const MEMORY_LINES: LineDef[] = [
+  // they count your nights
+  { tier: 1, weight: 6, when: (c) => c.streak >= 3 && c.streak < 7,
+    en: "{streak} nights running. I've started telling time by your window.", zh: "連續 {streak} 個晚上了。我開始用你的窗戶看時間。" },
+  { tier: 1, weight: 7, when: (c) => c.streak >= 7,
+    en: "{streak} nights. The lamplighters talk about you, you know.", zh: "{streak} 個晚上沒斷。點燈的人都在談論你,你知道嗎。" },
+  { tier: 1, weight: 6, when: (c) => c.wroteTonight,
+    en: "You wrote already — I can tell. The ink smell gives you away.", zh: "你剛寫完吧——看得出來,墨水味出賣了你。" },
+  { tier: 2, weight: 6, when: (c) => !c.wroteTonight && c.hour >= 22,
+    en: "Nothing yet tonight? The page can wait. But not forever.", zh: "今晚還沒寫?那一頁可以等,但不會永遠等。" },
+  // they miss you, with numbers
+  { tier: 2, weight: 7, when: (c) => c.daysSinceGreet >= 7,
+    en: "{days} days. I thought you'd moved to some other planet.", zh: "{days} 天了。我還以為你搬去別的星球了。" },
+  { tier: 2, weight: 6, when: (c) => c.daysSinceGreet >= 3 && c.daysSinceGreet < 7,
+    en: "Been {days} days. The bench that isn't there missed you.", zh: "隔了 {days} 天。那張不存在的長椅很想你。" },
+  // they count your pages
+  { tier: 2, weight: 5, when: (c) => c.totalNotes >= 30,
+    en: "Page {total} somewhere in those towers. I count. Don't tell anyone.", zh: "那些樓裡已經有 {total} 頁了。我有在數,別跟別人說。" },
+  // they know your name — used sparingly, like real neighbours do
+  { tier: 2, weight: 5, when: (c) => Boolean(c.name),
+    en: "{name}. Good — I was hoping it'd be you.", zh: "{name}。太好了,我正希望是你。" },
+  { tier: 3, weight: 6, when: (c) => Boolean(c.name),
+    en: "Evening, {name}. The street's better with you on it.", zh: "晚安,{name}。有你在,這條街好多了。" },
+  { tier: 3, weight: 6, when: (c) => Boolean(c.name) && c.daysSinceGreet >= 2,
+    en: "{name}! There you are. I kept your absence exactly where you left it.", zh: "{name}!你來了。你不在的那幾天,我原封不動幫你留著。" },
+  { tier: 4, weight: 7, when: (c) => Boolean(c.name),
+    en: "{name}, sit. Not because there's a bench. Because it's you.", zh: "{name},坐吧。不是因為有椅子,是因為是你。" },
+  // weather + hour, but personal
+  { tier: 2, weight: 5, when: (c) => c.weather === "rain" && c.wroteTonight,
+    en: "Rain on the roof, ink on your hands. Good combination.", zh: "屋頂有雨,你手上有墨。很好的組合。" },
+  { tier: 2, weight: 5, when: (c) => c.hour >= 1 && c.hour < 5,
+    en: "This hour again? One of us should sleep. Not me — I'm made of pixels.", zh: "又是這個時間?我們之中該有人去睡。不是我——我是像素做的。" },
+  { tier: 3, weight: 5, when: (c) => c.streak === 0 && c.daysSinceGreet <= 1,
+    en: "Streak's broken? So what. Streets crack. We repave.", zh: "連續斷了?那又怎樣。路也會裂,補起來就好。" },
+  { tier: 3, weight: 5, when: (c) => c.totalNotes >= 60,
+    en: "I remember when this was three buildings and a cat. Look at it now.", zh: "我還記得這裡只有三棟樓和一隻貓的時候。你看看現在。" },
+]

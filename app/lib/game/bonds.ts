@@ -10,7 +10,7 @@
  */
 
 import type { CreatureKind } from "../city/residents";
-import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES } from "./bonds-lines";
+import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES } from "./bonds-lines";
 
 export type Bond = {
   /** days greeted (one per calendar day at most) */
@@ -118,6 +118,8 @@ export type LineCtx = {
   totalNotes: number;
   /** days since you last greeted this resident (0 = today already) */
   daysSinceGreet: number;
+  /** what the residents call you — empty means they don't know yet */
+  name?: string;
   /** the resident's trade — colours their small talk */
   profession?: string;
 };
@@ -133,6 +135,15 @@ export type LineDef = {
   zh: string;
 };
 
+/** fill {streak} {total} {days} {name} with tonight's real numbers */
+function fill(line: string, ctx: LineCtx): string {
+  return line
+    .replace(/\{streak\}/g, String(ctx.streak))
+    .replace(/\{total\}/g, String(ctx.totalNotes))
+    .replace(/\{days\}/g, String(ctx.daysSinceGreet))
+    .replace(/\{name\}/g, ctx.name ?? "");
+}
+
 export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): string {
   const table =
     ctx.kind === "cat"
@@ -141,7 +152,7 @@ export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): s
         ? DOG_LINE_DEFS
         : ctx.firstMeet
           ? FIRST_MEET_LINES
-          : [...LINES, ...TRADE_LINES];
+          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES];
   const eligible = table.filter(
     (l) => (l.tier ?? 0) <= ctx.tier && (!l.when || l.when(ctx)),
   );
@@ -151,8 +162,8 @@ export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): s
   let at = (Math.abs(roll * 7919) % 1) * total;
   for (const l of eligible) {
     at -= l.weight ?? (l.when ? 3 : 1);
-    if (at <= 0) return lang === "zh" ? l.zh : l.en;
+    if (at <= 0) return fill(lang === "zh" ? l.zh : l.en, ctx);
   }
   const last = eligible[eligible.length - 1];
-  return lang === "zh" ? last.zh : last.en;
+  return fill(lang === "zh" ? last.zh : last.en, ctx);
 }

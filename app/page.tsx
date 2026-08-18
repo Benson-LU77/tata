@@ -532,6 +532,7 @@ export default function Home() {
           streak: streakOf(metrics, today),
           totalNotes: metrics.length,
           daysSinceGreet: Math.max(0, sinceGreet),
+          name: game.name || undefined,
         },
         Math.random(),
         lang,
