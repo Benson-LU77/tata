@@ -27,7 +27,7 @@ import {
   progressOf,
   resolveCommissions,
 } from "./lib/game/commissions";
-import { CLOSER_LINES, PET_ACTIONS, QUEST_LINES, REPLY_LINES } from "./lib/game/bonds-lines";
+import { PET_ACTIONS, QUEST_LINES, REPLY_PAIRS } from "./lib/game/bonds-lines";
 import { iconOf } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
@@ -485,13 +485,15 @@ export default function Home() {
     if (encStageRef.current === "reply" && encCloserRef.current) {
       encStageRef.current = "closer";
       hum().click();
+      // read the ref NOW — the state updater runs later, after we clear it
+      const closerText = encCloserRef.current ?? "";
+      encCloserRef.current = null;
       setBubble((prev) => ({
         key: prev?.key ?? "npc",
         name: encNameRef.current,
-        text: encCloserRef.current ?? "",
+        text: closerText,
         until: Date.now() + 30000,
       }));
-      encCloserRef.current = null;
     } else {
       clearEncounterTimers();
       encStageRef.current = null;
@@ -586,18 +588,19 @@ export default function Home() {
           },
         }));
       } else {
-        const pool = [...REPLY_LINES].sort(() => Math.random() - 0.5).slice(0, 2);
+        const pool = [...REPLY_PAIRS].sort(() => Math.random() - 0.5).slice(0, 2);
         choices = pool.map((r) => ({
-          label: lang === "zh" ? r.zh : r.en,
+          label: lang === "zh" ? r.reply.zh : r.reply.en,
           pick: () => {
             encStageRef.current = "reply";
-            const closer = CLOSER_LINES[Math.floor(Math.random() * CLOSER_LINES.length)];
+            // the closer answers THIS reply, not the void
+            const closer = r.closers[Math.floor(Math.random() * r.closers.length)];
             encCloserRef.current = lang === "zh" ? closer.zh : closer.en;
             hum().click();
             setBubble({
               key: "you:0",
               name: "you",
-              text: lang === "zh" ? r.zh : r.en,
+              text: lang === "zh" ? r.reply.zh : r.reply.en,
               until: Date.now() + 30000,
             });
           },
@@ -2044,7 +2047,10 @@ export default function Home() {
                     aria-label={r.name}
                   >
                     {r.kind === "person" ? (
-                      <PixelIcon rows={npcSheet[`npc${r.seed % 12}_S_i`] ?? youRows} size={24} />
+                      <PixelIcon
+                        rows={(npcSheet[`npc${r.seed % 12}_S_i`] ?? youRows).slice(0, 7)}
+                        size={30}
+                      />
                     ) : (
                       <PixelIcon rows={r.kind === "cat" ? iconOf("cats")! : iconOf("dog")!} size={22} />
                     )}

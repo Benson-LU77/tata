@@ -613,3 +613,53 @@ export const VOICE_LINES: LineDef[] = [
   { weight: 4, when: (c) => c.profession === "neighbour", en: "My balcony gets your building's shadow now. I don't mind.", zh: "我陽台現在會被你的樓遮到影子了。我不介意。" },
   { weight: 4, when: (c) => c.profession === "neighbour", tier: 3, en: "Knock anytime. The door's not real, but the welcome is.", zh: "隨時來敲門。門不是真的,歡迎是真的。" },
 ]
+
+/** what you can say, and how they answer THAT — not a coin toss.
+ *  Each reply carries its own closers, so the exchange coheres. */
+export const REPLY_PAIRS: {
+  reply: { en: string; zh: string };
+  closers: { en: string; zh: string }[];
+}[] = [
+  {
+    reply: { en: "Good night for it.", zh: "今晚不錯。" },
+    closers: [
+      { en: "It is. Nights like this deserve a slower walk.", zh: "是啊。這種晚上,值得走慢一點。" },
+      { en: "Tomorrow might top it. Doubt it, though.", zh: "明晚說不定更好——不過我懷疑。" },
+    ],
+  },
+  {
+    reply: { en: "Just walking.", zh: "隨便走走。" },
+    closers: [
+      { en: "Best kind of walking. Destinations are overrated.", zh: "隨便走走最好。目的地都被高估了。" },
+      { en: "Then take the long way. It earned it.", zh: "那就繞遠路吧,這條街值得。" },
+    ],
+  },
+  {
+    reply: { en: "The city's grown.", zh: "城市又長大了。" },
+    closers: [
+      { en: "And in the right direction, for once.", zh: "而且難得是往好的方向長。" },
+      { en: "Because somebody keeps writing. Wonder who.", zh: "因為有人一直在寫啊。想不到是誰呢。" },
+    ],
+  },
+  {
+    reply: { en: "See you around.", zh: "回頭見。" },
+    closers: [
+      { en: "You will. I'm reliably here.", zh: "會的。我很可靠地一直在這。" },
+      { en: "Count on it. Same street, same me.", zh: "一定。同一條街,同一個我。" },
+    ],
+  },
+  {
+    reply: { en: "Take care out here.", zh: "在外面小心。" },
+    closers: [
+      { en: "Always do. The kerbs are the only danger, and I know them all.", zh: "一向小心。這裡唯一的危險是路緣,而我全都認得。" },
+      { en: "You too. Mind the gap between the months.", zh: "你也是。小心月份之間的縫。" },
+    ],
+  },
+  {
+    reply: { en: "I wrote a little.", zh: "我寫了一點東西。" },
+    closers: [
+      { en: "I knew it. A lit window looks different when someone's writing behind it.", zh: "我就知道。有人在後面寫字的窗,亮起來的樣子不一樣。" },
+      { en: "'A little' builds this whole town, you know.", zh: "「一點」就夠了——這整座城都是「一點」蓋起來的。" },
+    ],
+  },
+]
