@@ -16,6 +16,7 @@ import { syntaxHighlighting, HighlightStyle, syntaxTree } from "@codemirror/lang
 import { autocompletion } from "@codemirror/autocomplete";
 import type { CompletionContext, Completion } from "@codemirror/autocomplete";
 import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
+import { stampRows, stampMenu } from "../lib/city/sprites/stamps";
 import { tags } from "@lezer/highlight";
 
 export type EditorApi = {
@@ -80,6 +81,77 @@ const taskField = StateField.define<DecorationSet>({
   create: buildTaskDecorations,
   update(deco, tr) {
     return tr.docChanged || tr.selection ? buildTaskDecorations(tr.state) : deco;
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
+/* ---------- pixel stamps: ::cat:: renders as a small drawing ---------- */
+
+const STAMP_PAL = ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#4a4f59", "#8b9099", "#c9ccd2", "#f2f3f5"];
+
+class StampWidget extends WidgetType {
+  constructor(readonly name: string) {
+    super();
+  }
+  eq(other: StampWidget) {
+    return other.name === this.name;
+  }
+  toDOM() {
+    const rows = stampRows(this.name);
+    const canvas = document.createElement("canvas");
+    canvas.className = "cm-stamp";
+    if (!rows) return canvas;
+    const w = rows[0].length;
+    const h = rows.length;
+    canvas.width = w;
+    canvas.height = h;
+    const scale = Math.max(1, Math.round(18 / h));
+    canvas.style.width = `${w * scale}px`;
+    canvas.style.height = `${h * scale}px`;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      for (let y = 0; y < h; y += 1) {
+        for (let x = 0; x < w; x += 1) {
+          const ch = rows[y][x];
+          if (ch === ".") continue;
+          ctx.fillStyle = STAMP_PAL[ch.charCodeAt(0) - 48] ?? STAMP_PAL[4];
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+    return canvas;
+  }
+  ignoreEvent() {
+    return true;
+  }
+}
+
+const STAMP_RE = /::([\p{L}\p{N}_]+)::/gu;
+
+function buildStampDecorations(state: EditorState): DecorationSet {
+  const cursorLine = state.doc.lineAt(state.selection.main.head).number;
+  const builder = new RangeSetBuilder<Decoration>();
+  for (let lineNo = 1; lineNo <= state.doc.lines; lineNo += 1) {
+    if (lineNo === cursorLine) continue; // stay editable under the cursor
+    const line = state.doc.line(lineNo);
+    STAMP_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = STAMP_RE.exec(line.text)) !== null) {
+      if (!stampRows(m[1])) continue;
+      builder.add(
+        line.from + m.index,
+        line.from + m.index + m[0].length,
+        Decoration.replace({ widget: new StampWidget(m[1]) }),
+      );
+    }
+  }
+  return builder.finish();
+}
+
+const stampField = StateField.define<DecorationSet>({
+  create: buildStampDecorations,
+  update(deco, tr) {
+    return tr.docChanged || tr.selection ? buildStampDecorations(tr.state) : deco;
   },
   provide: (field) => EditorView.decorations.from(field),
 });
@@ -253,6 +325,7 @@ const SLASH_DEFS: { label: string; en: string; zh: string; preview: string }[] =
   { label: "/quote", en: "quote block", zh: "引言區塊", preview: "> …" },
   { label: "/divider", en: "horizontal divider", zh: "分隔線", preview: "———" },
   { label: "/now", en: "current time stamp", zh: "現在時間戳記", preview: "> 21:30" },
+  { label: "/capsule", en: "time capsule — sealed until a date", zh: "時間膠囊，封緘到指定日期", preview: "> [!capsule] 2027-08-18" },
 ];
 
 function slashSource(
@@ -354,6 +427,27 @@ function slashSource(
       },
     ];
     return { from: match.from, options, validFor: /^\/\w*$/ };
+  };
+}
+
+/* ---------- ::stamp:: autocomplete ---------- */
+
+function stampSource() {
+  return (context: CompletionContext) => {
+    const match = context.matchBefore(/::[\p{L}\p{N}_]*$/u);
+    if (!match) return null;
+    const options: Completion[] = stampMenu().map(({ insert, id }) => ({
+      label: `::${insert}::`,
+      detail: id,
+      apply: (view: EditorView, _c: Completion, from: number, to: number) => {
+        const text = `::${insert}:: `;
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
+        });
+      },
+    }));
+    return { from: match.from, options, validFor: /^::[\p{L}\p{N}_]*$/u };
   };
 }
 
@@ -551,6 +645,7 @@ export function MarkdownEditor({
           markdown({ base: markdownLanguage, addKeymap: false }),
           syntaxHighlighting(noteHighlight),
           taskField,
+          stampField,
           markHideField,
           taskClick,
           wikiClick(() => openPageRef.current),
@@ -563,6 +658,7 @@ export function MarkdownEditor({
                 () => templatesRef.current,
               ),
               wikiSource(() => pagesRef.current),
+              stampSource(),
             ],
             icons: false,
             defaultKeymap: true,

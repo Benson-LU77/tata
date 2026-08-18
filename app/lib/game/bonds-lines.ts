@@ -421,3 +421,58 @@ export const DOG_LINE_DEFS: LineDef[] = [
     zh: "(一隻耳朵豎起,聽著只有狗聽得見的東西)",
   },
 ];
+
+/** what the neighbour says after your chosen reply — a soft period */
+export const CLOSER_LINES: { en: string; zh: string }[] = [
+  { en: "Ha — fair enough.", zh: "哈，也是。" },
+  { en: "That's the spirit.", zh: "就是這樣。" },
+  { en: "Mm. Same street tomorrow?", zh: "嗯。明天還走這條街？" },
+  { en: "The lamps agree with you.", zh: "連街燈都同意你。" },
+  { en: "Write that down somewhere.", zh: "把這句寫下來吧。" },
+  { en: "You sound like the belltower.", zh: "你講話像鐘塔一樣準。" },
+  { en: "Good. Keep going.", zh: "很好，繼續走。" },
+  { en: "Then the night is yours.", zh: "那今晚就是你的了。" },
+  { en: "I'll tell the cats.", zh: "我會轉告貓咪們。" },
+  { en: "Same here, honestly.", zh: "老實說，我也是。" },
+]
+
+/** things you can do to a cat or a dog, and how each takes it */
+export const PET_ACTIONS: Record<
+  "cat" | "dog",
+  { en: string; zh: string; react: { en: string; zh: string }; emote: string }[]
+> = {
+  cat: [
+    {
+      en: "Pat its head",
+      zh: "摸摸頭",
+      react: { en: "It leans into your palm, then pretends it didn't.", zh: "牠把頭埋進你的掌心，然後假裝沒有。" },
+      emote: "emote_heart",
+    },
+    {
+      en: "Crouch and watch",
+      zh: "蹲下來看牠",
+      react: { en: "It blinks slowly at you. That means yes.", zh: "牠對你慢慢眨了眨眼。那是「好」的意思。" },
+      emote: "emote_wave",
+    },
+    {
+      en: "Show your notebook",
+      zh: "給牠看筆記",
+      react: { en: "It sits on the warmest sentence.", zh: "牠一屁股坐在最溫暖的那句話上。" },
+      emote: "emote_dots",
+    },
+  ],
+  dog: [
+    {
+      en: "Scratch its ears",
+      zh: "抓抓耳朵",
+      react: { en: "Its tail writes faster than you do.", zh: "牠的尾巴搖得比你寫字還快。" },
+      emote: "emote_heart",
+    },
+    {
+      en: "Walk a block together",
+      zh: "陪牠走一段",
+      react: { en: "It matches your pace, proud of the patrol.", zh: "牠配合你的步伐，巡邏得很驕傲。" },
+      emote: "emote_wave",
+    },
+  ],
+}

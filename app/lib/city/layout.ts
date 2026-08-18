@@ -16,6 +16,8 @@ export type NoteMetric = {
   links?: string[];
   /** #tags found in the body */
   tags?: string[];
+  /** a time capsule: sealed until this YYYY-MM-DD */
+  capsule?: string;
 };
 
 export type Building = {

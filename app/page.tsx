@@ -26,7 +26,7 @@ import {
   progressOf,
   resolveCommissions,
 } from "./lib/game/commissions";
-import { REPLY_LINES } from "./lib/game/bonds-lines";
+import { CLOSER_LINES, PET_ACTIONS, REPLY_LINES } from "./lib/game/bonds-lines";
 import { iconOf } from "./lib/game/icons";
 import { PixelIcon } from "./components/pixel-icon";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
@@ -86,9 +86,17 @@ export default function Home() {
   const [moveToast, setMoveToast] = useState<string | null>(null);
   const [encounterKey, setEncounterKey] = useState<string | null>(null);
   const encTimersRef = useRef<number[]>([]);
-  const encStageRef = useRef<"their" | "reply" | null>(null);
+  const encStageRef = useRef<"their" | "reply" | "closer" | null>(null);
   const encReplyRef = useRef<string>("");
-  const [bubble, setBubble] = useState<{ key: string; name: string; text: string; until: number } | null>(null);
+  const encCloserRef = useRef<string | null>(null);
+  const encNameRef = useRef<string>("");
+  const [bubble, setBubble] = useState<{
+    key: string;
+    name: string;
+    text: string;
+    until: number;
+    choices?: { label: string; pick: () => void }[];
+  } | null>(null);
   const [emote, setEmote] = useState<{ key: string; icon: string; until: number } | null>(null);
   const [lang, setLang] = useState<Lang>("en");
   const t = useMemo(() => makeT(lang), [lang]);
@@ -101,6 +109,8 @@ export default function Home() {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const bondSaveTimerRef = useRef<number | null>(null);
   const bondSaveStateRef = useRef<GameState | null>(null);
+  const metricsRef = useRef<NoteMetric[]>([]);
+  const todayRef = useRef("");
 
   const hum = useCallback(() => {
     humRef.current ??= new Hum();
@@ -261,6 +271,12 @@ export default function Home() {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }, [nowTs]);
+  useEffect(() => {
+    metricsRef.current = metrics;
+  }, [metrics]);
+  useEffect(() => {
+    todayRef.current = today;
+  }, [today]);
   /* natural weather: dated, deterministic, free — owning a sky means the
      right to force it; "none" hands the night back to nature */
   const effectiveWeather = useMemo(() => {
@@ -423,14 +439,19 @@ export default function Home() {
     if (Date.now() - lastAdvanceRef.current < 650) return;
     lastAdvanceRef.current = Date.now();
     if (encStageRef.current === "their") {
-      encStageRef.current = "reply";
+      // while choices are on the table, tapping the city is not an answer
+      return;
+    }
+    if (encStageRef.current === "reply" && encCloserRef.current) {
+      encStageRef.current = "closer";
       hum().click();
-      setBubble({
-        key: "you:0",
-        name: "you",
-        text: encReplyRef.current,
+      setBubble((prev) => ({
+        key: prev?.key ?? "npc",
+        name: encNameRef.current,
+        text: encCloserRef.current ?? "",
         until: Date.now() + 30000,
-      });
+      }));
+      encCloserRef.current = null;
     } else {
       clearEncounterTimers();
       encStageRef.current = null;
@@ -496,7 +517,45 @@ export default function Home() {
         Math.random(),
         lang,
       );
-      setBubble({ key: hit.key, name: had ? name : "someone", text: line, until: now + 30000 });
+      const shownName = had ? name : "someone";
+      encNameRef.current = shownName;
+      // the exchange is a fork now: you choose what to say or do
+      let choices: { label: string; pick: () => void }[];
+      if (kind === "cat" || kind === "dog") {
+        choices = PET_ACTIONS[kind].map((a) => ({
+          label: lang === "zh" ? a.zh : a.en,
+          pick: () => {
+            encStageRef.current = "reply";
+            encCloserRef.current = null;
+            hum().click();
+            setEmote({ key: hit.key, icon: a.emote, until: Date.now() + 2400 });
+            setBubble({
+              key: hit.key,
+              name: shownName,
+              text: lang === "zh" ? a.react.zh : a.react.en,
+              until: Date.now() + 30000,
+            });
+          },
+        }));
+      } else {
+        const pool = [...REPLY_LINES].sort(() => Math.random() - 0.5).slice(0, 2);
+        choices = pool.map((r) => ({
+          label: lang === "zh" ? r.zh : r.en,
+          pick: () => {
+            encStageRef.current = "reply";
+            const closer = CLOSER_LINES[Math.floor(Math.random() * CLOSER_LINES.length)];
+            encCloserRef.current = lang === "zh" ? closer.zh : closer.en;
+            hum().click();
+            setBubble({
+              key: "you:0",
+              name: "you",
+              text: lang === "zh" ? r.zh : r.en,
+              until: Date.now() + 30000,
+            });
+          },
+        }));
+      }
+      setBubble({ key: hit.key, name: shownName, text: line, until: now + 30000, choices });
       setEmote({
         key: hit.key,
         icon: !had ? "emote_dots" : tierAfter > tierBefore ? "emote_heart" : "emote_wave",
@@ -504,11 +563,8 @@ export default function Home() {
       });
       hum().greet(hit.seed);
       if (tierAfter > tierBefore) hum().settle();
-      // the exchange advances on your click; a long failsafe closes it
-      const reply = REPLY_LINES[Math.floor(Math.random() * REPLY_LINES.length)];
-      encReplyRef.current = lang === "zh" ? reply.zh : reply.en;
       encStageRef.current = "their";
-      encTimersRef.current.push(window.setTimeout(() => setEncounterKey(null), 30000));
+      encTimersRef.current.push(window.setTimeout(() => setEncounterKey(null), 45000));
     },
     [game, hum, scheduleBondSave, lang, metrics, effectiveWeather],
   );
@@ -672,6 +728,33 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [metrics, today]);
 
+  /* a capsule's day arrives: the vault unlocks and a letter announces it */
+  useEffect(() => {
+    if (!today) return;
+    const due = metrics.filter(
+      (m) => m.capsule && m.capsule <= today && !(game.letters ?? []).some((l) => l.id === "capsule-" + m.file),
+    );
+    if (due.length === 0) return;
+    const timer = window.setTimeout(() => {
+      setGame((prev) => {
+        const fresh = due.filter((m) => !(prev.letters ?? []).some((l) => l.id === "capsule-" + m.file));
+        if (fresh.length === 0) return prev;
+        const next: GameState = {
+          ...prev,
+          letters: [
+            ...(prev.letters ?? []),
+            ...fresh.map((m) => ({ id: "capsule-" + m.file, date: today, read: false })),
+          ],
+          updatedAt: Date.now(),
+        };
+        void saveGameState(next, clientRef.current);
+        return next;
+      });
+      hum().levelUp();
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [metrics, today, game.letters, hum]);
+
   const orderCommission = useCallback(
     (id: string) => {
       const def = commissionDef(id);
@@ -730,10 +813,17 @@ export default function Home() {
   );
 
   const bodyOf = useCallback(
-    (id: string, date: string) =>
-      id.startsWith("month-")
+    (id: string, date: string) => {
+      if (id.startsWith("capsule-")) {
+        const file = id.slice(8).replace(/\.md$/, "");
+        return lang === "zh"
+          ? `寫字的人。\n\n你埋下的字醒了：「${file}」。\n它等到了自己的日子。去打開它——那是過去的你，寄給現在的你的信。\n\n—— 城市檔案室`
+          : `To the one who writes.\n\nA page you buried has woken: "${file}".\nIt waited for its own day. Go open it — the person you were, writing to the person you are.\n\n— The city archive`;
+      }
+      return id.startsWith("month-")
         ? monthlyLetterBody(id.slice(6), monthStats(id.slice(6)), lang)
-        : letterBody(id, { months: cityPlan.blocks.length, pages: metrics.length, date }, lang),
+        : letterBody(id, { months: cityPlan.blocks.length, pages: metrics.length, date }, lang);
+    },
     [monthStats, cityPlan.blocks.length, metrics.length, lang],
   );
 
@@ -938,6 +1028,15 @@ export default function Home() {
   /* ---------- writing ---------- */
 
   const openWrite = useCallback((file?: string) => {
+    if (file) {
+      const m = metricsRef.current.find((x) => x.file === file);
+      if (m?.capsule && todayRef.current && m.capsule > todayRef.current) {
+        // a sealed capsule: the whole point is that it will not open
+        setMoveToast(`\u23f3 ${m.capsule}`);
+        window.setTimeout(() => setMoveToast(null), 3200);
+        return;
+      }
+    }
     clearEncounterTimers();
     setEncounterKey(null);
     setBubble(null);
@@ -1289,6 +1388,15 @@ export default function Home() {
           <div className="city-bubble city-bubble--docked" aria-live="polite">
             <strong>{bubble.name}</strong>
             <span>{bubble.text}</span>
+            {bubble.choices && (
+              <div className="bubble-choices">
+                {bubble.choices.map((c) => (
+                  <button key={c.label} type="button" onClick={c.pick}>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {hover && !writeOpen && (
@@ -1732,7 +1840,9 @@ export default function Home() {
                   <strong>
                     {l.id.startsWith("month-")
                       ? `${t("letters.archive")} · ${l.id.slice(6)}`
-                      : `${commissionDef(l.id)?.caretaker} · ${t("comm." + l.id + ".name")}`}
+                      : l.id.startsWith("capsule-")
+                        ? `${t("letters.capsule")} · ${l.id.slice(8).replace(/\.md$/, "")}`
+                        : `${commissionDef(l.id)?.caretaker} · ${t("comm." + l.id + ".name")}`}
                   </strong>
                   <em>{l.date}</em>
                 </button>
