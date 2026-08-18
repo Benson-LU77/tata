@@ -1543,7 +1543,23 @@ export default function Home() {
 
       <header className="topbar immersion-ui">
         <div className="brand">
+          <button
+            type="button"
+            className="brand-you"
+            onClick={() => setMirrorOpen(true)}
+            title={t("registry.mirror")}
+            aria-label={t("registry.mirror")}
+          >
+            <PixelIcon rows={youRows} size={30} pal={AMBER_PAL} />
+          </button>
+          <div className="brand-col">
           <span className="brand-word">Tata</span>
+          {!empty && (
+            <span className="brand-ledger" aria-hidden="true">
+              LV {level} · {Math.floor(balance)} W · {streakOf(metrics, today)}
+              {t("hud.nights")}
+            </span>
+          )}
           <button
             type="button"
             className={"signal" + (synced === "live" ? " live" : "")}
@@ -1558,6 +1574,7 @@ export default function Home() {
             <i />
             {synced === "live" ? t("signal.receiving") : loadConfig() ? t("signal.reconnecting") : t("signal.connect")}
           </button>
+          </div>
         </div>
         <div className="topbar-actions">
           <button
@@ -1813,23 +1830,7 @@ export default function Home() {
 
       <Clock />
 
-      {!empty && (
-        <button
-          type="button"
-          className="city-hud immersion-ui"
-          onClick={() => setMirrorOpen(true)}
-          title={t("registry.mirror")}
-        >
-          <PixelIcon rows={youRows} size={34} pal={AMBER_PAL} />
-          <span className="hud-col">
-            <b>LV {level}</b>
-            <em>
-              {Math.floor(balance)} W · {streakOf(metrics, today)}
-              {t("hud.nights")}
-            </em>
-          </span>
-        </button>
-      )}
+
 
       <NotesPanel
         open={writeOpen}
