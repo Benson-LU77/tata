@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { EditorState, StateField, RangeSetBuilder } from "@codemirror/state";
+import { Annotation, EditorState, StateField, RangeSetBuilder } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -18,6 +18,11 @@ import type { CompletionContext, Completion } from "@codemirror/autocomplete";
 import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
 import { stampRows, stampMenu } from "../lib/city/sprites/stamps";
 import { tags } from "@lezer/highlight";
+
+/** marks a doc swap that came from opening another page — it is not
+ *  an edit, and reporting it as one marked fresh pages dirty and armed
+ *  saves for text nobody typed */
+const External = Annotation.define<boolean>();
 
 export type EditorApi = {
   toggle: (kind: "list" | "todo" | "heading") => void;
@@ -669,7 +674,10 @@ export function MarkdownEditor({
           inlineKeys,
           keymap.of([...markdownKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
+            if (
+              update.docChanged &&
+              !update.transactions.some((tr) => tr.annotation(External))
+            ) {
               callbacksRef.current.onChange(update.state.doc.toString());
             }
             if (update.focusChanged && !update.view.hasFocus) {
@@ -710,6 +718,7 @@ export function MarkdownEditor({
       view.dispatch({
         changes: { from: 0, to: current.length, insert: value },
         selection: { anchor: value.length },
+        annotations: External.of(true),
       });
     }
   }, [value]);
