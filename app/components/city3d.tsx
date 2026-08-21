@@ -308,14 +308,14 @@ void main() {
   vec3 n = abs(vNormal);
   // unlit three-tone faces: top brightest, x-side dark, z-front mid
   float tone = (n.y > 0.5 ? 0.68 : (n.x > n.z ? 0.38 : 0.58)) * uSkin;
-  float lampf = step(1.9, vTint.b);
+  float lampf = step(1.9, vTint.b) * (1.0 - step(1.9, vTint.r));
   vec3 vTint2 = vTint;
   if (lampf > 0.5) vTint2.b -= 2.0;
   float amber = step(1.9, vTint2.r);
 
   // foliage: crowns are leaves, not masonry — no windows, no roof tiles,
   // just a dark speckled clump that dithers into leafy texture
-  if (vTint.g > 1.9) {
+  if (vTint.g > 1.9 && vTint.r < 1.9) {
     float g2 = vTint.g - 2.0;
     vec3 p3 = floor(vWorld * 3.5);
     float sp = hash(p3.xz + p3.y * 7.7);
