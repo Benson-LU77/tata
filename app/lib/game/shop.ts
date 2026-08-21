@@ -41,6 +41,7 @@ import type { Bonds } from "./bonds";
 import { mergeBonds } from "./bonds";
 import type { Commission, Letter } from "./commissions";
 import { mergeCommissions, mergeLetters } from "./commissions";
+import { db as sharedDb } from "../drafts";
 
 export type GameState = {
   spent: number;
@@ -179,15 +180,9 @@ export function decideVaultWrite(
 let vaultLoaded = false;
 
 const KEY = "__game__";
-const DB_NAME = "yeyufm";
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = window.indexedDB.open(DB_NAME);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
+/** share the drafts journal's connection — see the note on db() */
+const openDb = () => sharedDb();
 
 async function loadLocalState(): Promise<GameState> {
   try {

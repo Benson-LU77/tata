@@ -29,7 +29,12 @@ export type CachedMeta = {
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-function db(): Promise<IDBDatabase> {
+/** The one connection to the app's IndexedDB. Everything shares it: a
+ *  second, version-less connection (shop.ts used to open one per save
+ *  and never close it) silently blocks the next schema upgrade — and a
+ *  blocked open never rejects, so the drafts journal would hang forever
+ *  and the notes panel with it. */
+export function db(): Promise<IDBDatabase> {
   if (!dbPromise) {
     // Ask the browser to exempt our storage from eviction — Safari deletes
     // script-writeable storage after 7 days of inactivity otherwise.
@@ -50,8 +55,22 @@ function db(): Promise<IDBDatabase> {
           database.createObjectStore("city", { keyPath: "file" });
         }
       };
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => {
+        const database = req.result;
+        // step aside for a newer schema instead of blocking it
+        database.onversionchange = () => {
+          database.close();
+          dbPromise = null;
+        };
+        resolve(database);
+      };
       req.onerror = () => reject(req.error);
+      // a blocked open must fail loudly, never hang the callers
+      req.onblocked = () => reject(new Error("indexeddb blocked"));
+    });
+    dbPromise = dbPromise.catch((error) => {
+      dbPromise = null; // let the next caller try again
+      throw error;
     });
   }
   return dbPromise;
