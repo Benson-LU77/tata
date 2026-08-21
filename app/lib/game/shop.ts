@@ -88,7 +88,8 @@ export const EMPTY_STATE: GameState = {
 /** minimal client surface so this module never imports the network layer */
 type VaultClient = {
   read(name: string): Promise<string>;
-  write(name: string, content: string): Promise<void>;
+  /** tata.json only — pages you wrote never travel this way */
+  writeOwn(name: string, content: string): Promise<void>;
 };
 
 const VAULT_FILE = "tata.json";
@@ -289,7 +290,7 @@ export async function saveGameState(state: GameState, client?: VaultClient | nul
     const decision = decideVaultWrite(state, raw, { loaded: vaultLoaded, readFailed });
     if (decision.action !== "write") return;
     try {
-      await client.write(VAULT_FILE, JSON.stringify(decision.state));
+      await client.writeOwn(VAULT_FILE, JSON.stringify(decision.state));
     } catch {}
   }
 }

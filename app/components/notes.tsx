@@ -672,7 +672,13 @@ export function NotesPanel({
       original.replace(/\.md$/, "") + ` (tata ${timeStamp().replace(":", ".")}).md`;
     setStatus("saving");
     try {
-      await client.write(copy, content);
+      const put = await client.writeGuarded(copy, content, null, null);
+      if (!put.ok) {
+        // a copy from the same minute already exists — never replace it
+        setStatus("offline");
+        setError(t("notes.error.save"));
+        return;
+      }
       void drafts.remove(original);
       let mtime: number | null = null;
       try {

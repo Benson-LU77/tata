@@ -128,7 +128,10 @@ export async function loadCityMetrics(
     void (async () => {
       try {
         const names = (await client.list()).filter(
-          (n) => !/^Templates\//i.test(n), // templates are tools, not pages
+          // templates are tools; exported letters are the city writing to
+          // itself — neither is a page you wrote, so neither becomes a
+          // building (letters would also ratchet earnedFloor for good)
+          (n) => !/^(Templates|Letters)\//i.test(n),
         );
         const metas = await pool(names, async (name) => {
           const doc = await client.readDoc(name);

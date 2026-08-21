@@ -124,7 +124,19 @@ export class ObsidianClient {
     return { content: await res.text(), mtime: null, tags: [] };
   }
 
-  async write(name: string, content: string): Promise<void> {
+  /**
+   * Replace a file Tata itself owns (tata.json — never a page you wrote).
+   * Its protection lives in decideVaultWrite: unread, unreadable or
+   * corrupt saves are refused, and a newer vault copy is merged first.
+   */
+  async writeOwn(name: string, content: string): Promise<void> {
+    return this.write(name, content);
+  }
+
+  /** The only unguarded write. Private on purpose: every caller that
+   *  touches YOUR words goes through writeGuarded, whose "a file with
+   *  words in it is never replaced" rule is the one global invariant. */
+  private async write(name: string, content: string): Promise<void> {
     const res = await fetch(this.base() + "/vault/" + this.notePath(name), {
       method: "PUT",
       headers: this.headers({ "Content-Type": "text/markdown" }),

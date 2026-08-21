@@ -300,6 +300,15 @@ assert.strictEqual(dateAtCell("2026-02", 6, 4), null, "past month end is empty g
   r = await client.writeGuarded("new.md", "first words", null, null);
   assert.ok(r.ok && vault.writes === 1, "a real 404 writes");
 
+  // c2) an export or rescue copy never replaces a file that has words
+  vault.missing = false;
+  vault.content = "a letter you annotated yourself";
+  vault.stamped = true;
+  vault.writes = 0;
+  r = await client.writeGuarded("Letters/x.md", "the machine's version", null, null);
+  assert.strictEqual(r.ok, false, "an unguarded-style write is refused when words are there");
+  assert.strictEqual(vault.writes, 0, "and nothing was written");
+
   // d) the ordinary edit still goes through
   vault.missing = false;
   vault.content = "yesterday";

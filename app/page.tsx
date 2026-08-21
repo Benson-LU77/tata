@@ -690,6 +690,7 @@ export default function Home() {
         return {
           key,
           kind,
+          seed,
           name: nameOf(kind, seed),
           tier: tierOf(bond),
           days: bond.n,
@@ -910,7 +911,19 @@ export default function Home() {
       const client = clientRef.current;
       const letter = (game.letters ?? []).find((l) => l.id === id);
       if (!client || !letter) return;
-      void client.write(`Letters/${letter.date} ${id}.md`, bodyOf(id, letter.date) + "\n").catch(() => {});
+      // ids can carry a note path (capsule-Journal/2026/…): flatten it, or
+      // the letter lands in a folder nobody asked for
+      const safe = id.replace(/[/\\]/g, "-").replace(/\.md$/i, "");
+      const body = bodyOf(id, letter.date) + "\n";
+      void client
+        .writeGuarded(`Letters/${letter.date} ${safe}.md`, body, null, null)
+        .then((r) => {
+          if (r.ok) return;
+          // you have edited the exported letter — keep your copy, add mine
+          const stamp = new Date().toISOString().slice(11, 16).replace(":", ".");
+          return client.writeGuarded(`Letters/${letter.date} ${safe} (${stamp}).md`, body, null, null);
+        })
+        .catch(() => {});
     },
     [game.letters, bodyOf],
   );
