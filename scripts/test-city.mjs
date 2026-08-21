@@ -17,6 +17,7 @@ for (const [entry, name] of [
   ["app/lib/city/metrics.ts", "metrics"],
   ["app/lib/game/commissions.ts", "commissions"],
   ["app/lib/obsidian.ts", "obsidian"],
+  ["app/lib/game/shop.ts", "shop"],
 ]) {
   execSync(`npx esbuild ${entry} --bundle --format=esm --outfile=${join(out, name + ".js")}`, {
     stdio: "pipe",
@@ -306,6 +307,39 @@ assert.strictEqual(dateAtCell("2026-02", 6, 4), null, "past month end is empty g
   vault.writes = 0;
   r = await client.writeGuarded("p.md", "yesterday and today", 1000, "yesterday");
   assert.ok(r.ok && vault.writes === 1, "an ordinary edit saves");
+}
+
+// 16. the save file is as irreplaceable as the notes: never broadcast a
+// state that has not seen the vault copy, never replace what we cannot read
+{
+  const { decideVaultWrite, EMPTY_STATE } = await import(join(out, "shop.js"));
+  const mine = { ...EMPTY_STATE, owned: ["cats"], name: "阿七", updatedAt: 200 };
+
+  // a) the vault was never read (Obsidian opened late, browser cleared)
+  let d = decideVaultWrite({ ...EMPTY_STATE, updatedAt: 300 }, '{"owned":["dog"],"updatedAt":100}',
+    { loaded: false, readFailed: false });
+  assert.strictEqual(d.action, "skip", "an unloaded save never broadcasts");
+
+  // b) the file is there but unreadable right now — leave it alone
+  d = decideVaultWrite(mine, null, { loaded: true, readFailed: true });
+  assert.strictEqual(d.action, "skip", "an unreadable save is never replaced");
+
+  // c) half-written or corrupt JSON is not ours to overwrite
+  d = decideVaultWrite(mine, "{not json", { loaded: true, readFailed: false });
+  assert.strictEqual(d.action, "skip", "a corrupt save is never replaced");
+
+  // d) another device moved on: fold it in rather than overwrite
+  d = decideVaultWrite(mine, JSON.stringify({ owned: ["dog"], name: "", updatedAt: 900 }),
+    { loaded: true, readFailed: false });
+  assert.strictEqual(d.action, "write", "a newer vault copy is merged, not refused");
+  assert.ok(d.state.owned.includes("cats") && d.state.owned.includes("dog"), "both devices keep what they bought");
+  assert.strictEqual(d.state.name, "阿七", "and a name is not erased by an empty one");
+
+  // e) genuinely absent, and the ordinary case, still write
+  d = decideVaultWrite(mine, null, { loaded: true, readFailed: false });
+  assert.strictEqual(d.action, "write", "an absent save is created");
+  d = decideVaultWrite(mine, JSON.stringify({ updatedAt: 10 }), { loaded: true, readFailed: false });
+  assert.strictEqual(d.action, "write", "our newer state saves normally");
 }
 
 console.log("city tests: all passed");

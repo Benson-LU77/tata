@@ -169,6 +169,21 @@ export default function Home() {
     return () => window.clearInterval(id);
   }, [synced, resync]);
 
+  /* the link healed on its own: fold the vault's save back in. Without
+     this the heartbeat fixed reads but never re-merged, leaving every
+     write path broadcasting a state that never saw the vault copy. */
+  useEffect(() => {
+    if (synced !== "live" || !clientRef.current) return;
+    if (new URLSearchParams(window.location.search).get("demo")) return;
+    let dropped = false;
+    void loadGameState(clientRef.current).then((state) => {
+      if (!dropped) setGame(state);
+    });
+    return () => {
+      dropped = true;
+    };
+  }, [synced]);
+
   /* the notes panel just connected — adopt the client for the city too */
   const onConnected = useCallback(() => {
     const config = loadConfig();

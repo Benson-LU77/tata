@@ -93,8 +93,19 @@ type VaultClient = {
 
 const VAULT_FILE = "tata.json";
 
+/** Nothing beats something: an emptier value never wins a merge. The
+ *  whole-record timestamp is too coarse for these — reading a letter on
+ *  one device would otherwise erase a name typed on another. */
+function keep<T>(newer: T, older: T, weight: (v: T) => number): T {
+  return weight(newer) >= weight(older) ? newer : older;
+}
+const len = (v: string | null | undefined) => (v ?? "").length;
+const count = (v: unknown[] | null | undefined) => (v ?? []).length;
+const keys = (v: object | null | undefined) => Object.keys(v ?? {}).length;
+
 function mergeStates(a: GameState, b: GameState): GameState {
   const newer = a.updatedAt >= b.updatedAt ? a : b;
+  const older = newer === a ? b : a;
   return {
     spent: Math.max(a.spent, b.spent),
     owned: [...new Set([...a.owned, ...b.owned])],
@@ -105,13 +116,66 @@ function mergeStates(a: GameState, b: GameState): GameState {
     earnedFloor: Math.max(a.earnedFloor ?? 0, b.earnedFloor ?? 0),
     commissions: mergeCommissions(a.commissions, b.commissions),
     letters: mergeLetters(a.letters, b.letters),
-    stashed: newer.stashed ?? [], // arrangement is one decision, like the outfit
-    placedAt: newer.placedAt ?? {},
-    billboard: newer.billboard ?? null,
-    name: newer.name ?? "",
+    stashed: keep(newer.stashed ?? [], older.stashed ?? [], count),
+    placedAt: keep(newer.placedAt ?? {}, older.placedAt ?? {}, keys),
+    billboard: keep(newer.billboard ?? null, older.billboard ?? null, (v) => len(v?.text)),
+    name: keep(newer.name ?? "", older.name ?? "", len),
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }
+
+/**
+ * Should this state go to the vault, and as what? Pure so the rule is
+ * testable: an unreadable or unparsable tata.json must never be
+ * replaced — the save it holds is as irreplaceable as the notes.
+ */
+export type VaultDecision =
+  | { action: "write"; state: GameState }
+  | { action: "skip"; why: "unloaded" | "unreadable" | "corrupt" };
+
+export function decideVaultWrite(
+  state: GameState,
+  remoteRaw: string | null,
+  opts: { loaded: boolean; readFailed: boolean },
+): VaultDecision {
+  // we never loaded the vault copy: writing now would broadcast a blank
+  // local state over a good save (cleared browser, Obsidian opened late)
+  if (!opts.loaded) return { action: "skip", why: "unloaded" };
+  if (opts.readFailed) return { action: "skip", why: "unreadable" };
+  if (remoteRaw === null) return { action: "write", state }; // genuinely absent
+  let remote: Partial<GameState>;
+  try {
+    remote = JSON.parse(remoteRaw) as Partial<GameState>;
+  } catch {
+    return { action: "skip", why: "corrupt" }; // half-written file: leave it
+  }
+  if ((remote.updatedAt ?? 0) > state.updatedAt) {
+    // another device moved on while we held this copy — fold it in
+    return {
+      action: "write",
+      state: mergeStates(state, {
+        spent: remote.spent ?? 0,
+        owned: remote.owned ?? [],
+        skin: remote.skin ?? "base",
+        weather: remote.weather ?? "none",
+        look: remote.look ?? DEFAULT_LOOK,
+        bonds: remote.bonds ?? {},
+        earnedFloor: remote.earnedFloor ?? 0,
+        commissions: remote.commissions ?? [],
+        letters: remote.letters ?? [],
+        stashed: remote.stashed ?? [],
+        placedAt: remote.placedAt ?? {},
+        billboard: remote.billboard ?? null,
+        name: remote.name ?? "",
+        updatedAt: remote.updatedAt ?? 0,
+      }),
+    };
+  }
+  return { action: "write", state };
+}
+
+/** the vault copy has been read (or confirmed absent) at least once */
+let vaultLoaded = false;
 
 const KEY = "__game__";
 const DB_NAME = "yeyufm";
@@ -168,7 +232,9 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
   const local = await loadLocalState();
   if (!client) return local;
   try {
-    const remote = JSON.parse(await client.read(VAULT_FILE)) as Partial<GameState>;
+    const raw = await client.read(VAULT_FILE);
+    vaultLoaded = true; // we have seen the vault's copy: writing is safe now
+    const remote = JSON.parse(raw) as Partial<GameState>;
     const merged = mergeStates(local, {
       spent: remote.spent ?? 0,
       owned: remote.owned ?? [],
@@ -187,7 +253,10 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
     });
     void saveGameState(merged); // heal the local copy
     return merged;
-  } catch {
+  } catch (error) {
+    // a real 404 means there is no save to lose; anything else leaves the
+    // gate shut so a blank local state cannot broadcast over a good file
+    if (error instanceof Error && error.message === "HTTP 404") vaultLoaded = true;
     return local;
   }
 }
@@ -209,8 +278,18 @@ export async function saveGameState(state: GameState, client?: VaultClient | nul
     }
   } catch {}
   if (client) {
+    let raw: string | null = null;
+    let readFailed = false;
     try {
-      await client.write(VAULT_FILE, JSON.stringify(state));
+      raw = await client.read(VAULT_FILE);
+    } catch (error) {
+      if (error instanceof Error && error.message === "HTTP 404") raw = null;
+      else readFailed = true;
+    }
+    const decision = decideVaultWrite(state, raw, { loaded: vaultLoaded, readFailed });
+    if (decision.action !== "write") return;
+    try {
+      await client.write(VAULT_FILE, JSON.stringify(decision.state));
     } catch {}
   }
 }
