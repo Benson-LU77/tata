@@ -161,6 +161,11 @@ export function NotesPanel({
 
   const clientRef = useRef<ObsidianClient | null>(null);
   const saveTimerRef = useRef<number | null>(null);
+  /** one write at a time: overlapping flushes carried the same stale base
+   *  and made the second one collide with the first — a conflict dialog
+   *  raised against your own words five seconds earlier */
+  const savingRef = useRef(false);
+  const pendingRef = useRef(false);
   const draftTimerRef = useRef<number | null>(null);
   const dirtyRef = useRef(false);
   const seedRef = useRef("");
@@ -520,6 +525,12 @@ export function NotesPanel({
   const flushSave = useCallback(async () => {
     const client = clientRef.current;
     if (!dirtyRef.current || conflict) return;
+    if (savingRef.current) {
+      pendingRef.current = true; // a write is in flight; follow it
+      return;
+    }
+    savingRef.current = true;
+    try {
     // one snapshot, taken together — file, text and base can never drift
     const doc = docRef.current;
     const content = doc.content;
@@ -553,9 +564,26 @@ export function NotesPanel({
       setStatus("offline");
       return;
     }
-    const base = (baseContentRef.current ?? "").replace(/\s+$/, "");
+    const base = (doc.baseContent ?? "").replace(/\s+$/, "");
     const theirs = result.remote.content.replace(/\s+$/, "");
     const ours = content.replace(/\s+$/, "");
+    // the vault holds an earlier version of this very page — that is our
+    // own previous write catching up, not somebody else's edit
+    if (ours.startsWith(theirs)) {
+      const retry = await client.writeGuarded(file, content, result.remote.mtime, result.remote.content);
+      if (retry.ok) {
+        if (docRef.current.file === doc.file) {
+          docRef.current = { ...docRef.current, baseMtime: retry.mtime, baseContent: content };
+          baseMtimeRef.current = retry.mtime;
+          baseContentRef.current = content;
+          dirtyRef.current = false;
+        }
+        void drafts.remove(file);
+        setStatus("saved");
+        onSaved(file, false);
+        return;
+      }
+    }
     if (base.length > 0 && theirs.startsWith(base) && ours.startsWith(base)) {
       const merged = theirs + ours.slice(base.length) + "\n";
       const retry = await client.writeGuarded(file, merged, result.remote.mtime, theirs);
@@ -571,12 +599,32 @@ export function NotesPanel({
     }
     setStatus("idle");
     setConflict({ remote: result.remote.content, mtime: result.remote.mtime });
+    } finally {
+      savingRef.current = false;
+      if (pendingRef.current) {
+        pendingRef.current = false;
+        if (dirtyRef.current) window.setTimeout(() => void flushRef.current?.(), 0);
+      }
+    }
   }, [conflict, onSaved, putDoc]);
 
-  /* Conflict choices — the draft journal keeps our words safe throughout. */
+  /* Conflict choices. Taking theirs must never mean losing ours: the
+     version you set aside is kept as a tombstone draft, recoverable
+     from the archive, because a choice made in a hurry is still a
+     choice made about words somebody wrote. */
   const resolveTheirs = useCallback(() => {
     if (!conflict) return;
     const file = docRef.current.file;
+    const ours = docRef.current.content;
+    if (file && ours.trim().length > 0 && ours.trim() !== conflict.remote.trim()) {
+      void drafts.put({
+        file: `${file.replace(/\.md$/, "")} (tata ${timeStamp().replace(":", ".")}).md`,
+        content: ours,
+        seed: "",
+        baseMtime: null,
+        updatedAt: Date.now(),
+      });
+    }
     putDoc(file, conflict.remote.trimEnd() + "\n", conflict.mtime, conflict.remote, false);
     if (file) void drafts.remove(file);
     setConflict(null);
@@ -594,12 +642,15 @@ export function NotesPanel({
     setConflict(null);
     setStatus("saving");
     const result = await client.writeGuarded(file, content, theirMtime, conflict.remote);
+    const stillHere = docRef.current.file === doc.file;
     if (result.ok) {
-      if (doc.file === null) setActiveFile(file);
-      docRef.current = { file, content, baseMtime: result.mtime, baseContent: content };
-      baseMtimeRef.current = result.mtime;
-      baseContentRef.current = content;
-      dirtyRef.current = false;
+      if (stillHere) {
+        if (doc.file === null) setActiveFile(file);
+        docRef.current = { file, content, baseMtime: result.mtime, baseContent: content };
+        baseMtimeRef.current = result.mtime;
+        baseContentRef.current = content;
+        dirtyRef.current = false;
+      }
       void drafts.remove(file);
       setStatus("saved");
       onSaved(file, false);
@@ -628,7 +679,8 @@ export function NotesPanel({
         const doc = await client.readDoc(copy);
         mtime = doc.mtime;
       } catch {}
-      putDoc(copy, content, mtime, content, false);
+      // if the reader moved on mid-rescue, leave their page alone
+      if (docRef.current.file === doc0.file) putDoc(copy, content, mtime, content, false);
       setConflict(null);
       setStatus("saved");
       onSaved(copy, true);
@@ -663,7 +715,7 @@ export function NotesPanel({
 
   const handleChange = useCallback(
     (next: string) => {
-      let file = activeFile;
+      let file = docRef.current.file ?? activeFile;
       if (!file) {
         file = newNoteName();
         setActiveFile(file);
@@ -693,16 +745,15 @@ export function NotesPanel({
   const newPage = useCallback(() => {
     const seed = `> ${timeStamp()}\n\n`;
     seedRef.current = seed;
-    setActiveFile(null); // claims its name on the first keystroke
     setConflict(null);
-    setContent(seed);
-    baseMtimeRef.current = null;
-    baseContentRef.current = null;
-    dirtyRef.current = false;
+    // the name is claimed on the first keystroke, but the base must be
+    // cleared NOW — inheriting the last page's base is how a fresh page
+    // starts life carrying somebody else's identity
+    putDoc(null, seed, null, null, false);
     setStatus("idle");
     setView("edit");
     window.setTimeout(() => editorRef.current?.cursorToEnd(), 150);
-  }, []);
+  }, [putDoc]);
 
   const handleClose = useCallback(() => {
     void flushSave();
