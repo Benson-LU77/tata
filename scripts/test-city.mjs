@@ -16,6 +16,7 @@ for (const [entry, name] of [
   ["app/lib/game/bonds.ts", "bonds"],
   ["app/lib/city/metrics.ts", "metrics"],
   ["app/lib/game/commissions.ts", "commissions"],
+  ["app/lib/obsidian.ts", "obsidian"],
 ]) {
   execSync(`npx esbuild ${entry} --bundle --format=esm --outfile=${join(out, name + ".js")}`, {
     stdio: "pipe",
@@ -250,6 +251,61 @@ assert.strictEqual(dateAtCell("2026-02", 6, 4), null, "past month end is empty g
   );
   assert.strictEqual(L.length, 1, "one letter per opening");
   assert.ok(L[0].read && L[0].date === "2026-08-05", "earliest date, read sticks");
+}
+
+// 15. the vault guard: a page with words in it is never silently replaced
+{
+  const { ObsidianClient } = await import(join(out, "obsidian.js"));
+  const client = new ObsidianClient({ url: "http://x", key: "k", folder: "" });
+
+  /** fake vault: one file, served with or without an mtime stamp */
+  const vault = { content: "", stamped: true, missing: false, writes: 0 };
+  globalThis.fetch = async (url, init = {}) => {
+    if ((init.method ?? "GET") === "PUT") {
+      vault.writes += 1;
+      vault.content = init.body;
+      return { ok: true, status: 200 };
+    }
+    if (vault.missing) return { ok: false, status: 404 };
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      json: async () => ({
+        content: vault.content,
+        stat: vault.stamped ? { mtime: 1000 } : {},
+      }),
+    };
+  };
+
+  // a) no mtime stamp + the vault moved on → conflict, nothing written
+  vault.content = "a night of real writing";
+  vault.stamped = false;
+  vault.writes = 0;
+  let r = await client.writeGuarded("p.md", "> 19:12\n\n", 1000, "something older");
+  assert.strictEqual(r.ok, false, "unstamped divergence is a conflict");
+  assert.strictEqual(vault.writes, 0, "and nothing was written");
+
+  // b) we believe the page is new, but it already holds words → conflict
+  vault.stamped = true;
+  vault.writes = 0;
+  r = await client.writeGuarded("p.md", "x", null, null);
+  assert.strictEqual(r.ok, false, "a page we think is new is never clobbered");
+  assert.strictEqual(vault.writes, 0, "and nothing was written");
+
+  // c) a genuinely absent page is ours to create
+  vault.missing = true;
+  vault.writes = 0;
+  r = await client.writeGuarded("new.md", "first words", null, null);
+  assert.ok(r.ok && vault.writes === 1, "a real 404 writes");
+
+  // d) the ordinary edit still goes through
+  vault.missing = false;
+  vault.content = "yesterday";
+  vault.stamped = true;
+  vault.writes = 0;
+  r = await client.writeGuarded("p.md", "yesterday and today", 1000, "yesterday");
+  assert.ok(r.ok && vault.writes === 1, "an ordinary edit saves");
 }
 
 console.log("city tests: all passed");

@@ -361,7 +361,19 @@ export function NotesPanel({
         setStatus("idle");
         window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
         return;
-      } catch {}
+      } catch (err) {
+        // only an absent page earns a blank one; a dropped wire must
+        // never present today's words as if they were never written
+        if (!(err instanceof Error && err.message === "HTTP 404")) {
+          setStatus("offline");
+          setContent("");
+          baseMtimeRef.current = null;
+          baseContentRef.current = null;
+          dirtyRef.current = false;
+          setError(t("notes.error.open"));
+          return;
+        }
+      }
     }
     setContent(seed);
     baseMtimeRef.current = null;
@@ -369,7 +381,7 @@ export function NotesPanel({
     dirtyRef.current = false;
     setStatus("idle");
     window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
-  }, []);
+  }, [t]);
 
   const todaySeenRef = useRef(0);
   useEffect(() => {
@@ -408,9 +420,10 @@ export function NotesPanel({
       setStatus("idle");
     } catch (first) {
       // a wikilink to a page that doesn't exist yet starts that page —
-      // but only when the link is truly absent, not when the wire dropped
-      const ok = await checkConnection(client, true);
-      if (ok) {
+      // but ONLY on a real 404. Any other failure used to blank the
+      // editor over a page that still had words in it.
+      const missing = first instanceof Error && first.message === "HTTP 404";
+      if (missing) {
         seedRef.current = "";
         setActiveFile(name);
         setContent("");
@@ -420,7 +433,6 @@ export function NotesPanel({
         setStatus("idle");
         return;
       }
-      void first;
       setStatus("error");
       setError(t("notes.error.open"));
     }
@@ -512,7 +524,12 @@ export function NotesPanel({
     const file = activeFile ?? newNoteName();
     const wasNew = baseMtimeRef.current === null;
     setStatus("saving");
-    const result = await client.writeGuarded(file, content, baseMtimeRef.current);
+    const result = await client.writeGuarded(
+      file,
+      content,
+      baseMtimeRef.current,
+      baseContentRef.current,
+    );
     if (result.ok) {
       if (activeFile === null) setActiveFile(file);
       baseMtimeRef.current = result.mtime;
