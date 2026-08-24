@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "build:web": "vite build --config web/vite.config.ts",
     "deploy": "npm run build:web && gh-pages -d dist-web -m \"deploy 夜雨 FM\"",
-    "test:city": "node scripts/test-city.mjs"
+    "test:city": "node scripts/test-city.mjs",
+    "test:notes": "vitest run"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -39,6 +40,8 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
     "@tailwindcss/postcss": "4.2.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
@@ -48,13 +51,16 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
+    "fake-indexeddb": "^6.2.5",
     "gh-pages": "^6.3.0",
+    "jsdom": "^30.0.1",
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
     "vite": "8.0.13",
     "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.11",
     "wrangler": "4.92.0"
   },
   "type": "module"

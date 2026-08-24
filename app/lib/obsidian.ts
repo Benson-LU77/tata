@@ -168,17 +168,19 @@ export class ObsidianClient {
       }
     }
     if (remote && remote.content !== content) {
-      // A file we believe is new but that already holds words is never
-      // ours to replace — this is the one that ate pages when a failed
-      // read blanked the editor and armed a null base.
-      if (baseMtime === null && remote.content.trim() !== "") {
-        return { ok: false, reason: "conflict", remote };
-      }
       // The plugin does not always stamp mtime (non-JSON responses have
-      // none). Without a stamp the timestamp guard silently passed and
-      // let stale text overwrite the vault; fall back to content.
+      // none). Then baseMtime is null for EVERY page, so the content
+      // check must come first — ordering it after the believed-new rule
+      // made an unstamped vault raise a conflict on every ordinary edit.
       if (remote.mtime === null) {
         if (baseContent == null || remote.content !== baseContent) {
+          return { ok: false, reason: "conflict", remote };
+        }
+      } else if (baseMtime === null) {
+        // A file we believe is new but that already holds words is never
+        // ours to replace — this is the one that ate pages when a failed
+        // read blanked the editor and armed a null base.
+        if (remote.content.trim() !== "") {
           return { ok: false, reason: "conflict", remote };
         }
       } else if (remote.mtime !== baseMtime) {
