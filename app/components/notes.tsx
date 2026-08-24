@@ -614,7 +614,7 @@ export function NotesPanel({
                   +
                 </button>
               )}
-              {(recent ?? []).map((f) => (
+              {(recent ?? []).slice(0, notebookSkin ? 5 : undefined).map((f) => (
                 <button
                   key={f}
                   type="button"

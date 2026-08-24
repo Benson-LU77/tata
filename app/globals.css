@@ -2529,3 +2529,88 @@ button:focus-visible, input:focus-visible {
 }
 .book-ribbon:hover { filter: brightness(1.15); }
 .book-ribbon:focus-visible { outline: 2px solid var(--p0); outline-offset: 2px; }
+
+
+/* ============================================================
+   The book, V2: DRAWN, not styled. One pixel plate (an open book
+   at 220x150 art pixels, upscaled crisp) is the whole body; the
+   words are laid onto its painted pages. Overrides the old chrome.
+   ============================================================ */
+.notebook .notes-editor {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  aspect-ratio: 22 / 15;
+  width: min(100%, calc((84dvh - 56px) * 22 / 15));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 150' shape-rendering='crispEdges'%3E%3Crect x='10' y='6' width='200' height='2' fill='%2306070a'/%3E%3Crect x='10' y='8' width='200' height='4' fill='%23242932'/%3E%3Crect x='6' y='12' width='208' height='3' fill='%23242932'/%3E%3Crect x='15' y='15' width='92' height='1' fill='%2306070a'/%3E%3Crect x='208' y='15' width='6' height='1' fill='%23242932'/%3E%3Crect x='6' y='15' width='6' height='1' fill='%23242932'/%3E%3Crect x='107' y='15' width='6' height='1' fill='%23242932'/%3E%3Crect x='113' y='15' width='92' height='1' fill='%2306070a'/%3E%3Crect x='115' y='16' width='91' height='1' fill='%23ffffff'/%3E%3Crect x='114' y='16' width='1' height='1' fill='%23f2f3f5'/%3E%3Crect x='14' y='16' width='92' height='1' fill='%23ffffff'/%3E%3Crect x='114' y='17' width='92' height='1' fill='%23f2f3f5'/%3E%3Crect x='14' y='17' width='92' height='1' fill='%23e7e9ed'/%3E%3Crect x='13' y='18' width='93' height='2' fill='%23e7e9ed'/%3E%3Crect x='114' y='18' width='93' height='2' fill='%23f2f3f5'/%3E%3Crect x='110' y='16' width='2' height='8' fill='%234a4f59'/%3E%3Crect x='110' y='24' width='2' height='3' fill='%2306070a'/%3E%3Crect x='110' y='27' width='2' height='11' fill='%234a4f59'/%3E%3Crect x='110' y='38' width='2' height='3' fill='%2306070a'/%3E%3Crect x='110' y='41' width='2' height='11' fill='%234a4f59'/%3E%3Crect x='110' y='52' width='2' height='3' fill='%2306070a'/%3E%3Crect x='110' y='55' width='2' height='11' fill='%234a4f59'/%3E%3Crect x='110' y='66' width='2' height='3' fill='%2306070a'/%3E%3Crect x='110' y='69' width='2' height='11' fill='%234a4f59'/%3E%3Crect x='110' y='80' width='2' height='3' fill='%2306070a'/%3E%3Crect x='110' y='83' width='2' height='11' fill='%234a4f59'/%3E%3Crect x='110' y='94' width='2' height='3' fill='%2306070a'/%3E%3Crect x='110' y='97' width='2' height='11' fill='%234a4f59'/%3E%3Crect x='110' y='108' width='2' height='3' fill='%2306070a'/%3E%3Crect x='110' y='111' width='2' height='11' fill='%234a4f59'/%3E%3Crect x='110' y='122' width='2' height='3' fill='%2306070a'/%3E%3Crect x='16' y='20' width='1' height='108' fill='%23f2f3f5'/%3E%3Crect x='17' y='20' width='89' height='108' fill='%23e7e9ed'/%3E%3Crect x='14' y='20' width='1' height='108' fill='%23f2f3f5'/%3E%3Crect x='204' y='20' width='1' height='108' fill='%23c9ccd2'/%3E%3Crect x='13' y='20' width='1' height='108' fill='%23c9ccd2'/%3E%3Crect x='206' y='20' width='1' height='108' fill='%23c9ccd2'/%3E%3Crect x='15' y='20' width='1' height='108' fill='%23c9ccd2'/%3E%3Crect x='205' y='20' width='1' height='108' fill='%23f2f3f5'/%3E%3Crect x='114' y='20' width='90' height='108' fill='%23f2f3f5'/%3E%3Crect x='112' y='16' width='2' height='116' fill='%238b9099'/%3E%3Crect x='12' y='18' width='1' height='114' fill='%2306070a'/%3E%3Crect x='110' y='125' width='2' height='7' fill='%234a4f59'/%3E%3Crect x='207' y='18' width='1' height='114' fill='%2306070a'/%3E%3Crect x='106' y='16' width='2' height='116' fill='%23c9ccd2'/%3E%3Crect x='13' y='128' width='93' height='4' fill='%23e7e9ed'/%3E%3Crect x='114' y='128' width='93' height='4' fill='%23f2f3f5'/%3E%3Crect x='108' y='16' width='2' height='116' fill='%238b9099'/%3E%3Crect x='113' y='132' width='95' height='1' fill='%2306070a'/%3E%3Crect x='6' y='16' width='6' height='117' fill='%231a1e25'/%3E%3Crect x='208' y='16' width='6' height='117' fill='%231a1e25'/%3E%3Crect x='107' y='132' width='6' height='1' fill='%231a1e25'/%3E%3Crect x='12' y='132' width='95' height='1' fill='%2306070a'/%3E%3Crect x='16' y='133' width='188' height='2' fill='%23f2f3f5'/%3E%3Crect x='6' y='133' width='10' height='3' fill='%231a1e25'/%3E%3Crect x='204' y='133' width='10' height='3' fill='%231a1e25'/%3E%3Crect x='16' y='135' width='188' height='1' fill='%23c9ccd2'/%3E%3Crect x='20' y='136' width='180' height='2' fill='%23e7e9ed'/%3E%3Crect x='20' y='138' width='180' height='1' fill='%23c9ccd2'/%3E%3Crect x='200' y='136' width='14' height='3' fill='%231a1e25'/%3E%3Crect x='6' y='136' width='14' height='3' fill='%231a1e25'/%3E%3Crect x='26' y='139' width='168' height='1' fill='%238b9099'/%3E%3Crect x='194' y='139' width='20' height='1' fill='%231a1e25'/%3E%3Crect x='214' y='12' width='2' height='128' fill='%2306070a'/%3E%3Crect x='4' y='12' width='2' height='128' fill='%2306070a'/%3E%3Crect x='6' y='139' width='20' height='1' fill='%231a1e25'/%3E%3Crect x='10' y='140' width='200' height='4' fill='%231a1e25'/%3E%3Crect x='10' y='144' width='200' height='2' fill='%2306070a'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  box-shadow: none;
+  filter: drop-shadow(10px 12px 0 rgba(0, 0, 0, .5));
+}
+.notebook .notes-editor::before,
+.notebook .notes-editor::after { content: none; }
+
+.notebook .notes-tabs-row {
+  position: absolute;
+  top: 4.6%; /* the tabs tuck INTO the cover's top band */
+  left: 6%;
+  right: 6%;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.notebook .book {
+  position: absolute;
+  left: 8.2%;
+  right: 8.2%;
+  top: 14.5%;
+  bottom: 16%;
+  display: flex;
+}
+.notebook .book-page-left {
+  width: 44%;
+  flex: none;
+  margin-right: 8.4%;
+  padding: 2px 6px 0 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+.notebook .book-page-right {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 2px 0 6px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+/* the date writes itself in pixels */
+.notebook .notes-editor-bar strong {
+  font-family: "Silkscreen", var(--mono, monospace);
+  font-style: normal;
+  font-size: 13px;
+  letter-spacing: .04em;
+  color: var(--p1);
+}
+.notebook .book-ribbon { top: 3.5%; right: 10%; }
+
+@media (max-width: 900px) {
+  /* small screens fold back to the plain page — the plate needs room */
+  .notebook .notes-editor {
+    aspect-ratio: auto;
+    width: auto;
+    flex: 1;
+    background:
+      linear-gradient(180deg, var(--p7) 0%, var(--p6) 100%);
+    border: 2px solid var(--p0);
+    filter: none;
+  }
+  .notebook .notes-tabs-row { position: static; background: #171a20; padding: 10px 14px 0; }
+  .notebook .book { position: static; flex-direction: column; }
+  .notebook .book-page-left { width: auto; margin: 0; padding: 12px 16px 10px; border-bottom: 2px solid rgba(6,7,10,.5); }
+  .notebook .book-page-right { padding: 10px 16px; }
+  .notebook .book-ribbon { display: none; }
+}
