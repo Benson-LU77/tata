@@ -1808,6 +1808,7 @@ export default function Home() {
               }
             }}
             aria-label={t("topbar.search")}
+            title={t("topbar.search")}
           >
             <PixelIcon rows={SEARCH_PX} size={20} />
           </button>
@@ -1819,6 +1820,7 @@ export default function Home() {
               setMirrorOpen(true);
             }}
             aria-label={t("registry.mirror")}
+            title={t("registry.mirror")}
           >
             <PixelIcon rows={MIRROR_ICON} size={20} />
           </button>
@@ -1830,6 +1832,7 @@ export default function Home() {
               setShopOpen(!shopOpen);
             }}
             aria-label={t("topbar.depot")}
+            title={t("topbar.depot")}
           >
             <PixelIcon rows={DEPOT_PX} size={20} />
           </button>
@@ -1841,6 +1844,7 @@ export default function Home() {
               setDexOpen(!dexOpen);
             }}
             aria-label={t("topbar.registry")}
+            title={t("topbar.registry")}
           >
             {(game.letters ?? []).some((l) => !l.read) && (
               <span className="unread-dot" aria-hidden="true" />
