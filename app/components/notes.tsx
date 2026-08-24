@@ -417,6 +417,16 @@ export function NotesPanel({
     setBookNav((cur) => ({ ...cur, book: v }));
   }, []);
 
+  useEffect(() => {
+    if (!open || !notebookSkin || bookOpen || view !== "edit") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, notebookSkin, bookOpen, view, handleClose]);
+
+
   /* Closing the book is the day's full stop: the words land FIRST, then
      the cover closes — the animation reads the store, never delays it. */
   const [closing, setClosing] = useState(false);
@@ -465,6 +475,7 @@ export function NotesPanel({
       aria-hidden={!open}
       inert={!open}
     >
+      {(view === "setup" || !notebookSkin) && (
       <div className="panel-heading">
         <span>{view === "setup" ? t("notes.vault.title") : ""}</span>
         <div className="notes-heading-actions">
@@ -505,6 +516,7 @@ export function NotesPanel({
           </button>
         </div>
       </div>
+      )}
 
       {view === "setup" && isIOS && (
         <div className="notes-setup">
@@ -568,21 +580,41 @@ export function NotesPanel({
       )}
 
       {view === "edit" && notebookSkin && !bookOpen && (
-        <button
-          type="button"
-          className="book-cover"
-          onClick={() => setBookOpen(true)}
-          aria-label={t("notes.cover.aria")}
+        /* nothing on screen but the book itself — tapping beside it, or
+           Esc, puts it back unopened */
+        <div
+          className="book-cover-stage"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleClose();
+          }}
         >
-          <PixelIcon rows={NOTEBOOK_COVER} size={168} pal={BOOK_PAL} />
-        </button>
+          <button
+            type="button"
+            className="book-cover"
+            onClick={() => setBookOpen(true)}
+            aria-label={t("notes.cover.aria")}
+          >
+            <PixelIcon rows={NOTEBOOK_COVER} size={168} pal={BOOK_PAL} />
+          </button>
+        </div>
       )}
       {view === "edit" && (!notebookSkin || bookOpen) && (
         <div className={"notes-editor size-" + fontSize}>
-          {recent && recent.length > 1 && (
+          {(notebookSkin || (recent && recent.length > 1)) && (
             <div className="notes-tabs-row">
             <div className="notes-recent" aria-label={t("notes.recent.aria")}>
-              {recent.map((f) => (
+              {notebookSkin && (
+                <button
+                  type="button"
+                  className="tab-plus"
+                  onClick={newPage}
+                  aria-label={t("notes.newpage")}
+                  title={t("notes.newpage")}
+                >
+                  +
+                </button>
+              )}
+              {(recent ?? []).map((f) => (
                 <button
                   key={f}
                   type="button"
@@ -638,6 +670,17 @@ export function NotesPanel({
                     </div>
                   )}
                 </span>
+              )}
+              {notebookSkin && (
+                <button
+                  type="button"
+                  className="tab-away"
+                  onClick={() => void handlePutAway()}
+                  aria-label={t("notes.putaway.aria")}
+                  title={t("notes.putaway.aria")}
+                >
+                  ×
+                </button>
               )}
             </div>
           )}
@@ -738,6 +781,16 @@ export function NotesPanel({
             </div>
           )}
           {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
+          {notebookSkin && (
+            <button
+              type="button"
+              className="page-gear"
+              onClick={() => setView("setup")}
+              aria-label={t("notes.settings.aria")}
+            >
+              ⚙ {t("notes.vault.title")}
+            </button>
+          )}
           {!connected && (
             <button
               type="button"

@@ -2378,64 +2378,91 @@ button:focus-visible, input:focus-visible {
 
 
 /* ============================================================
-   The compass — one round control, bottom left.
-   Up the notebook, left the search, right the mirror,
-   down the depot; the registry sits at its heart.
+   The compass — a stepped pixel ring, no smooth geometry anywhere.
+   The sprite is the artwork; CSS only places 44px+ hit targets.
+   States switch instantly, the pixel way.
    ============================================================ */
 .dpad {
   position: absolute;
   z-index: 10;
   left: clamp(28px, 4vw, 56px);
   bottom: calc(clamp(24px, 4.5vh, 44px) + env(safe-area-inset-bottom, 0px));
-  width: 138px;
-  height: 138px;
-  border-radius: 50%;
-  border: 2px solid var(--line);
-  background: rgba(13, 15, 19, .82);
-  box-shadow: inset 0 1px 0 rgba(238, 240, 244, .06), 0 10px 30px rgba(0, 0, 0, .4);
+  width: 148px;
+  height: 148px;
+}
+.dpad > .depot-thumb {
+  position: absolute;
+  inset: 0;
+  transform: none;
+  opacity: .92;
+  image-rendering: pixelated;
 }
 .dpad-btn {
   position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: rgba(255, 255, 255, .55);
-  cursor: pointer;
-  transition: color .25s ease, filter .25s ease;
-}
-.dpad-btn:hover { color: var(--amber, #e0a84f); }
-.dpad-btn:hover .depot-thumb { filter: drop-shadow(0 0 8px rgba(224, 168, 79, .5)); }
-.dpad-up { top: 2px; left: 50%; transform: translateX(-50%); }
-.dpad-down { bottom: 2px; left: 50%; transform: translateX(-50%); }
-.dpad-left { left: 2px; top: 50%; transform: translateY(-50%); }
-.dpad-right { right: 2px; top: 50%; transform: translateY(-50%); }
-.dpad-core {
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
   width: 44px;
   height: 44px;
-  border: 1px solid var(--line);
-  background: rgba(23, 26, 32, .9);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
 }
-.dpad-core .unread-dot { position: absolute; top: 4px; right: 4px; }
-.dpad .depot-thumb { position: static; transform: none; opacity: 1; }
-/* little compass ticks at the rim */
-.dpad::before,
-.dpad::after {
-  content: "";
-  position: absolute;
-  background: rgba(255, 255, 255, .18);
+.dpad-btn .depot-thumb { position: static; transform: none; opacity: .8; }
+.dpad-btn:hover .depot-thumb {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(224, 168, 79, .55));
 }
-.dpad::before { left: 50%; top: -6px; width: 2px; height: 4px; transform: translateX(-50%); }
-.dpad::after { top: 50%; left: -6px; width: 4px; height: 2px; transform: translateY(-50%); }
+.dpad-btn:focus-visible { outline: 2px solid var(--amber, #e0a84f); outline-offset: 2px; }
+.dpad-up { top: -8px; left: 50%; transform: translateX(-50%); }
+.dpad-down { bottom: -8px; left: 50%; transform: translateX(-50%); }
+.dpad-left { left: -8px; top: 50%; transform: translateY(-50%); }
+.dpad-right { right: -8px; top: 50%; transform: translateY(-50%); }
+.dpad-core { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.dpad-core .unread-dot { position: absolute; top: 2px; right: 2px; }
 @media (max-width: 900px) {
-  .dpad { width: 122px; height: 122px; }
-  .dpad-btn { width: 36px; height: 36px; }
+  .dpad { width: 128px; height: 128px; }
+}
+
+
+/* pixel tabs on the book's top edge: a fresh page, and the way home */
+.tab-plus,
+.tab-away {
+  flex: none;
+  width: 30px;
+  border: 2px solid var(--p0);
+  border-bottom: 0;
+  border-radius: 0;
+  background: var(--p6);
+  color: var(--p1);
+  font: 600 14px/1 var(--mono, monospace);
+  cursor: pointer;
+  padding: 6px 0;
+}
+.tab-plus:hover,
+.tab-away:hover { background: var(--p7); color: var(--p0); }
+.tab-away { margin-left: 6px; box-shadow: inset 0 3px 0 var(--amber, #e0a84f); }
+.notebook .notes-tabs-row { align-items: stretch; }
+
+/* the vault gear lives quietly at the left page's foot */
+.page-gear {
+  margin: 0;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--p4);
+  font: 500 10px/1 var(--ui);
+  letter-spacing: .12em;
+  text-align: left;
+  cursor: pointer;
+}
+.page-gear:hover { color: var(--p1); }
+
+/* the cover's stage fills the panel so a tap beside the book closes it */
+.book-cover-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

@@ -29,7 +29,7 @@ import {
   resolveCommissions,
 } from "./lib/game/commissions";
 import { PET_ACTIONS, QUEST_LINES, REPLY_PAIRS } from "./lib/game/bonds-lines";
-import { iconOf, BACKPACK_ICON, MIRROR_ICON } from "./lib/game/icons";
+import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, SEARCH_PX, DEPOT_PX, REGISTRY_PX } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
@@ -37,6 +37,9 @@ import type { Lang } from "./lib/i18n";
 
 /** frozen archetype verdicts — module-level so render stays pure while the
  *  map quietly grows; persisted to localStorage after each plan */
+/* the compass draws in the city's own greys */
+const BOOK_PAL_PAGE = ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#4a4f59", "#8b9099", "#e0a84f", "#f2f3f5"];
+
 const ARCH_PINS: Record<string, number> = (() => {
   if (typeof window === "undefined") return {};
   try {
@@ -51,6 +54,7 @@ const CHIME_KEY = "yeyufm.chime";
 
 export default function Home() {
   const [metrics, setMetrics] = useState<NoteMetric[]>([]);
+
   const [nowTs, setNowTs] = useState(0);
   const [intro, setIntro] = useState(false);
   const [introDone, setIntroDone] = useState(false);
@@ -1777,6 +1781,7 @@ export default function Home() {
 
       {!writeOpen && (
         <nav className="dpad immersion-ui" aria-label={t("topbar.settings")}>
+          <PixelIcon rows={COMPASS_RING} size={148} pal={BOOK_PAL_PAGE} />
           <button
             type="button"
             className="dpad-btn dpad-up"
@@ -1787,7 +1792,7 @@ export default function Home() {
             title={t("today.title")}
             aria-label={t("notes.today")}
           >
-            <PixelIcon rows={BACKPACK_ICON} size={22} />
+            <PixelIcon rows={BACKPACK_ICON} size={24} />
           </button>
           <button
             type="button"
@@ -1804,7 +1809,7 @@ export default function Home() {
             }}
             aria-label={t("topbar.search")}
           >
-            <span className="icon-search" aria-hidden="true" />
+            <PixelIcon rows={SEARCH_PX} size={20} />
           </button>
           <button
             type="button"
@@ -1826,9 +1831,7 @@ export default function Home() {
             }}
             aria-label={t("topbar.depot")}
           >
-            <span className="icon-depot" aria-hidden="true">
-              <i />
-            </span>
+            <PixelIcon rows={DEPOT_PX} size={20} />
           </button>
           <button
             type="button"
@@ -1842,10 +1845,7 @@ export default function Home() {
             {(game.letters ?? []).some((l) => !l.read) && (
               <span className="unread-dot" aria-hidden="true" />
             )}
-            <span className="icon-registry" aria-hidden="true">
-              <i />
-              <i />
-            </span>
+            <PixelIcon rows={REGISTRY_PX} size={18} />
           </button>
         </nav>
       )}
