@@ -10,6 +10,12 @@
 @import "@fontsource/ibm-plex-mono/500.css";
 @import "@fontsource/silkscreen/400.css";
 
+@font-face {
+  font-family: "Cubic 11";
+  src: url("/fonts/Cubic_11.woff2") format("woff2");
+  font-display: swap;
+}
+
 /* ============================================================
    Tata — signal becomes structure
    greys carry depth; the only colour left is the conflict red
@@ -2793,3 +2799,82 @@ button:focus-visible, input:focus-visible {
   color: var(--p4);
   font-style: normal;
 }
+
+
+/* ============================================================
+   Pixel type for the notebook's chrome (Cubic 11 carries the CJK),
+   a solid ×, and a vault card that belongs to this world.
+   ============================================================ */
+:root { --px: "Cubic 11", "Silkscreen", var(--mono, monospace); }
+
+/* the × : one solid pixel key on the cover's corner */
+.book-x {
+  top: 3.2%;
+  right: 3%;
+  width: 28px;
+  height: 28px;
+  background: #f2f3f5;
+  border: 2px solid #06070a;
+  color: #06070a;
+  opacity: 1;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, .6);
+}
+.book-x:hover { background: var(--amber, #e0a84f); }
+
+/* the setup stage fills the panel; the card is pixel through and through */
+.setup-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.notebook .notes-setup {
+  border-radius: 0;
+  font-family: var(--px);
+}
+.notebook .notes-setup .notes-help {
+  font-family: var(--px);
+  font-size: 13px;
+  line-height: 1.9;
+}
+.notebook .notes-setup label span {
+  font-family: var(--px);
+  font-size: 12px;
+  color: rgba(255, 255, 255, .55);
+}
+.notebook .notes-setup input {
+  border-radius: 0;
+  border: 2px solid rgba(255, 255, 255, .25);
+  background: #06070a;
+  font-family: var(--px);
+}
+.notebook .notes-setup .notes-primary {
+  border-radius: 0;
+  border: 2px solid #06070a;
+  background: var(--amber, #e0a84f);
+  color: #06070a;
+  font-family: var(--px);
+  font-size: 14px;
+  letter-spacing: .1em;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, .5);
+}
+.notebook .notes-setup .notes-plain {
+  font-family: var(--px);
+  border-radius: 0;
+}
+.notebook .notes-error { font-family: var(--px); }
+
+/* the go-to-the-vault line writes itself in pixels */
+.notebook .notes-connect {
+  font-family: var(--px);
+  font-size: 12px;
+  letter-spacing: .06em;
+}
+/* and the book's chrome follows */
+.notebook .notes-editor-bar strong { font-family: var(--px); }
+.notebook .notes-editor-bar em { font-family: var(--px); font-size: 11px; }
+.notebook .page-gear { font-family: var(--px); }
+.archive-stand,
+.archive-stand .archive-month button,
+.archive-head strong,
+.archive-note { font-family: var(--px); }

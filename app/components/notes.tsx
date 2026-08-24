@@ -505,7 +505,7 @@ export function NotesPanel({
       aria-hidden={!open}
       inert={!open}
     >
-      {(view === "setup" || !notebookSkin) && (
+      {!notebookSkin && (
       <div className="panel-heading">
         <span>{view === "setup" ? t("notes.vault.title") : ""}</span>
         <div className="notes-heading-actions">
@@ -548,15 +548,24 @@ export function NotesPanel({
       </div>
       )}
 
-      {view === "setup" && isIOS && (
+      {view === "setup" && (
+        <div
+          className="setup-stage"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              if (notebookSkin) setView("edit");
+              handleClose();
+            }
+          }}
+        >
+          {isIOS ? (
         <div className="notes-setup">
           <p className="notes-help">{t("notes.setup.ios")}</p>
           <button type="button" className="notes-primary" onClick={onClose}>
             {t("notes.setup.ios.ok")}
           </button>
         </div>
-      )}
-      {view === "setup" && !isIOS && (
+          ) : (
         <div className="notes-setup">
           <p className="notes-help">{t("notes.setup.help")}</p>
           {isSafari && (
@@ -606,6 +615,8 @@ export function NotesPanel({
           <button type="button" className="notes-plain" onClick={() => setAdvanced((v) => !v)}>
             {advanced ? t("notes.setup.hideadvanced") : t("notes.setup.advanced")}
           </button>
+        </div>
+          )}
         </div>
       )}
 
@@ -857,7 +868,6 @@ export function NotesPanel({
               ))}
             </div>
           )}
-          {sealed && <em className="page-sealed">{t("notes.sealed")}</em>}
           {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
           {notebookSkin && (
             <button

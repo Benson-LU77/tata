@@ -259,7 +259,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "notes.putaway.aria": "Put the notebook away",
     "notes.conflict.mine": "Keep mine",
     "notes.conflict.both": "Keep both",
-    "notes.connectcta": "Notes stay in this browser — connect Obsidian to keep them forever →",
+    "notes.connectcta": "Not in the vault yet — go to the vault →",
 
     /* mirror */
     "mirror.title": "Mirror",
@@ -577,7 +577,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "notes.putaway.aria": "把筆記本收進背包",
     "notes.conflict.mine": "保留我的版本",
     "notes.conflict.both": "兩者都保留",
-    "notes.connectcta": "筆記目前只存在這個瀏覽器 — 連接 Obsidian 才能永久保存 →",
+    "notes.connectcta": "筆記還沒進保管庫 — 去保管庫 →",
 
     /* mirror */
     "mirror.title": "鏡子",
