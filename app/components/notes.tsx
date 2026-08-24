@@ -493,7 +493,14 @@ export function NotesPanel({
               ←
             </button>
           )}
-          <button type="button" onClick={handleClose} aria-label={t("common.close")}>
+          <button
+            type="button"
+            onClick={() => {
+              if (notebookSkin && bookOpen && view === "edit") void handlePutAway();
+              else handleClose();
+            }}
+            aria-label={t("common.close")}
+          >
             ×
           </button>
         </div>
@@ -568,7 +575,6 @@ export function NotesPanel({
           aria-label={t("notes.cover.aria")}
         >
           <PixelIcon rows={NOTEBOOK_COVER} size={168} pal={BOOK_PAL} />
-          <em>{t("notes.cover.hint")}</em>
         </button>
       )}
       {view === "edit" && (!notebookSkin || bookOpen) && (
@@ -636,7 +642,7 @@ export function NotesPanel({
             </div>
           )}
           <div className="book">
-          <div className="book-page-right">
+          <div className="book-page-left">
           <div className="notes-editor-bar">
             <strong>{activeFile ? prettyName(activeFile) : t("notes.today")}</strong>
             <span className="bar-side">
@@ -683,22 +689,6 @@ export function NotesPanel({
               )}
             </span>
           </div>
-          {conflict && (
-            <div className="notes-conflict" role="alert">
-              <span>{t("notes.conflict.message")}</span>
-              <span className="conflict-actions">
-                <button type="button" onClick={() => store.resolveTheirs()}>
-                  {t("notes.conflict.theirs")}
-                </button>
-                <button type="button" onClick={() => void store.resolveMine()}>
-                  {t("notes.conflict.mine")}
-                </button>
-                <button type="button" onClick={() => void store.resolveBoth()}>
-                  {t("notes.conflict.both")}
-                </button>
-              </span>
-            </div>
-          )}
           <div className="notes-tools" aria-label="Formatting">
             <button
               type="button"
@@ -747,6 +737,34 @@ export function NotesPanel({
               ))}
             </div>
           )}
+          {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
+          {!connected && (
+            <button
+              type="button"
+              className="notes-plain notes-connect"
+              onClick={() => setView("setup")}
+            >
+              {t("notes.connectcta")}
+            </button>
+          )}
+          </div>
+          <div className="book-page-right">
+          {conflict && (
+            <div className="notes-conflict" role="alert">
+              <span>{t("notes.conflict.message")}</span>
+              <span className="conflict-actions">
+                <button type="button" onClick={() => store.resolveTheirs()}>
+                  {t("notes.conflict.theirs")}
+                </button>
+                <button type="button" onClick={() => void store.resolveMine()}>
+                  {t("notes.conflict.mine")}
+                </button>
+                <button type="button" onClick={() => void store.resolveBoth()}>
+                  {t("notes.conflict.both")}
+                </button>
+              </span>
+            </div>
+          )}
           <MarkdownEditor
             lang={lang}
             templates={templates}
@@ -766,29 +784,9 @@ export function NotesPanel({
               editorRef.current = api;
             }}
           />
-          {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
-          {notebookSkin && (
-            <button
-              type="button"
-              className="put-away"
-              onClick={() => void handlePutAway()}
-              aria-label={t("notes.putaway.aria")}
-            >
-              {t("notes.putaway")}
-            </button>
-          )}
           {notebookSkin && <PageTurn trigger={flip.n} />}
           </div>
           </div>
-          {!connected && (
-            <button
-              type="button"
-              className="notes-plain notes-connect"
-              onClick={() => setView("setup")}
-            >
-              {t("notes.connectcta")}
-            </button>
-          )}
         </div>
       )}
     </aside>
