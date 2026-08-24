@@ -16,7 +16,7 @@ import { floorsOf } from "../lib/city/plan";
 import { wordWatts } from "../lib/game/watts";
 import { MarkdownEditor } from "./editor";
 import type { EditorApi } from "./editor";
-import { createDocStore, newNoteName } from "../lib/notes/doc-store";
+import { createDocStore, newNoteName, todayStamp } from "../lib/notes/doc-store";
 import { PageTurn } from "./page-turn";
 import type { DocStore } from "../lib/notes/doc-store";
 
@@ -432,18 +432,21 @@ export function NotesPanel({
     if (!requestArchive || requestArchive === archiveSeenRef.current) return;
     archiveSeenRef.current = requestArchive;
     setView("edit");
-    setBookOpen(true);
+    setBookOpen(false); // flip through the files first; the book waits
     setArchiveOpen(true);
   }, [requestArchive, setBookOpen]);
 
   useEffect(() => {
     if (!open || !notebookSkin || bookOpen || view !== "edit") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") {
+        if (archiveOpen) setArchiveOpen(false);
+        else handleClose();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, notebookSkin, bookOpen, view, handleClose]);
+  }, [open, notebookSkin, bookOpen, view, archiveOpen, handleClose]);
 
 
   /* Closing the book is the day's full stop: the words land FIRST, then
@@ -486,6 +489,14 @@ export function NotesPanel({
             : "";
 
   const shownError = error ?? (snap.errorKey ? t(snap.errorKey) : null);
+
+  /* past days are the record, not the draft: sealed here, editable only
+     in Obsidian itself */
+  const sealed =
+    notebookSkin &&
+    !!activeFile &&
+    /^\d{4}-\d{2}-\d{2} /.test(activeFile) &&
+    activeFile.slice(0, 10) < todayStamp();
 
   return (
     <aside
@@ -598,7 +609,7 @@ export function NotesPanel({
         </div>
       )}
 
-      {view === "edit" && notebookSkin && !bookOpen && (
+      {view === "edit" && notebookSkin && !bookOpen && !archiveOpen && (
         /* nothing on screen but the book itself — tapping beside it, or
            Esc, puts it back unopened */
         <div
@@ -615,6 +626,52 @@ export function NotesPanel({
           >
             <PixelIcon rows={NOTEBOOK_COVER} size={168} pal={BOOK_PAL} />
           </button>
+        </div>
+      )}
+      {view === "edit" && notebookSkin && archiveOpen && !bookOpen && (
+        <div className="archive-stand" role="dialog" aria-label={t("notes.archive")}>
+          <div className="archive-head">
+            <strong>{t("notes.archive")}</strong>
+            <button
+              type="button"
+              className="archive-close"
+              onClick={() => setArchiveOpen(false)}
+              aria-label={t("common.close")}
+            >
+              ×
+            </button>
+          </div>
+          {(() => {
+            const groups = new Map<string, string[]>();
+            for (const f of pages ?? []) {
+              const m2 = f.match(/^(\d{4}-\d{2})/);
+              const key2 = m2 ? m2[1] : "…";
+              groups.set(key2, [...(groups.get(key2) ?? []), f]);
+            }
+            return [...groups.entries()]
+              .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+              .map(([month, files]) => (
+                <div key={month} className="archive-month">
+                  <em>{month}</em>
+                  {files
+                    .sort((a, b) => (a < b ? 1 : -1))
+                    .map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => {
+                          setArchiveOpen(false);
+                          setBookOpen(true); // found it — NOW the book opens
+                          void openNote(f);
+                        }}
+                      >
+                        {prettyName(f)}
+                      </button>
+                    ))}
+                </div>
+              ));
+          })()}
+          <p className="archive-note">{t("notes.sealed")}</p>
         </div>
       )}
       {view === "edit" && (!notebookSkin || bookOpen) && (
@@ -691,47 +748,6 @@ export function NotesPanel({
                   )}
                 </span>
               )}
-            </div>
-          )}
-          {notebookSkin && archiveOpen && (
-            <div className="notes-archive book-archive" role="dialog" aria-label={t("notes.archive")}>
-              <button
-                type="button"
-                className="archive-close"
-                onClick={() => setArchiveOpen(false)}
-                aria-label={t("common.close")}
-              >
-                ×
-              </button>
-              {(() => {
-                const groups = new Map<string, string[]>();
-                for (const f of pages ?? []) {
-                  const m2 = f.match(/^(\d{4}-\d{2})/);
-                  const key2 = m2 ? m2[1] : "…";
-                  groups.set(key2, [...(groups.get(key2) ?? []), f]);
-                }
-                return [...groups.entries()]
-                  .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-                  .map(([month, files]) => (
-                    <div key={month} className="archive-month">
-                      <em>{month}</em>
-                      {files
-                        .sort((a, b) => (a < b ? 1 : -1))
-                        .map((f) => (
-                          <button
-                            key={f}
-                            type="button"
-                            onClick={() => {
-                              setArchiveOpen(false);
-                              void openNote(f);
-                            }}
-                          >
-                            {prettyName(f)}
-                          </button>
-                        ))}
-                    </div>
-                  ));
-              })()}
             </div>
           )}
           {notebookSkin && (
@@ -841,6 +857,7 @@ export function NotesPanel({
               ))}
             </div>
           )}
+          {sealed && <em className="page-sealed">{t("notes.sealed")}</em>}
           {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
           {notebookSkin && (
             <button
@@ -888,6 +905,7 @@ export function NotesPanel({
               void openNote(file);
             }}
             value={content}
+            readOnly={sealed}
             docVersion={snap.docVersion}
             channelName=""
             pages={pages}

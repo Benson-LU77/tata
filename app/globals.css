@@ -2706,3 +2706,90 @@ button:focus-visible, input:focus-visible {
   .notebook .notes-tabs-row { position: static; width: auto; }
   .notebook .notes-recent { flex-direction: row; overflow-x: auto; }
 }
+
+/* ============================================================
+   The vault-setup card: solid, readable, pixel-edged — no more
+   ghost text floating over the skyline.
+   ============================================================ */
+.notebook .notes-setup {
+  margin: auto;
+  width: min(460px, 92%);
+  padding: 22px 24px 24px;
+  background: rgba(13, 15, 19, .97);
+  border: 2px solid var(--p0);
+  box-shadow: inset 0 0 0 1px rgba(238, 240, 244, .08), 8px 10px 0 rgba(0, 0, 0, .5);
+}
+.notebook .notes-setup .notes-help { color: rgba(255, 255, 255, .6); }
+
+/* ============================================================
+   The archive, standing alone: flip through the drawers first —
+   the book only opens once you've found the day.
+   ============================================================ */
+.archive-stand {
+  margin: auto;
+  width: min(430px, 92%);
+  max-height: 78%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  background: rgba(13, 15, 19, .97);
+  border: 2px solid var(--p0);
+  box-shadow: inset 0 0 0 1px rgba(238, 240, 244, .08), 8px 10px 0 rgba(0, 0, 0, .5);
+  padding: 0 0 10px;
+}
+.archive-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #171a20;
+  border-bottom: 2px solid var(--p0);
+}
+.archive-head strong {
+  font: 600 12px/1 var(--mono, monospace);
+  letter-spacing: .18em;
+  color: rgba(255, 255, 255, .8);
+}
+.archive-head .archive-close { position: static; }
+.archive-stand .archive-month {
+  padding: 10px 14px 2px;
+  display: grid;
+  gap: 4px;
+}
+.archive-stand .archive-month em {
+  font: 600 10px/1 var(--mono, monospace);
+  letter-spacing: .16em;
+  color: rgba(255, 255, 255, .4);
+  font-style: normal;
+  padding-bottom: 4px;
+}
+.archive-stand .archive-month button {
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 0;
+  background: rgba(23, 26, 32, .8);
+  color: rgba(255, 255, 255, .8);
+  font-size: 12px;
+  cursor: pointer;
+}
+.archive-stand .archive-month button:hover {
+  border-color: var(--amber, #e0a84f);
+  color: #ffffff;
+}
+.archive-note {
+  margin: 10px 14px 4px;
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: rgba(255, 255, 255, .35);
+}
+
+/* the seal on a past page */
+.page-sealed {
+  font: 500 10px/1.6 var(--ui);
+  letter-spacing: .08em;
+  color: var(--p4);
+  font-style: normal;
+}

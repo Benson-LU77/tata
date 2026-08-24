@@ -1722,9 +1722,6 @@ export default function Home() {
             aria-label={t("topbar.settings")}
             aria-expanded={settingsOpen}
           >
-            {(game.letters ?? []).some((l) => !l.read) && (
-              <span className="unread-dot" aria-hidden="true" />
-            )}
             <span className="icon-dots" aria-hidden="true">
               <i />
               <i />
@@ -1861,6 +1858,9 @@ export default function Home() {
             aria-label={t("topbar.registry")}
             title={t("topbar.registry")}
           >
+            {(game.letters ?? []).some((l) => !l.read) && (
+              <span className="unread-dot" aria-hidden="true" />
+            )}
             <PixelIcon rows={REGISTRY_PX} size={18} />
           </button>
         </nav>

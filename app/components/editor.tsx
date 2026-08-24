@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Annotation, EditorState, StateField, RangeSetBuilder } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, StateField, RangeSetBuilder } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -582,9 +582,12 @@ function toggleLines(view: EditorView, kind: "list" | "todo" | "heading") {
 
 /* ---------- react wrapper ---------- */
 
+const editableComp = new Compartment();
+
 export function MarkdownEditor({
   value,
   docVersion,
+  readOnly = false,
   channelName,
   placeholder,
   pages = [],
@@ -602,6 +605,8 @@ export function MarkdownEditor({
    *  round-tripping value prop can never interrupt typing or an IME
    *  composition. Without it, falls back to value comparison. */
   docVersion?: number;
+  /** sealed pages show their words but take no new ones */
+  readOnly?: boolean;
   channelName: string;
   placeholder: string;
   /** vault page names for [[wikilink]] autocomplete */
@@ -677,6 +682,7 @@ export function MarkdownEditor({
             defaultKeymap: true,
           }),
           cmPlaceholder(placeholder),
+          editableComp.of(EditorView.editable.of(!readOnly)),
           inlineKeys,
           keymap.of([...markdownKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
           EditorView.updateListener.of((update) => {
@@ -755,6 +761,12 @@ export function MarkdownEditor({
     }
     apply(view, value);
   }, [value, docVersion]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: editableComp.reconfigure(EditorView.editable.of(!readOnly)) });
+  }, [readOnly]);
 
   return <div className="note-cm" ref={hostRef} />;
 }
