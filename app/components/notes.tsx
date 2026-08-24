@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   DEFAULT_OBSIDIAN_URL,
   ObsidianClient,
@@ -8,7 +8,7 @@ import {
   saveConfig,
 } from "../lib/obsidian";
 import type { ObsidianConfig } from "../lib/obsidian";
-import { drafts, metaCache, migrateLegacyDraft } from "../lib/drafts";
+import { migrateLegacyDraft } from "../lib/drafts";
 import { countWords } from "../lib/city/metrics";
 import { CABINET_ICON } from "../lib/game/icons";
 import { PixelIcon } from "./pixel-icon";
@@ -16,11 +16,10 @@ import { floorsOf } from "../lib/city/plan";
 import { wordWatts } from "../lib/game/watts";
 import { MarkdownEditor } from "./editor";
 import type { EditorApi } from "./editor";
+import { createDocStore, newNoteName } from "../lib/notes/doc-store";
+import type { DocStore } from "../lib/notes/doc-store";
 
 type View = "setup" | "edit";
-type Status = "idle" | "loading" | "saving" | "saved" | "offline" | "error";
-
-type Conflict = { remote: string; mtime: number | null };
 
 const isSafari =
   typeof navigator !== "undefined" &&
@@ -43,47 +42,12 @@ const SIZE_ORDER: FontSize[] = ["s", "m", "l"];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
-
-function todayStamp() {
-  const now = new Date();
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
-function timeStamp() {
-  const now = new Date();
-  return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-}
-
-function newNoteName() {
-  const now = new Date();
-  return `${todayStamp()} ${pad(now.getHours())}.${pad(now.getMinutes())}.md`;
-}
-
-function todayName() {
-  return `${todayStamp()} Today.md`;
-}
-
-function legacyTonightName() {
-  return `${todayStamp()} Tonight.md`;
-}
-
 function prettyName(file: string) {
   const daily = file.match(/^(\d{4})-(\d{2})-(\d{2}) (Today|Tonight)\.md$/);
   if (daily) return `${MONTHS[Number(daily[2]) - 1]} ${Number(daily[3])} · Today`;
   const m = file.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2})\.(\d{2})\.md$/);
   if (!m) return file.replace(/\.md$/, "");
   return `${MONTHS[Number(m[2]) - 1]} ${Number(m[3])} · ${m[4]}:${m[5]}`;
-}
-
-function firstLine(text: string) {
-  const line = text
-    .split("\n")
-    .map((l) => l.replace(/^[>#\s*-]+/, "").replace(/^\[[ x]\]\s*/, "").trim())
-    .find((l) => l.length > 0 && !/^\d{2}:\d{2}/.test(l));
-  return line ?? "";
 }
 
 export function NotesPanel({
@@ -142,38 +106,29 @@ export function NotesPanel({
   const [key, setKey] = useState("");
   const [folder, setFolder] = useState("");
   const [advanced, setAdvanced] = useState(false);
-  const [activeFile, setActiveFile] = useState<string | null>(null);
-  const [content, setContent] = useState("");
-  /** The save payload is ONE tuple, never assembled from state that
-   *  updates at different moments — that mismatch put one page's words
-   *  into another page's file. Everything that opens or edits a page
-   *  goes through putDoc; flushSave reads only from here. */
-  const docRef = useRef<{
-    file: string | null;
-    content: string;
-    baseMtime: number | null;
-    baseContent: string | null;
-  }>({ file: null, content: "", baseMtime: null, baseContent: null });
-  const [status, setStatus] = useState<Status>("idle");
+  /** connection/setup errors live here (already translated); document
+   *  errors live in the store as keys — the render merges the two */
   const [error, setError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState<FontSize>("m");
-  const [conflict, setConflict] = useState<Conflict | null>(null);
+
+  /* Everything that opens, edits, saves or rescues a page lives in the
+     doc store — one atomic tuple, one in-flight lock, one debounce. The
+     component renders snapshots and forwards intents; it never assembles
+     a save payload. That separation IS the 8/21 fix, made structural. */
+  const [store] = useState<DocStore>(createDocStore);
+  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+  const { file: activeFile, content, status, conflict } = snap;
 
   const clientRef = useRef<ObsidianClient | null>(null);
-  const saveTimerRef = useRef<number | null>(null);
-  /** one write at a time: overlapping flushes carried the same stale base
-   *  and made the second one collide with the first — a conflict dialog
-   *  raised against your own words five seconds earlier */
-  const savingRef = useRef(false);
-  const pendingRef = useRef(false);
-  const draftTimerRef = useRef<number | null>(null);
-  const dirtyRef = useRef(false);
-  const seedRef = useRef("");
-  const baseMtimeRef = useRef<number | null>(null);
-  const baseContentRef = useRef<string | null>(null);
   const openedRef = useRef(false);
   const requestSeenRef = useRef(0);
   const editorRef = useRef<EditorApi | null>(null);
+
+  useEffect(() => {
+    store.setCallbacks({ onSaved, onWords });
+  }, [store, onSaved, onWords]);
+
+  useEffect(() => () => store.dispose(), [store]);
 
   useEffect(() => {
     onActiveFile(open ? activeFile : null);
@@ -244,44 +199,48 @@ export function NotesPanel({
     });
   }, []);
 
-  const makeClient = useCallback((config: ObsidianConfig) => {
-    clientRef.current = new ObsidianClient(config);
-    return clientRef.current;
-  }, []);
+  const makeClient = useCallback(
+    (config: ObsidianConfig) => {
+      clientRef.current = new ObsidianClient(config);
+      store.setClient(clientRef.current);
+      return clientRef.current;
+    },
+    [store],
+  );
 
-  const checkConnection = useCallback(async (client: ObsidianClient, quiet = false) => {
-    if (!quiet) {
-      setStatus("loading");
-      setError(null);
-    }
-    try {
-      await client.list();
-      setStatus("idle");
-      setError(null);
-      setConnected(true);
-      return true;
-    } catch {
-      if (quiet) {
+  const checkConnection = useCallback(
+    async (client: ObsidianClient, quiet = false) => {
+      if (!quiet) {
+        store.setStatus("loading", null);
+        setError(null);
+      }
+      try {
+        await client.list();
+        if (!quiet) store.setStatus("idle");
+        setError(null);
+        setConnected(true);
+        return true;
+      } catch {
         setConnected(false);
+        if (quiet) return false;
+        store.setStatus("error");
+        let message = t("notes.error.connect");
+        try {
+          const h = await client.health();
+          if (h.ok && !h.authenticated) {
+            message = t("notes.error.keymismatch");
+          }
+        } catch {
+          if (isSafari) {
+            message = t("notes.error.safari");
+          }
+        }
+        setError(message);
         return false;
       }
-      setStatus("error");
-      setConnected(false);
-      let message = t("notes.error.connect");
-      try {
-        const h = await client.health();
-        if (h.ok && !h.authenticated) {
-          message = t("notes.error.keymismatch");
-        }
-      } catch {
-        if (isSafari) {
-          message = t("notes.error.safari");
-        }
-      }
-      setError(message);
-      return false;
-    }
-  }, [t]);
+    },
+    [t, store],
+  );
 
   /* every open re-checks the connection — a PWA quit/relaunch or an
      Obsidian restart otherwise leaves us silently "connected" */
@@ -300,108 +259,27 @@ export function NotesPanel({
 
   /* while the panel is open and the link is down, quietly retry every 8 s
      on our own — and push any waiting words the moment it heals */
-  const flushRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
     if (!open || connected || view === "setup" || isIOS) return;
     const id = window.setInterval(() => {
       const client = clientRef.current;
       if (!client || document.hidden) return;
       void checkConnection(client, true).then((ok) => {
-        if (ok && dirtyRef.current) void flushRef.current?.();
+        if (ok && store.getSnapshot().dirty) void store.flush();
       });
     }, 8000);
     return () => window.clearInterval(id);
-  }, [open, connected, view, checkConnection]);
+  }, [open, connected, view, checkConnection, store]);
 
-  /** atomically adopt a page: file, text and the base we loaded it from */
-  const putDoc = useCallback(
-    (
-      file: string | null,
-      text: string,
-      baseMtime: number | null,
-      baseContent: string | null,
-      dirty: boolean,
-    ) => {
-      docRef.current = { file, content: text, baseMtime, baseContent };
-      baseMtimeRef.current = baseMtime;
-      baseContentRef.current = baseContent;
-      dirtyRef.current = dirty;
-      setActiveFile(file);
-      setContent(text);
-    },
-    [],
-  );
+  const cursorSoon = useCallback((delay: number) => {
+    window.setTimeout(() => editorRef.current?.cursorToEnd(), delay);
+  }, []);
 
-  /* Today is one page per day: load it if it exists, otherwise start it. */
   const openTonight = useCallback(async () => {
-    const client = clientRef.current;
-    let file = todayName();
-    // legacy: earlier days were called Tonight — keep appending to them
-    if (client) {
-      try {
-        await client.readDoc(file);
-      } catch {
-        try {
-          await client.readDoc(legacyTonightName());
-          file = legacyTonightName();
-        } catch {}
-      }
-    }
-    const seed = `> ${timeStamp()}\n\n`;
-    seedRef.current = seed;
-    // the page is adopted together with its text, never before it: an
-    // early claim left the save path holding (this file, that text)
-    setConflict(null);
     setView("edit");
-    const draft = await drafts.get(file);
-    if (draft && draft.content.trim() !== draft.seed.trim()) {
-      // the vault may have moved on (Obsidian edits, another device) —
-      // show its latest and carry any unsent words forward, never hide it
-      if (client) {
-        try {
-          const doc = await client.readDoc(file);
-          if (doc.mtime !== null && (draft.baseMtime === null || doc.mtime > draft.baseMtime)) {
-            const delta = draft.content.startsWith(draft.seed)
-              ? draft.content.slice(draft.seed.length)
-              : draft.content;
-            const carried = delta.trim().length > 0;
-            const body = doc.content.trimEnd() + (carried ? `\n\n${delta.trim()}\n` : "\n");
-            putDoc(file, body, doc.mtime, doc.content, carried);
-            if (!carried) void drafts.remove(file);
-            setStatus("idle");
-            window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
-            return;
-          }
-        } catch {}
-      }
-      seedRef.current = draft.seed || seed;
-      putDoc(file, draft.content, draft.baseMtime, null, true);
-      setStatus(client ? "idle" : "offline");
-      window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
-      return;
-    }
-    if (client) {
-      try {
-        const doc = await client.readDoc(file);
-        putDoc(file, doc.content.trimEnd() + "\n", doc.mtime, doc.content, false);
-        setStatus("idle");
-        window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
-        return;
-      } catch (err) {
-        // only an absent page earns a blank one; a dropped wire must
-        // never present today's words as if they were never written
-        if (!(err instanceof Error && err.message === "HTTP 404")) {
-          setStatus("offline");
-          putDoc(file, "", null, null, false);
-          setError(t("notes.error.open"));
-          return;
-        }
-      }
-    }
-    putDoc(file, seed, null, null, false);
-    setStatus("idle");
-    window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
-  }, [t, putDoc]);
+    await store.openToday();
+    cursorSoon(250);
+  }, [store, cursorSoon]);
 
   const todaySeenRef = useRef(0);
   useEffect(() => {
@@ -411,46 +289,13 @@ export function NotesPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestToday]);
 
-  const openNote = useCallback(async (name: string) => {
-    const client = clientRef.current;
-    setStatus("loading");
-    setError(null);
-    setConflict(null);
-    setView("edit");
-    const draft = await drafts.get(name);
-    if (draft && draft.content.trim() !== draft.seed.trim()) {
-      seedRef.current = draft.seed;
-      putDoc(name, draft.content, draft.baseMtime, null, true);
-      setStatus("idle");
-      return;
-    }
-    if (!client) {
-      // no vault to read from: say so instead of leaving the page
-      // half-open with a spinner and last page's words on screen
-      setStatus("offline");
-      setError(t("notes.error.open"));
-      return;
-    }
-    try {
-      const doc = await client.readDoc(name);
-      seedRef.current = "";
-      putDoc(name, doc.content, doc.mtime, doc.content, false);
-      setStatus("idle");
-    } catch (first) {
-      // a wikilink to a page that doesn't exist yet starts that page —
-      // but ONLY on a real 404. Any other failure used to blank the
-      // editor over a page that still had words in it.
-      const missing = first instanceof Error && first.message === "HTTP 404";
-      if (missing) {
-        seedRef.current = "";
-        putDoc(name, "", null, null, false);
-        setStatus("idle");
-        return;
-      }
-      setStatus("error");
-      setError(t("notes.error.open"));
-    }
-  }, [t, putDoc]);
+  const openNote = useCallback(
+    async (name: string) => {
+      setView("edit");
+      await store.open(name);
+    },
+    [store],
+  );
 
   /* first open: resume the freshest unsent draft, else tonight */
   useEffect(() => {
@@ -463,11 +308,7 @@ export function NotesPanel({
     let cancelled = false;
     void (async () => {
       await migrateLegacyDraft(newNoteName);
-      const all = await drafts.all();
       if (cancelled) return;
-      const pending = all
-        .filter((d) => d.content.trim() !== d.seed.trim())
-        .sort((a, b) => b.updatedAt - a.updatedAt)[0];
       const config = loadConfig();
       if (config) {
         setUrl(config.url);
@@ -477,12 +318,11 @@ export function NotesPanel({
         setConnected(true);
         void checkConnection(client);
       }
-      if (pending) {
-        seedRef.current = pending.seed;
-        putDoc(pending.file, pending.content, pending.baseMtime, null, true);
-        setStatus(config ? "idle" : "offline");
+      const resumed = await store.resume();
+      if (cancelled) return;
+      if (resumed) {
         setView("edit");
-        window.setTimeout(() => editorRef.current?.cursorToEnd(), 250);
+        cursorSoon(250);
       } else {
         void openTonight();
       }
@@ -490,7 +330,7 @@ export function NotesPanel({
     return () => {
       cancelled = true;
     };
-  }, [open, makeClient, checkConnection, openTonight]);
+  }, [open, makeClient, checkConnection, openTonight, store, cursorSoon]);
 
   /* open a specific building */
   useEffect(() => {
@@ -514,257 +354,32 @@ export function NotesPanel({
     void checkConnection(client).then((ok) => {
       if (!ok) return;
       onConnected?.();
-      if (dirtyRef.current && content.trim() !== seedRef.current.trim()) {
+      if (store.hasUnsentWords()) {
         setView("edit");
       } else {
         void openTonight();
       }
     });
-  }, [url, key, folder, content, makeClient, checkConnection, onConnected, openTonight, t]);
-
-  const flushSave = useCallback(async () => {
-    const client = clientRef.current;
-    if (!dirtyRef.current || conflict) return;
-    if (savingRef.current) {
-      pendingRef.current = true; // a write is in flight; follow it
-      return;
-    }
-    savingRef.current = true;
-    try {
-    // one snapshot, taken together — file, text and base can never drift
-    const doc = docRef.current;
-    const content = doc.content;
-    const isEmptyDraft = content.trim() === seedRef.current.trim();
-    if (!client) {
-      if (!isEmptyDraft) setStatus("offline");
-      return;
-    }
-    if (isEmptyDraft && doc.baseMtime === null) return;
-    const file = doc.file ?? newNoteName();
-    const wasNew = doc.baseMtime === null;
-    setStatus("saving");
-    const result = await client.writeGuarded(file, content, doc.baseMtime, doc.baseContent);
-    // a page opened while the write was in flight owns the refs now
-    const stillHere = docRef.current.file === doc.file;
-    if (result.ok) {
-      if (doc.file === null) setActiveFile(file);
-      if (stillHere) {
-        docRef.current = { ...docRef.current, baseMtime: result.mtime, baseContent: content };
-        baseMtimeRef.current = result.mtime;
-        baseContentRef.current = content;
-        dirtyRef.current = false;
-      }
-      void drafts.remove(file);
-      void metaCache.put({ file, excerpt: firstLine(content), mtime: result.mtime ?? 0 });
-      setStatus("saved");
-      onSaved(file, wasNew);
-      return;
-    }
-    if (result.reason === "offline") {
-      setStatus("offline");
-      return;
-    }
-    const base = (doc.baseContent ?? "").replace(/\s+$/, "");
-    const theirs = result.remote.content.replace(/\s+$/, "");
-    const ours = content.replace(/\s+$/, "");
-    // the vault holds an earlier version of this very page — that is our
-    // own previous write catching up, not somebody else's edit
-    if (ours.startsWith(theirs)) {
-      const retry = await client.writeGuarded(file, content, result.remote.mtime, result.remote.content);
-      if (retry.ok) {
-        if (docRef.current.file === doc.file) {
-          docRef.current = { ...docRef.current, baseMtime: retry.mtime, baseContent: content };
-          baseMtimeRef.current = retry.mtime;
-          baseContentRef.current = content;
-          dirtyRef.current = false;
-        }
-        void drafts.remove(file);
-        setStatus("saved");
-        onSaved(file, false);
-        return;
-      }
-    }
-    if (base.length > 0 && theirs.startsWith(base) && ours.startsWith(base)) {
-      const merged = theirs + ours.slice(base.length) + "\n";
-      const retry = await client.writeGuarded(file, merged, result.remote.mtime, theirs);
-      if (retry.ok) {
-        if (docRef.current.file === doc.file) {
-          putDoc(file, merged, retry.mtime, merged, false);
-        }
-        void drafts.remove(file);
-        setStatus("saved");
-        onSaved(file, false);
-        return;
-      }
-    }
-    setStatus("idle");
-    setConflict({ remote: result.remote.content, mtime: result.remote.mtime });
-    } finally {
-      savingRef.current = false;
-      if (pendingRef.current) {
-        pendingRef.current = false;
-        if (dirtyRef.current) window.setTimeout(() => void flushRef.current?.(), 0);
-      }
-    }
-  }, [conflict, onSaved, putDoc]);
-
-  /* Conflict choices. Taking theirs must never mean losing ours: the
-     version you set aside is kept as a tombstone draft, recoverable
-     from the archive, because a choice made in a hurry is still a
-     choice made about words somebody wrote. */
-  const resolveTheirs = useCallback(() => {
-    if (!conflict) return;
-    const file = docRef.current.file;
-    const ours = docRef.current.content;
-    if (file && ours.trim().length > 0 && ours.trim() !== conflict.remote.trim()) {
-      void drafts.put({
-        file: `${file.replace(/\.md$/, "")} (tata ${timeStamp().replace(":", ".")}).md`,
-        content: ours,
-        seed: "",
-        baseMtime: null,
-        updatedAt: Date.now(),
-      });
-    }
-    putDoc(file, conflict.remote.trimEnd() + "\n", conflict.mtime, conflict.remote, false);
-    if (file) void drafts.remove(file);
-    setConflict(null);
-    setStatus("idle");
-    window.setTimeout(() => editorRef.current?.cursorToEnd(), 100);
-  }, [conflict, putDoc]);
-
-  const resolveMine = useCallback(async () => {
-    const client = clientRef.current;
-    if (!conflict || !client) return;
-    const doc = docRef.current;
-    const file = doc.file ?? newNoteName();
-    const content = doc.content;
-    const theirMtime = conflict.mtime;
-    setConflict(null);
-    setStatus("saving");
-    const result = await client.writeGuarded(file, content, theirMtime, conflict.remote);
-    const stillHere = docRef.current.file === doc.file;
-    if (result.ok) {
-      if (stillHere) {
-        if (doc.file === null) setActiveFile(file);
-        docRef.current = { file, content, baseMtime: result.mtime, baseContent: content };
-        baseMtimeRef.current = result.mtime;
-        baseContentRef.current = content;
-        dirtyRef.current = false;
-      }
-      void drafts.remove(file);
-      setStatus("saved");
-      onSaved(file, false);
-    } else if (result.reason === "conflict") {
-      setStatus("idle");
-      setConflict({ remote: result.remote.content, mtime: result.remote.mtime });
-    } else {
-      setStatus("offline");
-    }
-  }, [conflict, onSaved]);
-
-  const resolveBoth = useCallback(async () => {
-    const client = clientRef.current;
-    if (!conflict || !client) return;
-    const doc0 = docRef.current;
-    const original = doc0.file ?? newNoteName();
-    const content = doc0.content;
-    const copy =
-      original.replace(/\.md$/, "") + ` (tata ${timeStamp().replace(":", ".")}).md`;
-    setStatus("saving");
-    try {
-      const put = await client.writeGuarded(copy, content, null, null);
-      if (!put.ok) {
-        // a copy from the same minute already exists — never replace it
-        setStatus("offline");
-        setError(t("notes.error.save"));
-        return;
-      }
-      void drafts.remove(original);
-      let mtime: number | null = null;
-      try {
-        const doc = await client.readDoc(copy);
-        mtime = doc.mtime;
-      } catch {}
-      // if the reader moved on mid-rescue, leave their page alone
-      if (docRef.current.file === doc0.file) putDoc(copy, content, mtime, content, false);
-      setConflict(null);
-      setStatus("saved");
-      onSaved(copy, true);
-    } catch {
-      setStatus("offline");
-    }
-  }, [conflict, onSaved, putDoc]);
-
-  useEffect(() => {
-    flushRef.current = flushSave;
-  }, [flushSave]);
-
-  /* The draft journal is the safety net, so the vault push can breathe slower. */
-  useEffect(() => {
-    if (!dirtyRef.current) return;
-    if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = window.setTimeout(() => {
-      void flushSave();
-    }, 4000);
-    return () => {
-      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
-    };
-  }, [content, flushSave]);
+  }, [url, key, folder, makeClient, checkConnection, onConnected, openTonight, store, t]);
 
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden) void flushSave();
+      if (document.hidden) void store.flush();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [flushSave]);
-
-  const handleChange = useCallback(
-    (next: string) => {
-      let file = docRef.current.file ?? activeFile;
-      if (!file) {
-        file = newNoteName();
-        setActiveFile(file);
-      }
-      // the tuple always travels together — text belongs to this file
-      docRef.current = { ...docRef.current, file, content: next };
-      setContent(next);
-      dirtyRef.current = true;
-      setStatus((s) => (s === "saved" ? "idle" : s));
-      onWords(file, countWords(next));
-      const snapshot = {
-        file,
-        content: next,
-        seed: seedRef.current,
-        baseMtime: baseMtimeRef.current,
-        updatedAt: Date.now(),
-      };
-      if (draftTimerRef.current !== null) window.clearTimeout(draftTimerRef.current);
-      draftTimerRef.current = window.setTimeout(() => {
-        if (snapshot.content.trim() === snapshot.seed.trim()) void drafts.remove(snapshot.file);
-        else void drafts.put(snapshot);
-      }, 400);
-    },
-    [activeFile, onWords],
-  );
+  }, [store]);
 
   const newPage = useCallback(() => {
-    const seed = `> ${timeStamp()}\n\n`;
-    seedRef.current = seed;
-    setConflict(null);
-    // the name is claimed on the first keystroke, but the base must be
-    // cleared NOW — inheriting the last page's base is how a fresh page
-    // starts life carrying somebody else's identity
-    putDoc(null, seed, null, null, false);
-    setStatus("idle");
+    store.newPage();
     setView("edit");
-    window.setTimeout(() => editorRef.current?.cursorToEnd(), 150);
-  }, [putDoc]);
+    cursorSoon(150);
+  }, [store, cursorSoon]);
 
   const handleClose = useCallback(() => {
-    void flushSave();
+    void store.flush();
     onClose();
-  }, [flushSave, onClose]);
+  }, [store, onClose]);
 
   const statusLabel =
     status === "saving"
@@ -776,6 +391,8 @@ export function NotesPanel({
           : status === "loading"
             ? t("notes.status.loading")
             : "";
+
+  const shownError = error ?? (snap.errorKey ? t(snap.errorKey) : null);
 
   return (
     <aside className="notes-panel" aria-label="Notes" aria-hidden={!open} inert={!open}>
@@ -864,7 +481,7 @@ export function NotesPanel({
               </label>
             </>
           )}
-          {error && <p className="notes-error">{error}</p>}
+          {shownError && <p className="notes-error">{shownError}</p>}
           <button type="button" className="notes-primary" onClick={connect}>
             {t("notes.setup.connect")}
           </button>
@@ -988,13 +605,13 @@ export function NotesPanel({
             <div className="notes-conflict" role="alert">
               <span>{t("notes.conflict.message")}</span>
               <span className="conflict-actions">
-                <button type="button" onClick={resolveTheirs}>
+                <button type="button" onClick={() => store.resolveTheirs()}>
                   {t("notes.conflict.theirs")}
                 </button>
-                <button type="button" onClick={() => void resolveMine()}>
+                <button type="button" onClick={() => void store.resolveMine()}>
                   {t("notes.conflict.mine")}
                 </button>
-                <button type="button" onClick={() => void resolveBoth()}>
+                <button type="button" onClick={() => void store.resolveBoth()}>
                   {t("notes.conflict.both")}
                 </button>
               </span>
@@ -1057,16 +674,17 @@ export function NotesPanel({
               void openNote(file);
             }}
             value={content}
+            docVersion={snap.docVersion}
             channelName=""
             pages={pages}
             placeholder={t("notes.editor.placeholder")}
-            onChange={handleChange}
-            onBlur={() => void flushSave()}
+            onChange={(next) => store.edit(next)}
+            onBlur={() => void store.flush()}
             onReady={(api) => {
               editorRef.current = api;
             }}
           />
-          {error && view === "edit" && <p className="notes-error">{error}</p>}
+          {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
           {!connected && (
             <button
               type="button"

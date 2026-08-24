@@ -584,6 +584,7 @@ function toggleLines(view: EditorView, kind: "list" | "todo" | "heading") {
 
 export function MarkdownEditor({
   value,
+  docVersion,
   channelName,
   placeholder,
   pages = [],
@@ -596,6 +597,11 @@ export function MarkdownEditor({
   onOpenTag,
 }: {
   value: string;
+  /** bumps when a document is ADOPTED (open, conflict resolve, restore).
+   *  With it, external content is accepted only on version change — so a
+   *  round-tripping value prop can never interrupt typing or an IME
+   *  composition. Without it, falls back to value comparison. */
+  docVersion?: number;
   channelName: string;
   placeholder: string;
   /** vault page names for [[wikilink]] autocomplete */
@@ -709,19 +715,46 @@ export function MarkdownEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* External value changes (opening another note) replace the doc. */
+  /* External value changes (opening another note) replace the doc.
+     Gated on docVersion: ordinary typing round-trips the value prop but
+     never bumps the version, so the editor stays the source of truth
+     between adoptions. A mid-composition adoption waits for the IME. */
+  const lastVersionRef = useRef<number | null>(null);
+  const pendingAdoptRef = useRef<string | null>(null);
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    const current = view.state.doc.toString();
-    if (current !== value) {
-      view.dispatch({
-        changes: { from: 0, to: current.length, insert: value },
-        selection: { anchor: value.length },
+    if (docVersion !== undefined) {
+      if (docVersion === lastVersionRef.current) return; // typing, not adoption
+      lastVersionRef.current = docVersion;
+    }
+    const apply = (v: EditorView, next: string) => {
+      const current = v.state.doc.toString();
+      if (current === next) return;
+      v.dispatch({
+        changes: { from: 0, to: current.length, insert: next },
+        selection: { anchor: next.length },
         annotations: External.of(true),
       });
+    };
+    if (view.composing) {
+      pendingAdoptRef.current = value;
+      const wait = () => {
+        const v = viewRef.current;
+        if (!v) return;
+        if (v.composing) {
+          window.setTimeout(wait, 80);
+          return;
+        }
+        const parked = pendingAdoptRef.current;
+        pendingAdoptRef.current = null;
+        if (parked !== null) apply(v, parked);
+      };
+      window.setTimeout(wait, 80);
+      return;
     }
-  }, [value]);
+    apply(view, value);
+  }, [value, docVersion]);
 
   return <div className="note-cm" ref={hostRef} />;
 }
