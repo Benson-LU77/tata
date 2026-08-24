@@ -505,6 +505,11 @@ export function NotesPanel({
       aria-label="Notes"
       aria-hidden={!open}
       inert={!open}
+      onClick={(e) => {
+        if (!notebookSkin || e.target !== e.currentTarget) return;
+        if (view === "edit" && bookOpen) void handlePutAway();
+        else handleClose();
+      }}
     >
       {!notebookSkin && (
       <div className="panel-heading">
@@ -739,17 +744,6 @@ export function NotesPanel({
                 </span>
               )}
             </div>
-          )}
-          {notebookSkin && (
-            <button
-              type="button"
-              className="book-x"
-              onClick={() => void handlePutAway()}
-              aria-label={t("notes.putaway.aria")}
-              title={t("notes.putaway.aria")}
-            >
-              ×
-            </button>
           )}
           <div className="book">
           <div className="book-page-left">
