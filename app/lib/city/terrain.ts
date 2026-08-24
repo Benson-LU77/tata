@@ -19,6 +19,7 @@ export const T_VOID = 0;
 export const T_GRASS = 1;
 export const T_PATH = 2;
 export const T_PLAZA = 3;
+export const T_WATER = 4;
 
 export type TerrainMap = {
   /** world position of texel (0,0) */
@@ -57,6 +58,29 @@ function vnoise(x: number, z: number, cell: number): number {
   return a + (b - a) * sx + (c - a) * sz + (a - b - c + d) * sx * sz;
 }
 
+function stampOver(
+  data: Uint8Array,
+  w: number,
+  h: number,
+  originX: number,
+  originZ: number,
+  x0: number,
+  z0: number,
+  x1: number,
+  z1: number,
+  id: number,
+) {
+  const ax = Math.max(0, Math.floor((x0 - originX) * TERRAIN_RES));
+  const az = Math.max(0, Math.floor((z0 - originZ) * TERRAIN_RES));
+  const bx = Math.min(w, Math.ceil((x1 - originX) * TERRAIN_RES));
+  const bz = Math.min(h, Math.ceil((z1 - originZ) * TERRAIN_RES));
+  for (let tz = az; tz < bz; tz += 1) {
+    for (let tx = ax; tx < bx; tx += 1) {
+      data[tz * w + tx] = id;
+    }
+  }
+}
+
 export function terrainFor(plan: CityPlan): TerrainMap {
   const b = plan.bounds;
   let minX = b.minX;
@@ -78,18 +102,58 @@ export function terrainFor(plan: CityPlan): TerrainMap {
   const originZ = minZ - pad;
   const data = new Uint8Array(w * h);
 
+  /* One island per month. Each block's ring road plus a shore is land;
+     between islands the wandering coastline leaves straits of night sea —
+     narrow enough to shoal together in places, the way months touch.
+     Nothing here migrates data: blocks and cells are indices, and every
+     ornament keeps standing on its own island's shore. */
+  const rects = plan.blocks.map((bl) => ({
+    x0: bl.x - 0.85 * CELL,
+    x1: bl.x + 7.85 * CELL,
+    z0: bl.z - 0.85 * CELL,
+    z1: bl.z + 6.85 * CELL,
+  }));
+  const distTo = (x: number, z: number) => {
+    let best = Infinity;
+    for (const r of rects) {
+      const dx = Math.max(r.x0 - x, 0, x - r.x1);
+      const dz = Math.max(r.z0 - z, 0, z - r.z1);
+      const d = Math.max(dx, dz) + Math.hypot(dx, dz) * 0.3;
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  const SHORE = 0.62 * CELL; // grass past the ring road (keeps the billboard dry)
   for (let tz = 0; tz < h; tz += 1) {
     for (let tx = 0; tx < w; tx += 1) {
       const x = originX + (tx + 0.5) / TERRAIN_RES;
       const z = originZ + (tz + 0.5) / TERRAIN_RES;
-      // signed distance outside the core rect (0 inside)
-      const dx = Math.max(minX - x, 0, x - maxX);
-      const dz = Math.max(minZ - z, 0, z - maxZ);
-      const d = Math.max(dx, dz) + Math.hypot(dx, dz) * 0.3;
-      // the coastline wanders: local margin swings with low-freq noise
-      const coast = margin * (0.35 + 0.75 * vnoise(x, z, 9));
-      if (d >= coast) continue; // void
-      data[tz * w + tx] = T_GRASS;
+      const d = distTo(x, z);
+      // the coastline wanders: the shore swells and thins with the noise
+      const coast = SHORE * (0.55 + 1.15 * vnoise(x, z, 9));
+      if (d < coast) {
+        data[tz * w + tx] = T_GRASS;
+        continue;
+      }
+      // beyond the shore: night sea, thinning to open space at the rim
+      const sea = Math.min(margin, 3.4 * CELL) * (0.55 + 0.75 * vnoise(x + 57, z - 31, 13));
+      if (d < coast + sea) data[tz * w + tx] = T_WATER;
+    }
+  }
+
+  // causeways: each month reaches the next across its strait
+  for (let i = 0; i + 1 < plan.blocks.length; i += 1) {
+    const a = plan.blocks[i];
+    const b = plan.blocks[i + 1];
+    const HALF = 0.32 * CELL;
+    if (Math.abs(a.z - b.z) < 0.1) {
+      const [w0, w1] = a.x < b.x ? [a, b] : [b, a];
+      const zc = a.z + 3 * CELL;
+      stampOver(data, w, h, originX, originZ, w0.x + 7.85 * CELL, zc - HALF, w1.x - 0.85 * CELL, zc + HALF, T_PATH);
+    } else {
+      const [n0, n1] = a.z < b.z ? [a, b] : [b, a];
+      const xc = a.x + 3.5 * CELL;
+      stampOver(data, w, h, originX, originZ, xc - HALF, n0.z + 6.85 * CELL, xc + HALF, n1.z - 0.85 * CELL, T_PATH);
     }
   }
 

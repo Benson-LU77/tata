@@ -442,19 +442,31 @@ void main() {
     tone = 0.27 + hash21(slab) * 0.09;
     vec2 f = fract(vWorld.xz / 1.5);
     if (f.x < 0.07 || f.y < 0.07) tone *= 0.55;
-  } else {
+  } else if (id < 3.5) {
     // plaza: quiet cells, one seam per calendar cell
     tone = 0.175 + n * 0.045;
     vec2 f2 = fract(vWorld.xz / 3.0);
     if (f2.x < 0.035 || f2.y < 0.035) tone *= 0.62;
+  } else {
+    // night sea between the month-islands: near-black swell bands and
+    // the rare glint of something reflected
+    tone = 0.05 + vn(vWorld.xz / 5.0) * 0.035;
+    if (hash21(px + 41.0) > 0.9985) tone = 0.34;
   }
-  // coastline: any void neighbour pulls the edge into cliff shadow
+  // neighbours: void pulls a cliff shadow, sea meets land in a pale shoal
   float rim = min(
     min(texture2D(uMap, uv + vec2(uTexel.x, 0.0)).r,
         texture2D(uMap, uv - vec2(uTexel.x, 0.0)).r),
     min(texture2D(uMap, uv + vec2(0.0, uTexel.y)).r,
         texture2D(uMap, uv - vec2(0.0, uTexel.y)).r));
-  if (rim * 255.0 < 0.5) tone = 0.04; // cliff shadow at the coastline
+  float rimMax = max(
+    max(texture2D(uMap, uv + vec2(uTexel.x, 0.0)).r,
+        texture2D(uMap, uv - vec2(uTexel.x, 0.0)).r),
+    max(texture2D(uMap, uv + vec2(0.0, uTexel.y)).r,
+        texture2D(uMap, uv - vec2(0.0, uTexel.y)).r));
+  if (rim * 255.0 < 0.5) tone = 0.04; // cliff shadow against open space
+  if (id > 3.5 && rimMax * 255.0 > 0.5 && rimMax * 255.0 < 3.5) tone = 0.115; // lapping shoal
+  if (id < 3.5 && id > 0.5 && rimMax * 255.0 > 3.5) tone = max(tone, 0.2); // lit sand at the waterline
   if (uWx > 1.5 && uWx < 2.5) {
     // snow: the meadow blankets over, walked streets stay darker
     if (id < 1.5) tone = 0.5 + n * 0.06;
@@ -1608,8 +1620,8 @@ export function City3D({
       // a dome on the meadow past the newest block's far corner,
       // clear of the ring road, watching the galaxy
       const nb = plan.blocks[plan.blocks.length - 1];
-      let ox2 = nb.x + 8.7 * CELL;
-      let oz2 = nb.z - 1.6 * CELL;
+      let ox2 = nb.x + 8.3 * CELL;
+      let oz2 = nb.z - 1.25 * CELL;
       const forcedO = placements?.["observatory"];
       if (forcedO) {
         ox2 = forcedO.x;
@@ -1727,8 +1739,8 @@ export function City3D({
       // a civic fixture: it stands by the first month's southwest corner
       // and never moves again — landmarks you can give directions by
       const bb2 = plan.blocks[0];
-      const bx3 = bb2.x - 1.6 * CELL;
-      const bz3 = bb2.z + 7.6 * CELL;
+      const bx3 = bb2.x - 1.25 * CELL;
+      const bz3 = bb2.z + 7.15 * CELL;
       const bLot: Lot = { file: "__billboard__", date: "", x: bx3, z: bz3, half: 0.9, floors: 0, seed: 5, lit: 1 };
       for (const px4 of [-0.75, 0.75]) {
         entries.push({ lot: bLot, box: { x: bx3 + px4, y: 0, z: bz3, w: 0.1, h: 1.3, d: 0.1 } });
