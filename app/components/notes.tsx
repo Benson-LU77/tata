@@ -412,6 +412,10 @@ export function NotesPanel({
     onClose();
   }, [store, onClose]);
 
+  /* Closing the book is the day's full stop: the words land FIRST, then
+     the cover closes — the animation reads the store, never delays it. */
+  const [closing, setClosing] = useState(false);
+
   /* the notebook arrives closed, front and centre; tapping it opens it.
      Render-phase adjust: when the panel closes, the next opening finds
      the cover shut again. */
@@ -421,6 +425,10 @@ export function NotesPanel({
   });
   if (bookNav.wasOpen !== open) {
     setBookNav({ wasOpen: open, book: open ? false : bookNav.book });
+    if (open) {
+      if (closing) setClosing(false);
+      if (archiveOpen) setArchiveOpen(false);
+    }
   }
   const bookOpen = bookNav.book;
   const setBookOpen = useCallback((v: boolean) => {
@@ -439,19 +447,13 @@ export function NotesPanel({
   useEffect(() => {
     if (!open || !notebookSkin || bookOpen || view !== "edit") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (archiveOpen) setArchiveOpen(false);
-        else handleClose();
-      }
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, notebookSkin, bookOpen, view, archiveOpen, handleClose]);
+  }, [open, notebookSkin, bookOpen, view, handleClose]);
 
 
-  /* Closing the book is the day's full stop: the words land FIRST, then
-     the cover closes — the animation reads the store, never delays it. */
-  const [closing, setClosing] = useState(false);
   const handlePutAway = useCallback(async () => {
     if (closing) return;
     setClosing(true);
@@ -462,7 +464,8 @@ export function NotesPanel({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.setTimeout(
       () => {
-        setClosing(false);
+        // 'closing' stays on through the fade-out — resetting it here made
+        // the book snap back for one visible frame; the next opening resets
         onClose();
         onPutAway?.(file);
       },
@@ -646,7 +649,7 @@ export function NotesPanel({
             <button
               type="button"
               className="archive-close"
-              onClick={() => setArchiveOpen(false)}
+              onClick={handleClose}
               aria-label={t("common.close")}
             >
               ×
