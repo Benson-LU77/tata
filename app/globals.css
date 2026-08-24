@@ -2112,17 +2112,68 @@ button:focus-visible, input:focus-visible {
 .dex-caption strong { color: var(--v6); font-weight: 500; }
 
 /* ============================================================
-   The notebook — inner pages are the one warm place in the city.
-   Paper is an 8-step cream ladder whose luminance matches the
-   city's grey uPal, so the page and the streets read as one world:
-   only the temperature changes when the book opens.
+   The notebook — black, white, amber. Nothing else.
+   It lives in the backpack; tapped, it arrives closed in the
+   middle of the screen, pixel-cornered like everything in this
+   city. Tap the cover and it opens.
    ============================================================ */
 :root {
-  --p0: #14100a; --p1: #251e12; --p2: #3b301c; --p3: #57482c;
-  --p4: #7d6b47; --p5: #a9946b; --p6: #d6c49a; --p7: #f2e7cd;
+  --p0: #06070a; --p1: #0d0f13; --p2: #171a20; --p3: #2a2e36;
+  --p4: #4a4f59; --p5: #8b9099; --p6: #c9ccd2; --p7: #f2f3f5;
+  --amber: #e0a84f;
 }
 
-.notes-panel.notebook { width: min(780px, 96vw); }
+/* the panel becomes a stage: transparent, centred, nothing but the book */
+.city-app .notes-panel.notebook {
+  left: 50%;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  border-radius: 0;
+  border-top: 0;
+  width: min(720px, 94vw);
+  height: min(760px, 88dvh);
+  padding: 10px 0 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  transform: translate(-50%, -50%) scale(.9);
+  opacity: 0;
+  transition: transform .38s var(--ease), opacity .3s ease;
+}
+.city-app.writing .notes-panel.notebook {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+.notebook .panel-heading { padding: 0 6px; }
+
+/* the closed cover, front and centre */
+.book-cover {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 30px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.book-cover canvas.depot-thumb {
+  position: static;
+  transform: none;
+  flex: none;
+  image-rendering: pixelated;
+}
+.book-cover em {
+  font: 400 11px/1 var(--mono, monospace);
+  letter-spacing: .3em;
+  color: var(--p5);
+  font-style: normal;
+}
+.book-cover:hover canvas { filter: drop-shadow(0 0 14px rgba(224, 168, 79, .35)); }
+.book-cover:hover em { color: var(--amber); }
 
 .notebook .book {
   display: flex;
@@ -2135,154 +2186,83 @@ button:focus-visible, input:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px 20px 18px;
+  padding: 14px 18px 14px;
 }
 
-/* the open spread: right page cream, left page a shade deeper */
+/* the open book: white page, black ink, hard pixel edges */
 .notebook .notes-editor {
   padding: 0;
+  border-radius: 0;
+  border: 3px solid var(--p0);
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-    linear-gradient(105deg, rgba(20, 16, 10, .06), transparent 16%),
-    linear-gradient(180deg, var(--p7) 0%, #e9dcbc 100%);
-  border-color: rgba(20, 16, 10, .22);
+    linear-gradient(180deg, var(--p7) 0%, var(--p6) 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 252, 240, .5),
-    inset 14px 0 26px rgba(20, 16, 10, .16),
-    0 18px 44px rgba(0, 0, 0, .45);
-}
-.notebook .notes-tabs-row { padding: 12px 20px 0; }
-.notebook .notes-error { padding: 0 20px; color: #7a2f1d; }
-.notebook .notes-connect {
-  margin: 0 20px 14px;
-  color: var(--p2);
-  border-color: rgba(20, 16, 10, .3);
+    inset 0 1px 0 #ffffff,
+    inset 10px 0 20px rgba(6, 7, 10, .12),
+    10px 10px 0 rgba(0, 0, 0, .55);
 }
 .notebook .notes-editor::before {
-  background: linear-gradient(90deg, rgba(20, 16, 10, .35), transparent);
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(6, 7, 10, .4), transparent);
+}
+.notebook .notes-tabs-row { padding: 12px 18px 0; }
+.notebook .notes-error { padding: 0 18px; color: #7a2216; }
+.notebook .notes-connect {
+  margin: 0 18px 12px;
+  color: var(--p2);
+  border-color: rgba(6, 7, 10, .35);
+  border-radius: 0;
 }
 
-/* left page: the month, on the city's own 7×6 grid */
-.book-left {
-  width: 216px;
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px 16px 14px;
-  border-radius: 0 0 0 15px;
-  background: linear-gradient(180deg, #e9dcbc 0%, var(--p6) 100%);
-  border-right: 1px solid rgba(20, 16, 10, .28);
-  box-shadow: inset -12px 0 20px rgba(20, 16, 10, .14);
-}
-.book-month-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.book-month-bar strong {
-  font: 600 12px/1 var(--mono, monospace);
-  letter-spacing: .12em;
-  color: var(--p1);
-}
-.book-month-bar button {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--p3);
-  font-size: 9px;
-  cursor: pointer;
-}
-.book-month-bar button:hover { color: var(--p0); }
-.book-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-}
-.book-cell {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid rgba(20, 16, 10, .14);
-  border-radius: 2px;
-  background: rgba(255, 252, 240, .35);
-  color: var(--p4);
-  font: 500 9px/1 var(--mono, monospace);
-}
-.book-cell.void { border-color: transparent; background: transparent; }
-.book-cell.future { color: rgba(125, 107, 71, .35); border-color: rgba(20, 16, 10, .07); }
-button.book-cell { cursor: pointer; }
-button.book-cell:hover { border-color: var(--p3); color: var(--p1); }
-.book-cell.inked { color: var(--p7); }
-.book-cell.inked.d1 { background: var(--p4); }
-.book-cell.inked.d2 { background: var(--p3); }
-.book-cell.inked.d3 { background: var(--p2); }
-.book-cell.inked.d4 { background: var(--p1); }
-.book-cell.today { box-shadow: 0 0 0 1px var(--amber, #e0a84f), 0 0 10px rgba(224, 168, 79, .35); }
-.book-cell.active { outline: 1px solid var(--p0); outline-offset: 1px; }
-.book-left-foot {
-  margin-top: auto;
-  font: 400 9px/1.4 var(--mono, monospace);
-  letter-spacing: .14em;
-  color: var(--p3);
-  font-style: normal;
-}
-
-/* ink on paper */
+/* ink on the page */
 .notebook .notes-editor-bar { padding: 0; min-width: 0; }
-.notebook .notes-editor-bar strong { flex: none; }
-.notebook .notes-editor-bar .bar-side { min-width: 0; }
-.notebook .notes-editor-bar em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.notebook .notes-editor-bar strong { color: var(--p1); }
-.notebook .notes-editor-bar em { color: var(--p3); }
-.notebook .notes-editor-bar .bar-obsidian { color: var(--p3); border-color: rgba(20, 16, 10, .25); }
+.notebook .notes-editor-bar strong { flex: none; color: var(--p1); }
+.notebook .notes-editor-bar em { color: var(--p3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notebook .notes-editor-bar .bar-obsidian { color: var(--p3); border-color: rgba(6, 7, 10, .3); }
 .notebook .notes-editor-bar .bar-obsidian:hover { color: var(--p0); }
-.notebook .notes-tools { border-color: rgba(20, 16, 10, .16); }
+.notebook .notes-tools { border-color: rgba(6, 7, 10, .18); }
 .notebook .notes-tools button { color: var(--p3); }
 .notebook .notes-tools button:hover { color: var(--p0); }
 .notebook .notes-tools .tools-hint { color: var(--p4); }
 .notebook .note-cm .cm-content { color: var(--p1); caret-color: var(--p0); }
 .notebook .note-cm .cm-cursor { border-left-color: var(--p0); }
 .notebook .note-cm .cm-selectionBackground,
-.notebook .note-cm .cm-content ::selection { background: rgba(224, 168, 79, .28); }
+.notebook .note-cm .cm-content ::selection { background: rgba(224, 168, 79, .3); }
 .notebook .note-cm .cm-placeholder { color: var(--p4); }
 .notebook .nh1, .notebook .nh2, .notebook .nh3 { color: var(--p0); }
 .notebook .nstrong { color: var(--p0); }
-.notebook .notes-backlinks { border-color: rgba(20, 16, 10, .16); }
+.notebook .notes-backlinks { border-color: rgba(6, 7, 10, .18); }
 .notebook .notes-backlinks span { color: var(--p4); }
 .notebook .notes-backlinks button { color: var(--p2); }
 
-/* bookmarks: the recent pages peek over the top edge of the book */
+/* bookmarks over the top edge — square, grey, amber for the open page */
 .notebook .notes-recent button {
-  border-radius: 4px 4px 0 0;
-  border: 1px solid rgba(20, 16, 10, .25);
+  border-radius: 0;
+  border: 2px solid var(--p0);
   border-bottom: 0;
-  background: linear-gradient(180deg, var(--p6), var(--p5));
+  background: var(--p6);
   color: var(--p1);
 }
 .notebook .notes-recent button.current {
-  background: linear-gradient(180deg, var(--p7), var(--p6));
-  box-shadow: inset 0 2px 0 var(--amber, #e0a84f);
+  background: var(--p7);
+  box-shadow: inset 0 3px 0 var(--amber);
   color: var(--p0);
 }
+.notebook .notes-archive-btn { border-radius: 0; }
 
-/* the backpack takes the CTA's place — same door, warmer handle */
+/* the backpack: icon only, room to breathe */
 .tonight-cta {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 20px 8px 12px;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 0;
 }
-.tonight-cta .depot-thumb { image-rendering: pixelated; }
-.tonight-cta .cta-word { font: inherit; }
+.tonight-cta .depot-thumb { image-rendering: pixelated; display: block; }
 
 @media (max-width: 900px) {
-  .notes-panel.notebook { width: min(400px, 94vw); }
-  .book-left { display: none; }
+  .notes-panel.notebook { width: 94vw; height: min(700px, 86dvh); }
 }
 
 /* ---- putting the book away: the day's full stop ---- */
@@ -2305,7 +2285,7 @@ button.book-cell:hover { border-color: var(--p3); color: var(--p1); }
 
 /* the book flies to the backpack corner and the panel follows it out */
 .notebook.closing .notes-editor {
-  transform: translate(-36%, 46%) scale(.1) rotate(-5deg);
+  transform: translate(-38vw, 38vh) scale(.06) rotate(-5deg);
   opacity: 0;
   transition: transform .5s cubic-bezier(.5, 0, .85, .4), opacity .42s ease-in;
   transform-origin: bottom left;

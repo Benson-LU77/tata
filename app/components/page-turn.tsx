@@ -14,7 +14,7 @@
 
 import { useEffect, useRef } from "react";
 
-const CREAM = { page: "#f2e7cd", under: "#d6c49a", edge: "#fbf5e6", shade: "#57482c" };
+const CREAM = { page: "#f2f3f5", under: "#c9ccd2", edge: "#ffffff", shade: "#2a2e36" };
 const DURATION = 340;
 
 export function PageTurn({ trigger }: { trigger: number }) {

@@ -51,11 +51,6 @@ const CHIME_KEY = "yeyufm.chime";
 
 export default function Home() {
   const [metrics, setMetrics] = useState<NoteMetric[]>([]);
-  /** the notebook's left page: every written day, inked by its words */
-  const dayCells = useMemo(
-    () => metrics.map((m) => ({ date: m.date, file: m.file, words: m.words })),
-    [metrics],
-  );
   const [nowTs, setNowTs] = useState(0);
   const [intro, setIntro] = useState(false);
   const [introDone, setIntroDone] = useState(false);
@@ -1857,8 +1852,7 @@ export default function Home() {
           title={t("today.title")}
           aria-label={t("notes.today")}
         >
-          <PixelIcon rows={BACKPACK_ICON} size={30} />
-          <span className="cta-word">{t("notes.today")}</span>
+          <PixelIcon rows={BACKPACK_ICON} size={34} />
         </button>
       )}
 
@@ -2011,7 +2005,6 @@ export default function Home() {
 
 
       <NotesPanel
-        dayCells={dayCells}
         onPutAway={onPutAway}
         open={writeOpen}
         onClose={closeWrite}

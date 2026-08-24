@@ -10,13 +10,13 @@ import {
 import type { ObsidianConfig } from "../lib/obsidian";
 import { migrateLegacyDraft } from "../lib/drafts";
 import { countWords } from "../lib/city/metrics";
-import { CABINET_ICON } from "../lib/game/icons";
+import { CABINET_ICON, NOTEBOOK_COVER } from "../lib/game/icons";
 import { PixelIcon } from "./pixel-icon";
 import { floorsOf } from "../lib/city/plan";
 import { wordWatts } from "../lib/game/watts";
 import { MarkdownEditor } from "./editor";
 import type { EditorApi } from "./editor";
-import { createDocStore, newNoteName, todayStamp } from "../lib/notes/doc-store";
+import { createDocStore, newNoteName } from "../lib/notes/doc-store";
 import { BookCalendar } from "./book-calendar";
 import { PageTurn } from "./page-turn";
 import type { DayCell } from "./book-calendar";
@@ -47,6 +47,9 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 
 
+/* the product's three colours and nothing else: black, white, amber */
+const BOOK_PAL = ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#4a4f59", "#8b9099", "#e0a84f", "#f2f3f5"];
+
 const noSubscription = () => () => {};
 const readNotebookFlag = () => !new URLSearchParams(window.location.search).has("oldnotes");
 
@@ -75,7 +78,6 @@ export function NotesPanel({
   onWords,
   onSaved,
   onActiveFile,
-  dayCells,
   onPutAway,
   t,
 }: {
@@ -107,8 +109,6 @@ export function NotesPanel({
   /** a save landed in the vault; isNew = the structure just settled */
   onSaved: (file: string, isNew: boolean) => void;
   onActiveFile: (file: string | null) => void;
-  /** every written page with its words — inks the notebook's left page */
-  dayCells?: DayCell[];
   /** the notebook was deliberately put away for the day — the city answers */
   onPutAway?: (file: string | null) => void;
   t: (key: string) => string;
@@ -156,27 +156,6 @@ export function NotesPanel({
     onActiveFile(open ? activeFile : null);
   }, [activeFile, open, onActiveFile]);
 
-  /* the left page follows the open file's month; browsing ◀▶ overrides
-     until another page is opened (render-phase adjust, per React docs) */
-  const fileMonth = activeFile?.match(/^(\d{4}-\d{2})/)?.[1] ?? null;
-  const [monthNav, setMonthNav] = useState<{ anchor: string | null; month: string }>({
-    anchor: fileMonth,
-    month: fileMonth ?? todayStamp().slice(0, 7),
-  });
-  if (monthNav.anchor !== fileMonth && fileMonth) {
-    setMonthNav({ anchor: fileMonth, month: fileMonth });
-  }
-  const viewMonth = monthNav.month;
-  const shiftMonth = useCallback((delta: number) => {
-    setMonthNav((cur) => {
-      const [y, m] = cur.month.split("-").map(Number);
-      const next = new Date(Date.UTC(y, m - 1 + delta, 1));
-      return {
-        ...cur,
-        month: `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`,
-      };
-    });
-  }, []);
 
   const [templates, setTemplates] = useState<{ name: string; content: string }[]>([]);
   useEffect(() => {
@@ -425,6 +404,21 @@ export function NotesPanel({
     onClose();
   }, [store, onClose]);
 
+  /* the notebook arrives closed, front and centre; tapping it opens it.
+     Render-phase adjust: when the panel closes, the next opening finds
+     the cover shut again. */
+  const [bookNav, setBookNav] = useState<{ wasOpen: boolean; book: boolean }>({
+    wasOpen: false,
+    book: false,
+  });
+  if (bookNav.wasOpen !== open) {
+    setBookNav({ wasOpen: open, book: open ? false : bookNav.book });
+  }
+  const bookOpen = bookNav.book;
+  const setBookOpen = useCallback((v: boolean) => {
+    setBookNav((cur) => ({ ...cur, book: v }));
+  }, []);
+
   /* Closing the book is the day's full stop: the words land FIRST, then
      the cover closes — the animation reads the store, never delays it. */
   const [closing, setClosing] = useState(false);
@@ -568,7 +562,18 @@ export function NotesPanel({
         </div>
       )}
 
-      {view === "edit" && (
+      {view === "edit" && notebookSkin && !bookOpen && (
+        <button
+          type="button"
+          className="book-cover"
+          onClick={() => setBookOpen(true)}
+          aria-label={t("notes.cover.aria")}
+        >
+          <PixelIcon rows={NOTEBOOK_COVER} size={168} pal={BOOK_PAL} />
+          <em>{t("notes.cover.hint")}</em>
+        </button>
+      )}
+      {view === "edit" && (!notebookSkin || bookOpen) && (
         <div className={"notes-editor size-" + fontSize}>
           {recent && recent.length > 1 && (
             <div className="notes-tabs-row">
@@ -633,20 +638,6 @@ export function NotesPanel({
             </div>
           )}
           <div className="book">
-          {notebookSkin && (
-            <BookCalendar
-              month={viewMonth}
-              cells={dayCells ?? []}
-              activeFile={activeFile}
-              today={todayStamp()}
-              onPickDay={(file) => {
-                if (file) void openNote(file);
-                else void openTonight();
-              }}
-              onMonthShift={shiftMonth}
-              monthLabel={viewMonth.replace("-", " · ")}
-            />
-          )}
           <div className="book-page-right">
           <div className="notes-editor-bar">
             <strong>{activeFile ? prettyName(activeFile) : t("notes.today")}</strong>

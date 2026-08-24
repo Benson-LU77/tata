@@ -311,6 +311,8 @@ export function iconOf(id: string): string[] | null {
   return ARCH_ICONS[id] ?? DRAWN[id] ?? null;
 }
 
+/** the closed notebook, front and centre — tap to open it.
+ *  Digits index the panel's own palette: 0-5,7 greys, 6 = amber. */
 /** the writer's backpack — the notebook lives in it between nights */
 export const BACKPACK_ICON: string[] = [
   "...4444...",
@@ -327,6 +329,31 @@ export const BACKPACK_ICON: string[] = [
   ".43333334.",
   ".44444444.",
   "..........",
+];
+
+/** the closed notebook, front and centre — tap to open it.
+ *  Digits index the notebook palette: 0-5,7 greys, 6 = amber. */
+export const NOTEBOOK_COVER: string[] = [
+  "000000000000000000000000",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012225555555522226207570",
+  "012225333333522226207570",
+  "012225333333522226207570",
+  "012225555555522226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "012222222222222226207570",
+  "000000000000000000000000",
 ];
 
 /** a three-drawer filing cabinet, for the editor's archive button */
