@@ -311,6 +311,24 @@ export function iconOf(id: string): string[] | null {
   return ARCH_ICONS[id] ?? DRAWN[id] ?? null;
 }
 
+/** the writer's backpack — the notebook lives in it between nights */
+export const BACKPACK_ICON: string[] = [
+  "...4444...",
+  "..44..44..",
+  "..4....4..",
+  ".44444444.",
+  ".43333334.",
+  "4333333334",
+  "4334444334",
+  "4334554334",
+  "4334554334",
+  "4333333334",
+  "4333333334",
+  ".43333334.",
+  ".44444444.",
+  "..........",
+];
+
 /** a three-drawer filing cabinet, for the editor's archive button */
 export const CABINET_ICON: string[] = [
   "0000000000",

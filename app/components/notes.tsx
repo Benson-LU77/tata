@@ -16,7 +16,9 @@ import { floorsOf } from "../lib/city/plan";
 import { wordWatts } from "../lib/game/watts";
 import { MarkdownEditor } from "./editor";
 import type { EditorApi } from "./editor";
-import { createDocStore, newNoteName } from "../lib/notes/doc-store";
+import { createDocStore, newNoteName, todayStamp } from "../lib/notes/doc-store";
+import { BookCalendar } from "./book-calendar";
+import type { DayCell } from "./book-calendar";
 import type { DocStore } from "../lib/notes/doc-store";
 
 type View = "setup" | "edit";
@@ -41,6 +43,11 @@ const SIZE_KEY = "yeyufm.notesize";
 const SIZE_ORDER: FontSize[] = ["s", "m", "l"];
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+
+
+const noSubscription = () => () => {};
+const readNotebookFlag = () => !new URLSearchParams(window.location.search).has("oldnotes");
 
 function prettyName(file: string) {
   const daily = file.match(/^(\d{4})-(\d{2})-(\d{2}) (Today|Tonight)\.md$/);
@@ -67,6 +74,7 @@ export function NotesPanel({
   onWords,
   onSaved,
   onActiveFile,
+  dayCells,
   t,
 }: {
   open: boolean;
@@ -97,9 +105,19 @@ export function NotesPanel({
   /** a save landed in the vault; isNew = the structure just settled */
   onSaved: (file: string, isNew: boolean) => void;
   onActiveFile: (file: string | null) => void;
+  /** every written page with its words — inks the notebook's left page */
+  dayCells?: DayCell[];
   t: (key: string) => string;
 }) {
   const [view, setView] = useState<View>("edit");
+  /* The notebook skin is the product now; ?oldnotes keeps the plain panel
+     as an escape hatch. Read via useSyncExternalStore so the server
+     (which knows no URL) and the client hydrate without mismatch. */
+  const notebookSkin = useSyncExternalStore(
+    noSubscription,
+    readNotebookFlag,
+    () => false,
+  );
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [connected, setConnected] = useState(false);
   const [url, setUrl] = useState(isSafari && !isIOS ? SAFARI_OBSIDIAN_URL : DEFAULT_OBSIDIAN_URL);
@@ -133,6 +151,28 @@ export function NotesPanel({
   useEffect(() => {
     onActiveFile(open ? activeFile : null);
   }, [activeFile, open, onActiveFile]);
+
+  /* the left page follows the open file's month; browsing ◀▶ overrides
+     until another page is opened (render-phase adjust, per React docs) */
+  const fileMonth = activeFile?.match(/^(\d{4}-\d{2})/)?.[1] ?? null;
+  const [monthNav, setMonthNav] = useState<{ anchor: string | null; month: string }>({
+    anchor: fileMonth,
+    month: fileMonth ?? todayStamp().slice(0, 7),
+  });
+  if (monthNav.anchor !== fileMonth && fileMonth) {
+    setMonthNav({ anchor: fileMonth, month: fileMonth });
+  }
+  const viewMonth = monthNav.month;
+  const shiftMonth = useCallback((delta: number) => {
+    setMonthNav((cur) => {
+      const [y, m] = cur.month.split("-").map(Number);
+      const next = new Date(Date.UTC(y, m - 1 + delta, 1));
+      return {
+        ...cur,
+        month: `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`,
+      };
+    });
+  }, []);
 
   const [templates, setTemplates] = useState<{ name: string; content: string }[]>([]);
   useEffect(() => {
@@ -395,7 +435,12 @@ export function NotesPanel({
   const shownError = error ?? (snap.errorKey ? t(snap.errorKey) : null);
 
   return (
-    <aside className="notes-panel" aria-label="Notes" aria-hidden={!open} inert={!open}>
+    <aside
+      className={"notes-panel" + (notebookSkin ? " notebook" : "")}
+      aria-label="Notes"
+      aria-hidden={!open}
+      inert={!open}
+    >
       <div className="panel-heading">
         <span>{view === "setup" ? t("notes.vault.title") : ""}</span>
         <div className="notes-heading-actions">
@@ -555,6 +600,22 @@ export function NotesPanel({
               )}
             </div>
           )}
+          <div className="book">
+          {notebookSkin && (
+            <BookCalendar
+              month={viewMonth}
+              cells={dayCells ?? []}
+              activeFile={activeFile}
+              today={todayStamp()}
+              onPickDay={(file) => {
+                if (file) void openNote(file);
+                else void openTonight();
+              }}
+              onMonthShift={shiftMonth}
+              monthLabel={viewMonth.replace("-", " · ")}
+            />
+          )}
+          <div className="book-page-right">
           <div className="notes-editor-bar">
             <strong>{activeFile ? prettyName(activeFile) : t("notes.today")}</strong>
             <span className="bar-side">
@@ -685,6 +746,8 @@ export function NotesPanel({
             }}
           />
           {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
+          </div>
+          </div>
           {!connected && (
             <button
               type="button"

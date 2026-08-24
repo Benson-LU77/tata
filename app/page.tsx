@@ -28,7 +28,7 @@ import {
   resolveCommissions,
 } from "./lib/game/commissions";
 import { PET_ACTIONS, QUEST_LINES, REPLY_PAIRS } from "./lib/game/bonds-lines";
-import { iconOf } from "./lib/game/icons";
+import { iconOf, BACKPACK_ICON } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
@@ -50,6 +50,11 @@ const CHIME_KEY = "yeyufm.chime";
 
 export default function Home() {
   const [metrics, setMetrics] = useState<NoteMetric[]>([]);
+  /** the notebook's left page: every written day, inked by its words */
+  const dayCells = useMemo(
+    () => metrics.map((m) => ({ date: m.date, file: m.file, words: m.words })),
+    [metrics],
+  );
   const [nowTs, setNowTs] = useState(0);
   const [intro, setIntro] = useState(false);
   const [introDone, setIntroDone] = useState(false);
@@ -1837,8 +1842,10 @@ export default function Home() {
             setRequestToday(Date.now());
           }}
           title={t("today.title")}
+          aria-label={t("notes.today")}
         >
-          {t("notes.today")}
+          <PixelIcon rows={BACKPACK_ICON} size={30} />
+          <span className="cta-word">{t("notes.today")}</span>
         </button>
       )}
 
@@ -1977,6 +1984,7 @@ export default function Home() {
 
 
       <NotesPanel
+        dayCells={dayCells}
         open={writeOpen}
         onClose={closeWrite}
         onPin={pinSentence}

@@ -52,7 +52,9 @@ function monthOf(date: string): string {
 }
 
 /** Monday-first weekday + week-of-month row for a YYYY-MM-DD date. */
-function cellOf(date: string): { col: number; row: number } {
+/** calendar cell of a date — the SAME grid the city's blocks stand on,
+ *  so the notebook's left page and the streets always agree */
+export function cellOf(date: string): { col: number; row: number } {
   const [y, m, d] = date.split("-").map(Number);
   const first = new Date(Date.UTC(y, m - 1, 1));
   const firstWd = (first.getUTCDay() + 6) % 7; // Mon=0
