@@ -2227,29 +2227,30 @@ button:focus-visible, input:focus-visible {
 .notebook .notes-editor {
   padding: 0;
   border-radius: 0;
-  border: 3px solid var(--p0);
-  outline: 9px solid #171a20; /* the cover, wrapped around the open pages */
+  border: 2px solid var(--p0); /* one clean edge — the rings made it muddy */
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
     linear-gradient(180deg, var(--p7) 0%, var(--p6) 100%);
   box-shadow:
     inset 0 1px 0 #ffffff,
-    inset 10px 0 20px rgba(6, 7, 10, .12),
-    0 0 0 10px rgba(6, 7, 10, .9),
-    16px 18px 0 rgba(0, 0, 0, .5);
+    inset 8px 0 18px rgba(6, 7, 10, .18),
+    inset 2px 0 0 rgba(255, 255, 255, .08),
+    0 12px 24px rgba(0, 0, 0, .35); /* a soft under-shadow: hard offsets vanish against the night */
 }
 /* the fore-edge: the page block peeking past the cover on the right */
 .notebook .notes-editor::after {
   content: "";
   position: absolute;
-  top: 6px;
-  bottom: 6px;
-  right: -8px;
-  width: 5px;
+  top: 4px;
+  bottom: 4px;
+  right: -6px;
+  width: 4px;
   background: repeating-linear-gradient(
     180deg,
-    var(--p7) 0 2px,
-    var(--p5) 2px 3px
+    var(--p7) 0px,
+    var(--p7) 3px,
+    var(--p5) 3px,
+    var(--p5) 4px
   );
   pointer-events: none;
 }
@@ -2373,4 +2374,68 @@ button:focus-visible, input:focus-visible {
   background: #06070a;
   cursor: pointer;
   margin-bottom: 10px;
+}
+
+
+/* ============================================================
+   The compass — one round control, bottom left.
+   Up the notebook, left the search, right the mirror,
+   down the depot; the registry sits at its heart.
+   ============================================================ */
+.dpad {
+  position: absolute;
+  z-index: 10;
+  left: clamp(28px, 4vw, 56px);
+  bottom: calc(clamp(24px, 4.5vh, 44px) + env(safe-area-inset-bottom, 0px));
+  width: 138px;
+  height: 138px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: rgba(13, 15, 19, .82);
+  box-shadow: inset 0 1px 0 rgba(238, 240, 244, .06), 0 10px 30px rgba(0, 0, 0, .4);
+}
+.dpad-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, .55);
+  cursor: pointer;
+  transition: color .25s ease, filter .25s ease;
+}
+.dpad-btn:hover { color: var(--amber, #e0a84f); }
+.dpad-btn:hover .depot-thumb { filter: drop-shadow(0 0 8px rgba(224, 168, 79, .5)); }
+.dpad-up { top: 2px; left: 50%; transform: translateX(-50%); }
+.dpad-down { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.dpad-left { left: 2px; top: 50%; transform: translateY(-50%); }
+.dpad-right { right: 2px; top: 50%; transform: translateY(-50%); }
+.dpad-core {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  background: rgba(23, 26, 32, .9);
+}
+.dpad-core .unread-dot { position: absolute; top: 4px; right: 4px; }
+.dpad .depot-thumb { position: static; transform: none; opacity: 1; }
+/* little compass ticks at the rim */
+.dpad::before,
+.dpad::after {
+  content: "";
+  position: absolute;
+  background: rgba(255, 255, 255, .18);
+}
+.dpad::before { left: 50%; top: -6px; width: 2px; height: 4px; transform: translateX(-50%); }
+.dpad::after { top: 50%; left: -6px; width: 4px; height: 2px; transform: translateY(-50%); }
+@media (max-width: 900px) {
+  .dpad { width: 122px; height: 122px; }
+  .dpad-btn { width: 36px; height: 36px; }
 }

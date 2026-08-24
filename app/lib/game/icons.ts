@@ -313,6 +313,21 @@ export function iconOf(id: string): string[] | null {
 
 /** the closed notebook, front and centre — tap to open it.
  *  Digits index the panel's own palette: 0-5,7 greys, 6 = amber. */
+/** a hand mirror — the Mirror lives behind it */
+export const MIRROR_ICON: string[] = [
+  "..44444...",
+  ".4666664..",
+  "467777664.",
+  "467777764.",
+  "466777764.",
+  "466677664.",
+  ".4666664..",
+  "..44444...",
+  "....44....",
+  "....44....",
+  "...4444...",
+];
+
 /** the writer's backpack — the notebook lives in it between nights */
 export const BACKPACK_ICON: string[] = [
   "...4444...",

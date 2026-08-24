@@ -29,7 +29,7 @@ import {
   resolveCommissions,
 } from "./lib/game/commissions";
 import { PET_ACTIONS, QUEST_LINES, REPLY_PAIRS } from "./lib/game/bonds-lines";
-import { iconOf, BACKPACK_ICON } from "./lib/game/icons";
+import { iconOf, BACKPACK_ICON, MIRROR_ICON } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
@@ -1695,62 +1695,6 @@ export default function Home() {
         <div className="topbar-actions">
           <button
             type="button"
-            onClick={toggleHum}
-            className={humOn ? "active" : ""}
-            aria-label={humOn ? t("topbar.hum.mute") : t("topbar.hum.on")}
-            aria-pressed={humOn}
-          >
-            <span className="icon-hum" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              hum().click();
-              if (searchOpen) {
-                setSearchOpen(false);
-                setQuery("");
-              } else {
-                setSearchOpen(true);
-                window.setTimeout(() => searchInputRef.current?.focus(), 50);
-              }
-            }}
-            className={searchOpen ? "active" : ""}
-            aria-label={t("topbar.search")}
-          >
-            <span className="icon-search" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            onClick={() => { hum().click(); setShopOpen(!shopOpen); }}
-            className={shopOpen ? "active" : ""}
-            aria-label={t("topbar.depot")}
-            aria-expanded={shopOpen}
-          >
-            <span className="icon-depot" aria-hidden="true">
-              <i />
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { hum().click(); setDexOpen(!dexOpen); }}
-            className={dexOpen ? "active" : ""}
-            aria-label={t("topbar.registry")}
-            aria-expanded={dexOpen}
-          >
-            {(game.letters ?? []).some((l) => !l.read) && (
-              <span className="unread-dot" aria-hidden="true" />
-            )}
-            <span className="icon-registry" aria-hidden="true">
-              <i />
-              <i />
-            </span>
-          </button>
-          <button
-            type="button"
             onClick={() => { hum().click(); setSettingsOpen(!settingsOpen); }}
             className={settingsOpen ? "active" : ""}
             aria-label={t("topbar.settings")}
@@ -1762,16 +1706,6 @@ export default function Home() {
               <i />
             </span>
           </button>
-          {canFullscreen && (
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className={isFullscreen ? "active" : ""}
-              aria-label={isFullscreen ? t("topbar.fullscreen.exit") : t("topbar.fullscreen.enter")}
-            >
-              <span className="icon-fullscreen" aria-hidden="true" />
-            </button>
-          )}
         </div>
       </header>
 
@@ -1842,18 +1776,78 @@ export default function Home() {
       )}
 
       {!writeOpen && (
-        <button
-          type="button"
-          className="tonight-cta immersion-ui"
-          onClick={() => {
-            openWrite();
-            setRequestToday(Date.now());
-          }}
-          title={t("today.title")}
-          aria-label={t("notes.today")}
-        >
-          <PixelIcon rows={BACKPACK_ICON} size={34} />
-        </button>
+        <nav className="dpad immersion-ui" aria-label={t("topbar.settings")}>
+          <button
+            type="button"
+            className="dpad-btn dpad-up"
+            onClick={() => {
+              openWrite();
+              setRequestToday(Date.now());
+            }}
+            title={t("today.title")}
+            aria-label={t("notes.today")}
+          >
+            <PixelIcon rows={BACKPACK_ICON} size={22} />
+          </button>
+          <button
+            type="button"
+            className="dpad-btn dpad-left"
+            onClick={() => {
+              hum().click();
+              if (searchOpen) {
+                setSearchOpen(false);
+                setQuery("");
+              } else {
+                setSearchOpen(true);
+                window.setTimeout(() => searchInputRef.current?.focus(), 50);
+              }
+            }}
+            aria-label={t("topbar.search")}
+          >
+            <span className="icon-search" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="dpad-btn dpad-right"
+            onClick={() => {
+              hum().click();
+              setMirrorOpen(true);
+            }}
+            aria-label={t("registry.mirror")}
+          >
+            <PixelIcon rows={MIRROR_ICON} size={20} />
+          </button>
+          <button
+            type="button"
+            className="dpad-btn dpad-down"
+            onClick={() => {
+              hum().click();
+              setShopOpen(!shopOpen);
+            }}
+            aria-label={t("topbar.depot")}
+          >
+            <span className="icon-depot" aria-hidden="true">
+              <i />
+            </span>
+          </button>
+          <button
+            type="button"
+            className="dpad-btn dpad-core"
+            onClick={() => {
+              hum().click();
+              setDexOpen(!dexOpen);
+            }}
+            aria-label={t("topbar.registry")}
+          >
+            {(game.letters ?? []).some((l) => !l.read) && (
+              <span className="unread-dot" aria-hidden="true" />
+            )}
+            <span className="icon-registry" aria-hidden="true">
+              <i />
+              <i />
+            </span>
+          </button>
+        </nav>
       )}
 
       {idOpen && (
@@ -2362,6 +2356,19 @@ export default function Home() {
           </button>
         </div>
         <div className="panel-toggles">
+          {canFullscreen && (
+            <label>
+              <span>{t("topbar.fullscreen.enter")}</span>
+              <button
+                type="button"
+                className={"toggle" + (isFullscreen ? " on" : "")}
+                onClick={toggleFullscreen}
+                aria-pressed={isFullscreen}
+              >
+                <i />
+              </button>
+            </label>
+          )}
           <label>
             <span>{t("topbar.hum.on")}</span>
             <button
