@@ -5,6 +5,7 @@ import { City3D } from "./components/city3d";
 import { NotesPanel } from "./components/notes";
 import { Hum } from "./lib/hum";
 import { planCity } from "./lib/city/plan";
+import { CityMinimap } from "./components/city-minimap";
 import { demoMetrics, loadCityMetrics, dateOf } from "./lib/city/metrics";
 import type { NoteMetric } from "./lib/city/metrics";
 import { ObsidianClient, loadConfig } from "./lib/obsidian";
@@ -1966,6 +1967,20 @@ export default function Home() {
           {metrics.filter((m) =>
             m.date.startsWith(cityPlan.blocks[Math.max(0, monthIx)]?.month ?? "----"),
           ).length === 0 && <p>{t("months.empty")}</p>}
+          <CityMinimap
+            plan={cityPlan}
+            activeMonth={cityPlan.blocks[Math.max(0, monthIx)]?.month ?? null}
+            todayFile={metrics.find((m) => m.date === today && / (Today|Tonight)\.md$/.test(m.file))?.file ?? null}
+            onPickMonth={(i) => {
+              const b = cityPlan.blocks[i];
+              setMonthIx(i);
+              if (b) setGoMonth({ x: b.x, z: b.z, n: Date.now() });
+            }}
+            onPickLot={(file) => {
+              setMonthListOpen(false);
+              openWrite(file);
+            }}
+          />
         </div>
       )}
       {gl3d && !empty && !writeOpen && cityPlan.blocks.length > 0 && (
