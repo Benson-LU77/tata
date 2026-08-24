@@ -1324,6 +1324,18 @@ export default function Home() {
     setFocusFile(file);
   }, []);
 
+  /* the notebook was put away: tonight's building settles under the
+     amber — once per day, so the ritual stays a ritual */
+  const putAwayDayRef = useRef("");
+  const onPutAway = useCallback((file: string | null) => {
+    const day = new Date().toISOString().slice(0, 10);
+    if (putAwayDayRef.current === day) return;
+    putAwayDayRef.current = day;
+    if (!file) return;
+    hum().settle();
+    setCeremony({ file, n: Date.now() });
+  }, []);
+
   const onSaved = useCallback(
     (file: string, isNew: boolean) => {
       if (isNew) {
@@ -1985,6 +1997,7 @@ export default function Home() {
 
       <NotesPanel
         dayCells={dayCells}
+        onPutAway={onPutAway}
         open={writeOpen}
         onClose={closeWrite}
         onPin={pinSentence}

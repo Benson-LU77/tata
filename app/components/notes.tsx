@@ -18,6 +18,7 @@ import { MarkdownEditor } from "./editor";
 import type { EditorApi } from "./editor";
 import { createDocStore, newNoteName, todayStamp } from "../lib/notes/doc-store";
 import { BookCalendar } from "./book-calendar";
+import { PageTurn } from "./page-turn";
 import type { DayCell } from "./book-calendar";
 import type { DocStore } from "../lib/notes/doc-store";
 
@@ -75,6 +76,7 @@ export function NotesPanel({
   onSaved,
   onActiveFile,
   dayCells,
+  onPutAway,
   t,
 }: {
   open: boolean;
@@ -107,6 +109,8 @@ export function NotesPanel({
   onActiveFile: (file: string | null) => void;
   /** every written page with its words — inks the notebook's left page */
   dayCells?: DayCell[];
+  /** the notebook was deliberately put away for the day — the city answers */
+  onPutAway?: (file: string | null) => void;
   t: (key: string) => string;
 }) {
   const [view, setView] = useState<View>("edit");
@@ -421,6 +425,34 @@ export function NotesPanel({
     onClose();
   }, [store, onClose]);
 
+  /* Closing the book is the day's full stop: the words land FIRST, then
+     the cover closes — the animation reads the store, never delays it. */
+  const [closing, setClosing] = useState(false);
+  const handlePutAway = useCallback(async () => {
+    if (closing) return;
+    setClosing(true);
+    await store.flush();
+    const file = store.getSnapshot().file;
+    const reduced =
+      typeof window.matchMedia !== "function" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.setTimeout(
+      () => {
+        setClosing(false);
+        onClose();
+        onPutAway?.(file);
+      },
+      reduced ? 0 : 520,
+    );
+  }, [closing, store, onClose, onPutAway]);
+
+  /* a light page-flip when browsing to a DIFFERENT page (never on typing:
+     the trigger is file adoption, which typing can't cause) */
+  const [flip, setFlip] = useState<{ file: string | null; n: number }>({ file: null, n: 0 });
+  if (flip.file !== activeFile) {
+    setFlip((prev) => ({ file: activeFile, n: prev.file === null ? prev.n : prev.n + 1 }));
+  }
+
   const statusLabel =
     status === "saving"
       ? t("notes.status.saving")
@@ -436,7 +468,7 @@ export function NotesPanel({
 
   return (
     <aside
-      className={"notes-panel" + (notebookSkin ? " notebook" : "")}
+      className={"notes-panel" + (notebookSkin ? " notebook" : "") + (closing ? " closing" : "")}
       aria-label="Notes"
       aria-hidden={!open}
       inert={!open}
@@ -746,6 +778,17 @@ export function NotesPanel({
             }}
           />
           {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
+          {notebookSkin && (
+            <button
+              type="button"
+              className="put-away"
+              onClick={() => void handlePutAway()}
+              aria-label={t("notes.putaway.aria")}
+            >
+              {t("notes.putaway")}
+            </button>
+          )}
+          {notebookSkin && <PageTurn trigger={flip.n} />}
           </div>
           </div>
           {!connected && (

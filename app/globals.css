@@ -2284,3 +2284,46 @@ button.book-cell:hover { border-color: var(--p3); color: var(--p1); }
   .notes-panel.notebook { width: min(400px, 94vw); }
   .book-left { display: none; }
 }
+
+/* ---- putting the book away: the day's full stop ---- */
+.put-away {
+  margin: 4px 20px 14px;
+  padding: 9px 0;
+  border: 1px solid rgba(20, 16, 10, .3);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(224, 168, 79, .16), rgba(224, 168, 79, .08));
+  color: var(--p1);
+  font: 500 12px/1 var(--ui);
+  letter-spacing: .1em;
+  cursor: pointer;
+  transition: background .3s ease, border-color .3s ease;
+}
+.put-away:hover {
+  border-color: rgba(224, 168, 79, .8);
+  background: linear-gradient(180deg, rgba(224, 168, 79, .3), rgba(224, 168, 79, .12));
+}
+
+/* the book flies to the backpack corner and the panel follows it out */
+.notebook.closing .notes-editor {
+  transform: translate(-36%, 46%) scale(.1) rotate(-5deg);
+  opacity: 0;
+  transition: transform .5s cubic-bezier(.5, 0, .85, .4), opacity .42s ease-in;
+  transform-origin: bottom left;
+}
+@media (prefers-reduced-motion: reduce) {
+  .notebook.closing .notes-editor { transition: none; }
+}
+
+/* the page-flip canvas sits over the right page, idle when transparent */
+.page-turn {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  transition: opacity .12s ease-out;
+}
+.page-turn[style*="opacity: 1"] { pointer-events: auto; }
+.book-page-right { position: relative; }
