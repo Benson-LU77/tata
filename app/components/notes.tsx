@@ -17,9 +17,7 @@ import { wordWatts } from "../lib/game/watts";
 import { MarkdownEditor } from "./editor";
 import type { EditorApi } from "./editor";
 import { createDocStore, newNoteName } from "../lib/notes/doc-store";
-import { BookCalendar } from "./book-calendar";
 import { PageTurn } from "./page-turn";
-import type { DayCell } from "./book-calendar";
 import type { DocStore } from "../lib/notes/doc-store";
 
 type View = "setup" | "edit";
