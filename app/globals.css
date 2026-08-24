@@ -2513,22 +2513,24 @@ button:focus-visible, input:focus-visible {
 }
 
 
-/* the ribbon: amber, hanging over the page — pull it to put the book away */
-.book-ribbon {
+/* a small pixel ×, seated on the cover's top-right corner */
+.book-x {
   position: absolute;
-  z-index: 3;
-  top: 46px;
-  right: 40px;
-  width: 16px;
-  height: 56px;
+  z-index: 4;
+  top: 5%;
+  right: 3.4%;
+  width: 26px;
+  height: 26px;
   padding: 0;
-  border: 0;
-  background: linear-gradient(180deg, #c8933f 0%, var(--amber, #e0a84f) 30%);
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 8px), 0 100%);
+  border: 2px solid var(--p0);
+  border-radius: 0;
+  background: var(--p6);
+  color: var(--p0);
+  font: 700 13px/1 var(--mono, monospace);
   cursor: pointer;
 }
-.book-ribbon:hover { filter: brightness(1.15); }
-.book-ribbon:focus-visible { outline: 2px solid var(--p0); outline-offset: 2px; }
+.book-x:hover { background: #ffffff; }
+.book-x:focus-visible { outline: 2px solid var(--amber, #e0a84f); outline-offset: 2px; }
 
 
 /* ============================================================
@@ -2595,7 +2597,6 @@ button:focus-visible, input:focus-visible {
   letter-spacing: .04em;
   color: var(--p1);
 }
-.notebook .book-ribbon { top: 3.5%; right: 10%; }
 
 @media (max-width: 900px) {
   /* small screens fold back to the plain page — the plate needs room */
@@ -2612,7 +2613,7 @@ button:focus-visible, input:focus-visible {
   .notebook .book { position: static; flex-direction: column; }
   .notebook .book-page-left { width: auto; margin: 0; padding: 12px 16px 10px; border-bottom: 2px solid rgba(6,7,10,.5); }
   .notebook .book-page-right { padding: 10px 16px; }
-  .notebook .book-ribbon { display: none; }
+  .notebook .book-x { position: static; margin-left: auto; }
 }
 
 /* ============================================================

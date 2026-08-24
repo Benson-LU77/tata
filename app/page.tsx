@@ -29,7 +29,7 @@ import {
   resolveCommissions,
 } from "./lib/game/commissions";
 import { PET_ACTIONS, QUEST_LINES, REPLY_PAIRS } from "./lib/game/bonds-lines";
-import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, SEARCH_PX, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
+import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
@@ -1700,6 +1700,23 @@ export default function Home() {
         <div className="topbar-actions">
           <button
             type="button"
+            onClick={() => {
+              hum().click();
+              if (searchOpen) {
+                setSearchOpen(false);
+                setQuery("");
+              } else {
+                setSearchOpen(true);
+                window.setTimeout(() => searchInputRef.current?.focus(), 50);
+              }
+            }}
+            className={searchOpen ? "active" : ""}
+            aria-label={t("topbar.search")}
+          >
+            <span className="icon-search" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
             onClick={() => { hum().click(); setSettingsOpen(!settingsOpen); }}
             className={settingsOpen ? "active" : ""}
             aria-label={t("topbar.settings")}
@@ -1802,19 +1819,13 @@ export default function Home() {
             type="button"
             className="dpad-btn dpad-left"
             onClick={() => {
-              hum().click();
-              if (searchOpen) {
-                setSearchOpen(false);
-                setQuery("");
-              } else {
-                setSearchOpen(true);
-                window.setTimeout(() => searchInputRef.current?.focus(), 50);
-              }
+              openWrite();
+              setRequestArchive(Date.now());
             }}
-            aria-label={t("topbar.search")}
-            title={t("topbar.search")}
+            aria-label={t("notes.archive")}
+            title={t("notes.archive")}
           >
-            <PixelIcon rows={SEARCH_PX} size={20} />
+            <PixelIcon rows={CABINET_ICON} size={20} />
           </button>
           <button
             type="button"
@@ -1839,18 +1850,6 @@ export default function Home() {
             title={t("topbar.depot")}
           >
             <PixelIcon rows={DEPOT_PX} size={20} />
-          </button>
-          <button
-            type="button"
-            className="dpad-btn dpad-ne"
-            onClick={() => {
-              openWrite();
-              setRequestArchive(Date.now());
-            }}
-            aria-label={t("notes.archive")}
-            title={t("notes.archive")}
-          >
-            <PixelIcon rows={CABINET_ICON} size={16} />
           </button>
           <button
             type="button"

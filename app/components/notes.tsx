@@ -737,11 +737,13 @@ export function NotesPanel({
           {notebookSkin && (
             <button
               type="button"
-              className="book-ribbon"
+              className="book-x"
               onClick={() => void handlePutAway()}
               aria-label={t("notes.putaway.aria")}
               title={t("notes.putaway.aria")}
-            />
+            >
+              ×
+            </button>
           )}
           <div className="book">
           <div className="book-page-left">
