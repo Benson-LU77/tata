@@ -36,9 +36,10 @@
   --accent: #f2f3f5;
   --accent-rgb: 242, 243, 245;
   --alert: #d8402f;
-  --display: "Newsreader", Georgia, serif;
-  --ui: "Manrope", "Avenir Next", ui-sans-serif, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  /* one voice: the whole city speaks in pixels (Cubic 11 carries CJK) */
+  --display: "Cubic 11", "Silkscreen", Georgia, serif;
+  --ui: "Cubic 11", "Silkscreen", ui-sans-serif, sans-serif;
+  --mono: "Cubic 11", "Silkscreen", ui-monospace, monospace;
   --pixel: "Silkscreen", "IBM Plex Mono", ui-monospace, monospace;
   --amber: #e8b464;
   --ease: cubic-bezier(.22, 1, .36, 1);

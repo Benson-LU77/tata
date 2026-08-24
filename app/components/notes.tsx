@@ -10,7 +10,7 @@ import {
 import type { ObsidianConfig } from "../lib/obsidian";
 import { migrateLegacyDraft } from "../lib/drafts";
 import { countWords } from "../lib/city/metrics";
-import { CABINET_ICON, NOTEBOOK_COVER } from "../lib/game/icons";
+import { CABINET_ICON } from "../lib/game/icons";
 import { PixelIcon } from "./pixel-icon";
 import { floorsOf } from "../lib/city/plan";
 import { wordWatts } from "../lib/game/watts";
@@ -44,9 +44,6 @@ const SIZE_ORDER: FontSize[] = ["s", "m", "l"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 
-
-/* the product's three colours and nothing else: black, white, amber */
-const BOOK_PAL = ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#4a4f59", "#8b9099", "#e0a84f", "#f2f3f5"];
 
 const noSubscription = () => () => {};
 const readNotebookFlag = () => !new URLSearchParams(window.location.search).has("oldnotes");
@@ -424,10 +421,11 @@ export function NotesPanel({
     book: false,
   });
   if (bookNav.wasOpen !== open) {
-    setBookNav({ wasOpen: open, book: open ? false : bookNav.book });
+    setBookNav({ wasOpen: open, book: open ? true : bookNav.book });
     if (open) {
       if (closing) setClosing(false);
       if (archiveOpen) setArchiveOpen(false);
+      if (notebookSkin && view === "setup") setView("edit");
     }
   }
   const bookOpen = bookNav.book;
@@ -445,13 +443,13 @@ export function NotesPanel({
   }, [requestArchive, setBookOpen]);
 
   useEffect(() => {
-    if (!open || !notebookSkin || bookOpen || view !== "edit") return;
+    if (!open || !notebookSkin || view !== "edit") return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, notebookSkin, bookOpen, view, handleClose]);
+  }, [open, notebookSkin, view, handleClose]);
 
 
   const handlePutAway = useCallback(async () => {
@@ -555,10 +553,7 @@ export function NotesPanel({
         <div
           className="setup-stage"
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              if (notebookSkin) setView("edit");
-              handleClose();
-            }
+            if (e.target === e.currentTarget) handleClose();
           }}
         >
           {isIOS ? (
@@ -623,25 +618,6 @@ export function NotesPanel({
         </div>
       )}
 
-      {view === "edit" && notebookSkin && !bookOpen && !archiveOpen && (
-        /* nothing on screen but the book itself — tapping beside it, or
-           Esc, puts it back unopened */
-        <div
-          className="book-cover-stage"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
-          }}
-        >
-          <button
-            type="button"
-            className="book-cover"
-            onClick={() => setBookOpen(true)}
-            aria-label={t("notes.cover.aria")}
-          >
-            <PixelIcon rows={NOTEBOOK_COVER} size={168} pal={BOOK_PAL} />
-          </button>
-        </div>
-      )}
       {view === "edit" && notebookSkin && archiveOpen && !bookOpen && (
         <div className="archive-stand" role="dialog" aria-label={t("notes.archive")}>
           <div className="archive-head">
