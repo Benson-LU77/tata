@@ -2614,3 +2614,94 @@ button:focus-visible, input:focus-visible {
   .notebook .book-page-right { padding: 10px 16px; }
   .notebook .book-ribbon { display: none; }
 }
+
+/* ============================================================
+   Side flags: the bookmarks fly out of the book's fore-edge,
+   swallow-tailed, day numbers in pixels — like the journals
+   they were drawn from.
+   ============================================================ */
+.notebook .notes-tabs-row {
+  position: absolute;
+  top: 15%;
+  left: auto;
+  right: -2%;
+  width: auto;
+  z-index: 3;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.notebook .notes-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  overflow: visible;
+}
+.notebook .notes-recent button,
+.notebook .tab-plus {
+  width: 56px;
+  height: 30px;
+  margin: 0;
+  padding: 0 12px 0 8px;
+  border: 0;
+  border-radius: 0;
+  background: #f2f3f5;
+  color: var(--p1);
+  font-family: "Silkscreen", var(--mono, monospace);
+  font-size: 11px;
+  line-height: 30px;
+  text-align: left;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 50%, 100% 100%, 0 100%);
+  box-shadow: inset 3px 0 0 var(--p5);
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, .55));
+  cursor: pointer;
+}
+.notebook .tab-plus { text-align: center; padding: 0 9px 0 0; }
+.notebook .notes-recent button.current {
+  background: #ffffff;
+  color: var(--p0);
+  box-shadow: inset 3px 0 0 var(--amber, #e0a84f);
+}
+.notebook .notes-recent button:hover,
+.notebook .tab-plus:hover { background: #ffffff; }
+
+/* the archive: a card over the left page, summoned by the compass */
+.book-archive {
+  position: absolute;
+  left: 7.5%;
+  top: 13%;
+  bottom: 15%;
+  width: 42%;
+  z-index: 6;
+  overflow: auto;
+  padding: 30px 12px 12px;
+  background: var(--p7);
+  border: 2px solid var(--p0);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, .5);
+}
+.book-archive .archive-month em { color: var(--p3); }
+.book-archive button { color: var(--p1); }
+.archive-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--p0);
+  background: var(--p6);
+  color: var(--p0);
+  font: 700 12px/1 var(--mono, monospace);
+  cursor: pointer;
+}
+.archive-close:hover { background: #ffffff; }
+
+/* the compass gains its NE point; the lit dot goes home to the corner */
+.dpad-ne { top: 4px; right: 4px; }
+.topbar-actions button { position: relative; }
+.topbar-actions .unread-dot { position: absolute; top: 2px; right: 2px; }
+
+@media (max-width: 900px) {
+  .notebook .notes-tabs-row { position: static; width: auto; }
+  .notebook .notes-recent { flex-direction: row; overflow-x: auto; }
+}

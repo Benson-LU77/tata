@@ -29,7 +29,7 @@ import {
   resolveCommissions,
 } from "./lib/game/commissions";
 import { PET_ACTIONS, QUEST_LINES, REPLY_PAIRS } from "./lib/game/bonds-lines";
-import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, SEARCH_PX, DEPOT_PX, REGISTRY_PX } from "./lib/game/icons";
+import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, SEARCH_PX, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
@@ -66,6 +66,7 @@ export default function Home() {
   const [focusFile, setFocusFile] = useState<string | null>(null);
   const [requestOpen, setRequestOpen] = useState<{ file: string; n: number } | null>(null);
   const [requestToday, setRequestToday] = useState(0);
+  const [requestArchive, setRequestArchive] = useState(0);
   const [uiVisible, setUiVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [canFullscreen, setCanFullscreen] = useState(true);
@@ -1704,6 +1705,9 @@ export default function Home() {
             aria-label={t("topbar.settings")}
             aria-expanded={settingsOpen}
           >
+            {(game.letters ?? []).some((l) => !l.read) && (
+              <span className="unread-dot" aria-hidden="true" />
+            )}
             <span className="icon-dots" aria-hidden="true">
               <i />
               <i />
@@ -1838,6 +1842,18 @@ export default function Home() {
           </button>
           <button
             type="button"
+            className="dpad-btn dpad-ne"
+            onClick={() => {
+              openWrite();
+              setRequestArchive(Date.now());
+            }}
+            aria-label={t("notes.archive")}
+            title={t("notes.archive")}
+          >
+            <PixelIcon rows={CABINET_ICON} size={16} />
+          </button>
+          <button
+            type="button"
             className="dpad-btn dpad-core"
             onClick={() => {
               hum().click();
@@ -1846,9 +1862,6 @@ export default function Home() {
             aria-label={t("topbar.registry")}
             title={t("topbar.registry")}
           >
-            {(game.letters ?? []).some((l) => !l.read) && (
-              <span className="unread-dot" aria-hidden="true" />
-            )}
             <PixelIcon rows={REGISTRY_PX} size={18} />
           </button>
         </nav>
@@ -2004,6 +2017,7 @@ export default function Home() {
 
       <NotesPanel
         onPutAway={onPutAway}
+        requestArchive={requestArchive}
         open={writeOpen}
         onClose={closeWrite}
         onPin={pinSentence}

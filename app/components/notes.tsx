@@ -51,6 +51,13 @@ const BOOK_PAL = ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#4a4f59", "#8b909
 const noSubscription = () => () => {};
 const readNotebookFlag = () => !new URLSearchParams(window.location.search).has("oldnotes");
 
+/** flag label: just the day — the flag is small, the title says the rest */
+function shortLabel(file: string) {
+  const m = file.match(/^\d{4}-\d{2}-(\d{2})/);
+  if (m) return String(Number(m[1]));
+  return file.replace(/\.md$/, "").slice(-3);
+}
+
 function prettyName(file: string) {
   const daily = file.match(/^(\d{4})-(\d{2})-(\d{2}) (Today|Tonight)\.md$/);
   if (daily) return `${MONTHS[Number(daily[2]) - 1]} ${Number(daily[3])} · Today`;
@@ -77,6 +84,7 @@ export function NotesPanel({
   onSaved,
   onActiveFile,
   onPutAway,
+  requestArchive,
   t,
 }: {
   open: boolean;
@@ -109,6 +117,8 @@ export function NotesPanel({
   onActiveFile: (file: string | null) => void;
   /** the notebook was deliberately put away for the day — the city answers */
   onPutAway?: (file: string | null) => void;
+  /** bumped by the compass: open the book straight onto the archive */
+  requestArchive?: number;
   t: (key: string) => string;
 }) {
   const [view, setView] = useState<View>("edit");
@@ -417,6 +427,15 @@ export function NotesPanel({
     setBookNav((cur) => ({ ...cur, book: v }));
   }, []);
 
+  const archiveSeenRef = useRef(0);
+  useEffect(() => {
+    if (!requestArchive || requestArchive === archiveSeenRef.current) return;
+    archiveSeenRef.current = requestArchive;
+    setView("edit");
+    setBookOpen(true);
+    setArchiveOpen(true);
+  }, [requestArchive, setBookOpen]);
+
   useEffect(() => {
     if (!open || !notebookSkin || bookOpen || view !== "edit") return;
     const onKey = (e: KeyboardEvent) => {
@@ -620,12 +639,13 @@ export function NotesPanel({
                   type="button"
                   className={f === activeFile ? "current" : ""}
                   onClick={() => void openNote(f)}
+                  title={prettyName(f)}
                 >
-                  {prettyName(f)}
+                  {notebookSkin ? shortLabel(f) : prettyName(f)}
                 </button>
               ))}
             </div>
-              {(pages?.length ?? 0) > 0 && (
+              {!notebookSkin && (pages?.length ?? 0) > 0 && (
                 <span className="archive-anchor">
                   <button
                     type="button"
@@ -671,6 +691,47 @@ export function NotesPanel({
                   )}
                 </span>
               )}
+            </div>
+          )}
+          {notebookSkin && archiveOpen && (
+            <div className="notes-archive book-archive" role="dialog" aria-label={t("notes.archive")}>
+              <button
+                type="button"
+                className="archive-close"
+                onClick={() => setArchiveOpen(false)}
+                aria-label={t("common.close")}
+              >
+                ×
+              </button>
+              {(() => {
+                const groups = new Map<string, string[]>();
+                for (const f of pages ?? []) {
+                  const m2 = f.match(/^(\d{4}-\d{2})/);
+                  const key2 = m2 ? m2[1] : "…";
+                  groups.set(key2, [...(groups.get(key2) ?? []), f]);
+                }
+                return [...groups.entries()]
+                  .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+                  .map(([month, files]) => (
+                    <div key={month} className="archive-month">
+                      <em>{month}</em>
+                      {files
+                        .sort((a, b) => (a < b ? 1 : -1))
+                        .map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => {
+                              setArchiveOpen(false);
+                              void openNote(f);
+                            }}
+                          >
+                            {prettyName(f)}
+                          </button>
+                        ))}
+                    </div>
+                  ));
+              })()}
             </div>
           )}
           {notebookSkin && (
