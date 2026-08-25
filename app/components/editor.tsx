@@ -449,6 +449,8 @@ function slashSource(
 
 function stampSource(lang: () => "en" | "zh" | undefined) {
   return (context: CompletionContext) => {
+    // never poke at a composition in progress — the IME owns the keys
+    if (context.view?.composing) return null;
     // fullwidth colons count: a Chinese IME types :: without switching
     const match = context.matchBefore(/[:\uff1a]{2}[\p{L}\p{N}_]*$/u);
     if (!match) return null;
@@ -766,7 +768,16 @@ export function MarkdownEditor({
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    view.dispatch({ effects: editableComp.reconfigure(EditorView.editable.of(!readOnly)) });
+    const apply = () => {
+      const v = viewRef.current;
+      if (!v) return;
+      if (v.composing) {
+        window.setTimeout(apply, 120); // an IME mid-word is never interrupted
+        return;
+      }
+      v.dispatch({ effects: editableComp.reconfigure(EditorView.editable.of(!readOnly)) });
+    };
+    apply();
   }, [readOnly]);
 
   return <div className="note-cm" ref={hostRef} />;
