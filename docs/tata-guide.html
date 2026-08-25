@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tata 使用說明書</title>
+<style>
+  :root { --k:#06070a; --c:#171a20; --c2:#2a2e36; --g:#8b9099; --w:#f2f3f5; --amber:#e0a84f; --paper:#e9ebee; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--k); color:var(--w); font:15px/2 ui-monospace,"SF Mono",Menlo,monospace; padding:40px 20px 80px; }
+  .wrap { max-width:820px; margin:0 auto; }
+  h1 { font-size:26px; letter-spacing:.2em; border-bottom:3px solid var(--amber); padding-bottom:14px; margin-bottom:6px; }
+  .sub { color:var(--g); margin-bottom:36px; font-size:13px; }
+  h2 { font-size:17px; letter-spacing:.14em; color:var(--amber); margin:44px 0 14px; }
+  h2::before { content:"■ "; }
+  h3 { font-size:14px; color:var(--w); margin:20px 0 6px; letter-spacing:.1em; }
+  p { margin:10px 0; color:#c9ccd2; }
+  strong { color:var(--w); }
+  em.hl { color:var(--amber); font-style:normal; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
+  th,td { border:2px solid var(--c2); padding:8px 10px; text-align:left; }
+  th { background:var(--c); color:var(--amber); letter-spacing:.08em; }
+  code { background:var(--c); padding:1px 7px; color:var(--amber); font-size:12.5px; }
+  ul,ol { margin:10px 0 10px 24px; color:#c9ccd2; }
+  li { margin:7px 0; }
+  .paper { background:var(--paper); color:#171a20; border:2px solid var(--k); padding:16px 20px; margin:16px 0;
+           box-shadow:6px 6px 0 rgba(0,0,0,.6); }
+  .paper strong { color:#06070a; }
+  .paper em { color:#57482c; }
+  .key { display:inline-block; min-width:26px; text-align:center; border:2px solid var(--g); padding:0 7px; font-size:12px; }
+  .qa { border-left:4px solid var(--amber); background:var(--c); padding:8px 14px; margin:10px 0; font-size:13.5px; }
+  .qa b { color:var(--amber); }
+  footer { margin-top:60px; color:var(--c2); font-size:11px; letter-spacing:.2em; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>TATA 使用說明書</h1>
+<p class="sub">寫字的人的夜城 · 產品介紹 / 上手 / 日常 / 維護</p>
+
+<h2>這是什麼</h2>
+<p><strong>Tata 把你每晚寫的字,變成一座黑白像素的夜城。</strong>一天是一頁,也是一棟樓;一個月是一座島;寫得越多,樓越高、城越亮。它完全跑在你自己的電腦上——<em class="hl">沒有伺服器、沒有帳號、免費</em>,你的筆記存在你自己的 Obsidian 保管庫裡,Tata 只是那本會發光的筆記本。</p>
+<div class="paper">
+<strong>世界觀三原色:黑、白、琥珀。</strong><br>
+<em>黑是夜,白是你的紙,琥珀是燈——只亮在重要的地方:今晚的樓、未讀的信、正在翻的那一頁。</em>
+</div>
+
+<h2>第一次使用(約三分鐘)</h2>
+<ol>
+  <li>在 <strong>Obsidian</strong> 安裝社群外掛 <strong>Local REST API</strong>,啟用它的 HTTP 伺服器,複製 API 金鑰</li>
+  <li>打開 Tata → 書的左頁底部 <code>⚙ 保管庫</code> → 貼上金鑰 → <strong>連接</strong></li>
+  <li>連上後,你過去的日記會直接長成一座城。開始寫今晚的第一頁吧</li>
+</ol>
+<p>之後每次打開都會自動連線;Obsidian 要開著,城才是「live」的。</p>
+
+<h2>每晚的儀式</h2>
+<ol>
+  <li>點左下羅盤最上面的<strong>背包</strong> —— 筆記本攤開在城市上空</li>
+  <li><strong>寫</strong>。右頁是稿紙,字會自己躺在格線上;左頁顯示日期、字數、離下一層樓還差幾個字</li>
+  <li>寫完,<strong>點書外任何地方</strong> —— 字先存好,書飛回背包,城裡今晚那棟樓在琥珀光裡落成</li>
+</ol>
+
+<h2>介面地圖</h2>
+<h3>左下 · 羅盤</h3>
+<table>
+<tr><th>位置</th><th>功能</th></tr>
+<tr><td>上(背包)</td><td>打開今晚的筆記本</td></tr>
+<tr><td>左(檔案櫃)</td><td>翻檔找過去的日子——找到那天,書才翻開</td></tr>
+<tr><td>右(鏡子)</td><td>你的角色:換裝、取名</td></tr>
+<tr><td>下(木箱)</td><td>補給站:用瓦特換貓、狗、街燈、樹、天氣、地標…</td></tr>
+<tr><td>中(帳冊)</td><td>名冊:鄰居、好感度、信箱(有未讀信時亮琥珀點)</td></tr>
+</table>
+<h3>右上</h3>
+<p><strong>放大鏡</strong>=搜尋(輸入時符合的建築會在城裡點亮);<strong>⋯</strong>=設定(聲音、全螢幕、Zen、診斷)。</p>
+<h3>畫面下緣</h3>
+<p><strong>月份膠囊</strong>:◀ ▶ 在島與島之間航行;點月份開清單——每一天的頁面、字數,底部有一張<strong>海圖</strong>(所有島一眼看盡,點島啟航、點亮點開那一晚)。</p>
+<h3>書上</h3>
+<p>右書口的<strong>旗標</strong>=最近五頁+<code>+</code>新頁(當前頁釘琥珀);點<strong>建築物</strong>也能直接翻開那天。</p>
+
+<h2>編輯器的小魔法</h2>
+<table>
+<tr><th>輸入</th><th>效果</th></tr>
+<tr><td><code>/</code></td><td>指令選單:待辦、清單、標題、引言、分隔線、現在時刻、時光膠囊…</td></tr>
+<tr><td><code>::</code>(全形半形都可)</td><td>像素印章:<code>::貓::</code> <code>::太陽::</code> <code>::心::</code>…直接蓋在字裡</td></tr>
+<tr><td><code>[[</code></td><td>連到另一頁(城裡兩棟樓之間會真的架起天橋)</td></tr>
+<tr><td><code>#標籤</code></td><td>標記主題,點了可搜尋</td></tr>
+<tr><td><code>- [ ]</code></td><td>待辦方框,點一下打勾(琥珀)</td></tr>
+<tr><td><code>/capsule</code></td><td>時光膠囊:寫給未來某天的自己,到期那天才能拆</td></tr>
+</table>
+
+<h2>城市的規則</h2>
+<ul>
+  <li><strong>一天一頁</strong>:每晚的字進同一頁;多寫的隨手記會成為同一天的小樓</li>
+  <li><strong>字數=樓高</strong>,寫作的夜晚給你<strong>瓦特(W)</strong>;連續寫,街燈更亮、瓦特更多</li>
+  <li><strong>過去的頁面已定稿</strong>——在 Tata 裡唯讀。真要修改歷史,請在 Obsidian 打開那個檔案(↗ 按鈕直達)</li>
+  <li><strong>永不懲罰斷更</strong>:斷了幾天,城不會縮小、瓦特不會扣、沒有枯萎的島。回來寫,就繼續長</li>
+  <li>瓦特只能換「城市的樣子」(居民、天氣、地標),<em class="hl">永遠買不到字</em></li>
+</ul>
+
+<h2>維護手冊</h2>
+<h3>你的資料在哪裡</h3>
+<table>
+<tr><th>東西</th><th>位置</th><th>備份策略</th></tr>
+<tr><td>你寫的每一頁</td><td>你的 Obsidian vault(.md 檔)</td><td><strong>備份 vault 就是備份一切</strong>(iCloud/Git/Obsidian Sync 皆可)</td></tr>
+<tr><td>遊戲存檔(名字、購買、好感、地標)</td><td>vault 裡的 <code>tata.json</code></td><td>跟著 vault 一起備份</td></tr>
+<tr><td>離線草稿、快取</td><td>瀏覽器本機</td><td>不用備份——送達 vault 前的字有草稿護著,送達後真相在 vault</td></tr>
+</table>
+<h3>換電腦 / 多裝置</h3>
+<p>新裝置連上<strong>同一個 vault</strong>,城市與存檔自動回來。兩台裝置同時用也安全:購買會合併、名字不會被空值蓋掉、筆記有防覆寫守衛。</p>
+<h3>更新 Tata</h3>
+<p>有新版本時右下角會出現 <span class="key">Update</span>——按一下即可。若畫面行為怪異,先做這件事,再完全關閉重開一次。</p>
+<h3>疑難排解</h3>
+<div class="qa"><b>過去的筆記打不開?</b> 九成是 Obsidian 沒開或外掛睡著。開著 Obsidian 再點一次(系統會自動重試一次)。</div>
+<div class="qa"><b>跳出「衝突」三個按鈕?</b> 表示這頁在 Obsidian 那邊也被改過。<strong>用他們的</strong>=採用對方(你的版本會留成草稿備份);<strong>用我的</strong>=以這邊為準;<strong>兩者都留</strong>=另存一份副本,最保險。</div>
+<div class="qa"><b>回報問題?</b> 右上 <code>⋯</code> 設定面板<strong>最底部的 diagnostics</strong> 會列出最近的真實錯誤——截那張圖,勝過千言萬語。這些紀錄只存在你的裝置上。</div>
+<div class="qa"><b>想回到舊版素面板?</b> 網址加上 <code>?oldnotes</code>。</div>
+<div class="qa"><b>隱私?</b> 一切都在你的機器上:字在 vault、草稿在瀏覽器、診斷不外傳。Tata 不連任何外部伺服器。</div>
+
+<footer>TATA · 寫下去,城就亮著 · 使用說明 v1</footer>
+</div>
+</body>
+</html>
