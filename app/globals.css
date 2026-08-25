@@ -2881,3 +2881,8 @@ button:focus-visible, input:focus-visible {
   background: var(--amber, #e0a84f);
 }
 .notebook .cm-task-done { opacity: .55; }
+
+/* the innermost markup ink: .nmark wraps every marker (1., #, *, ::) and
+   carried the dark theme's ghost-white — invisible on paper, and being
+   the inner span it out-cascaded the earlier olmark fix */
+.notebook .note-cm .nmark { color: var(--p3); }
