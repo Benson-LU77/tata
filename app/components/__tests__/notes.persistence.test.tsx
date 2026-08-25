@@ -247,6 +247,50 @@ describe("conflict", () => {
   });
 });
 
+describe("opening a specific page", () => {
+  it("a panel opened FOR a page shows that page, not today", async () => {
+    vault.set(todayName(), "今天的字。\n");
+    vault.set("2026-08-16 Today.md", "八月十六的字。\n");
+    render(
+      <NotesPanel
+        open
+        onClose={noop}
+        requestOpen={{ file: "2026-08-16 Today.md", n: 1 }}
+        onWords={noop}
+        onSaved={vi.fn()}
+        onActiveFile={noop}
+        t={(k: string) => k}
+      />,
+    );
+    await settle();
+    await settle();
+    expect(page().value).toContain("八月十六的字。");
+    expect(page().value).not.toContain("今天的字。");
+  });
+
+  it("a slow older open never adopts over a newer one", async () => {
+    vault.set(todayName(), "今天的字。\n");
+    vault.set("2026-08-16 Today.md", "八月十六的字。\n");
+    vault.delayReads = 800; // today's opening chain crawls
+    const { rerender, onSaved } = openPanel();
+    await settle(100); // today's open is now in flight
+    rerender(
+      <NotesPanel
+        open
+        onClose={noop}
+        requestOpen={{ file: "2026-08-16 Today.md", n: 1 }}
+        onWords={noop}
+        onSaved={onSaved}
+        onActiveFile={noop}
+        t={(k: string) => k}
+      />,
+    );
+    await settle(2500); // both chains resolve; the older must be void
+    expect(page().value).toContain("八月十六的字。");
+    expect(page().value).not.toContain("今天的字。");
+  });
+});
+
 describe("the 8/21 incident shape", () => {
   it("a save in flight when you switch pages never lands in the new page's file", async () => {
     vault.set("2026-08-18 Today.md", "八月十八的字。\n");

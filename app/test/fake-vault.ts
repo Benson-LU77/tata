@@ -25,6 +25,8 @@ export class FakeObsidianClient {
   hideMtime = false;
   /** ms each write hangs before landing — for in-flight race scenarios */
   delayWrites = 0;
+  /** ms each read hangs — for open-race scenarios */
+  delayReads = 0;
   writes: Array<{ name: string; content: string }> = [];
   private clock = 1000;
 
@@ -48,6 +50,9 @@ export class FakeObsidianClient {
   }
 
   async readDoc(name: string): Promise<{ content: string; mtime: number | null }> {
+    if (this.delayReads > 0) {
+      await new Promise((r) => setTimeout(r, this.delayReads));
+    }
     if (this.offline) throw new Error("offline");
     if (this.failReads) throw new Error("HTTP 500");
     const entry = this.files.get(name);
@@ -99,4 +104,6 @@ export function resetVault() {
   vault.offline = false;
   vault.failReads = false;
   vault.hideMtime = false;
+  vault.delayWrites = 0;
+  vault.delayReads = 0;
 }

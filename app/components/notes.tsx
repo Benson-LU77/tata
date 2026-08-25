@@ -149,6 +149,7 @@ export function NotesPanel({
   const clientRef = useRef<ObsidianClient | null>(null);
   const openedRef = useRef(false);
   const requestSeenRef = useRef(0);
+  const archiveSeenRef = useRef(0);
   const editorRef = useRef<EditorApi | null>(null);
 
   useEffect(() => {
@@ -333,6 +334,11 @@ export function NotesPanel({
     }
     if (openedRef.current) return;
     openedRef.current = true;
+    // opened FOR a specific page (a building, the archive)? that request
+    // owns this opening — resume/today must not race it
+    const claimed =
+      (requestOpen && requestOpen.n !== requestSeenRef.current) ||
+      (requestArchive && requestArchive !== archiveSeenRef.current);
     let cancelled = false;
     void (async () => {
       await migrateLegacyDraft(newNoteName);
@@ -346,6 +352,7 @@ export function NotesPanel({
         setConnected(true);
         void checkConnection(client);
       }
+      if (claimed) return;
       const resumed = await store.resume();
       if (cancelled) return;
       if (resumed) {
@@ -358,7 +365,8 @@ export function NotesPanel({
     return () => {
       cancelled = true;
     };
-  }, [open, makeClient, checkConnection, openTonight, store, cursorSoon]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, makeClient, checkConnection, openTonight, store, cursorSoon, requestOpen, requestArchive]);
 
   /* open a specific building */
   useEffect(() => {
@@ -433,7 +441,6 @@ export function NotesPanel({
     setBookNav((cur) => ({ ...cur, book: v }));
   }, []);
 
-  const archiveSeenRef = useRef(0);
   useEffect(() => {
     if (!requestArchive || requestArchive === archiveSeenRef.current) return;
     archiveSeenRef.current = requestArchive;

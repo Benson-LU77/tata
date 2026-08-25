@@ -108,6 +108,10 @@ export function createDocStore() {
   let client: VaultDocClient | null = null;
   let callbacks: DocCallbacks = {};
 
+  /* every open claims an epoch; a slower, older open must never adopt
+     over a newer one (clicking a past day used to lose to "open today") */
+  let openSeq = 0;
+
   /* ---- subscription ---- */
   const listeners = new Set<() => void>();
   let snapshot: DocSnapshot = {
@@ -262,6 +266,7 @@ export function createDocStore() {
 
   /** Today is one page per day: load it if it exists, otherwise start it. */
   async function openToday(): Promise<void> {
+    const seq = ++openSeq;
     let file = todayName();
     // legacy: earlier days were called Tonight — keep appending to them
     if (client) {
@@ -279,12 +284,14 @@ export function createDocStore() {
     conflict = null;
     emit();
     const draft = await drafts.get(file);
+    if (seq !== openSeq) return; // someone opened something newer
     if (draft && draft.content.trim() !== draft.seed.trim()) {
       // the vault may have moved on (Obsidian edits, another device) —
       // show its latest and carry any unsent words forward, never hide it
       if (client) {
         try {
           const remote = await client.readDoc(file);
+          if (seq !== openSeq) return;
           if (remote.mtime !== null && (draft.baseMtime === null || remote.mtime > draft.baseMtime)) {
             const delta = draft.content.startsWith(draft.seed)
               ? draft.content.slice(draft.seed.length)
@@ -306,12 +313,14 @@ export function createDocStore() {
     if (client) {
       try {
         const remote = await client.readDoc(file);
+        if (seq !== openSeq) return;
         putDoc(file, remote.content.trimEnd() + "\n", remote.mtime, remote.content, false);
         setStatus("idle");
         return;
       } catch (err) {
         // only an absent page earns a blank one; a dropped wire must
         // never present today's words as if they were never written
+        if (seq !== openSeq) return;
         if (!(err instanceof Error && err.message === "HTTP 404")) {
           putDoc(file, "", null, null, false);
           setStatus("offline", "notes.error.open");
@@ -319,15 +328,18 @@ export function createDocStore() {
         }
       }
     }
+    if (seq !== openSeq) return;
     putDoc(file, freshSeed, null, null, false);
     setStatus("idle");
   }
 
   async function open(name: string): Promise<void> {
+    const seq = ++openSeq;
     setStatus("loading", null);
     conflict = null;
     emit();
     const draft = await drafts.get(name);
+    if (seq !== openSeq) return;
     if (draft && draft.content.trim() !== draft.seed.trim()) {
       seed = draft.seed;
       putDoc(name, draft.content, draft.baseMtime, null, true);
@@ -342,6 +354,7 @@ export function createDocStore() {
     }
     const readOnce = async () => {
       const remote = await client!.readDoc(name);
+      if (seq !== openSeq) return;
       seed = "";
       putDoc(name, remote.content, remote.mtime, remote.content, false);
       setStatus("idle");
@@ -361,6 +374,7 @@ export function createDocStore() {
       }
       // one breath, one retry — a sleeping wire often wakes on the second try
       await new Promise((r) => window.setTimeout(r, 900));
+      if (seq !== openSeq) return;
       try {
         await readOnce();
       } catch (second) {
@@ -372,7 +386,9 @@ export function createDocStore() {
 
   /** resume the freshest unsent draft; false = nothing to resume */
   async function resume(): Promise<boolean> {
+    const seq = ++openSeq;
     const all = await drafts.all();
+    if (seq !== openSeq) return true; // a newer open owns the stage; do not fall through to today
     const pending = all
       .filter((d) => d.content.trim() !== d.seed.trim())
       .sort((a, b) => b.updatedAt - a.updatedAt)[0];
