@@ -232,7 +232,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "notes.error.keymismatch": "Obsidian is running, but the key doesn't match — paste it again.",
     "notes.error.safari":
       "Safari blocks the http port. In the plugin, enable the encrypted server, open https://127.0.0.1:27124/ once and trust its certificate, then set the Url here to https://127.0.0.1:27124.",
-    "notes.error.open": "Couldn't open that note.",
+    "notes.error.open": "Could not open this page — is Obsidian running? Tap again to retry.",
     "notes.floor.pre": "",
     "notes.floor.post": " words to the next floor",
     "notes.tonight": "tonight +",
@@ -550,7 +550,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "notes.error.keymismatch": "Obsidian 正在執行，但金鑰不符 — 請重新貼上一次。",
     "notes.error.safari":
       "Safari 封鎖了 http 連接埠。請在外掛中啟用加密伺服器，開啟一次 https://127.0.0.1:27124/ 並信任其憑證，再把這裡的網址設為 https://127.0.0.1:27124。",
-    "notes.error.open": "無法開啟這則筆記。",
+    "notes.error.open": "無法開啟這則筆記 — Obsidian 有開著嗎?再點一次試試。",
     "notes.floor.pre": "再 ",
     "notes.floor.post": " 字多一層樓",
     "notes.tonight": "今晚 +",

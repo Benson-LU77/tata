@@ -1,3 +1,5 @@
+import { logDebug } from "./debuglog";
+
 export type ObsidianConfig = {
   url: string;
   key: string;
@@ -104,10 +106,19 @@ export class ObsidianClient {
 
   /** Read content + vault mtime in one round trip; falls back to plain text on old plugins. */
   async readDoc(name: string): Promise<NoteDoc> {
-    const res = await fetch(this.base() + "/vault/" + this.notePath(name), {
-      headers: this.headers({ Accept: "application/vnd.olrapi.note+json" }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let res: Response;
+    try {
+      res = await fetch(this.base() + "/vault/" + this.notePath(name), {
+        headers: this.headers({ Accept: "application/vnd.olrapi.note+json" }),
+      });
+    } catch (err) {
+      logDebug("read", `${name}: ${String(err).slice(0, 80)}`);
+      throw err;
+    }
+    if (!res.ok) {
+      if (res.status !== 404) logDebug("read", `${name}: HTTP ${res.status}`);
+      throw new Error(`HTTP ${res.status}`);
+    }
     const type = res.headers.get("content-type") ?? "";
     if (type.includes("json")) {
       const data = (await res.json()) as {

@@ -11,6 +11,7 @@
  * delay, batch or cancel a flush.
  */
 
+import { logDebug } from "../debuglog";
 import { drafts, metaCache } from "../drafts";
 import { countWords } from "../city/metrics";
 
@@ -339,11 +340,14 @@ export function createDocStore() {
       setStatus("offline", "notes.error.open");
       return;
     }
-    try {
-      const remote = await client.readDoc(name);
+    const readOnce = async () => {
+      const remote = await client!.readDoc(name);
       seed = "";
       putDoc(name, remote.content, remote.mtime, remote.content, false);
       setStatus("idle");
+    };
+    try {
+      await readOnce();
     } catch (first) {
       // a wikilink to a page that doesn't exist yet starts that page —
       // but ONLY on a real 404. Any other failure used to blank the
@@ -355,7 +359,14 @@ export function createDocStore() {
         setStatus("idle");
         return;
       }
-      setStatus("error", "notes.error.open");
+      // one breath, one retry — a sleeping wire often wakes on the second try
+      await new Promise((r) => window.setTimeout(r, 900));
+      try {
+        await readOnce();
+      } catch (second) {
+        logDebug("open", `${name}: ${String(second).slice(0, 80)}`);
+        setStatus("error", "notes.error.open");
+      }
     }
   }
 

@@ -2886,3 +2886,23 @@ button:focus-visible, input:focus-visible {
    carried the dark theme's ghost-white — invisible on paper, and being
    the inner span it out-cascaded the earlier olmark fix */
 .notebook .note-cm .nmark { color: var(--p3); }
+
+/* the quiet diagnostics strip at the settings' foot */
+.debug-panel {
+  display: grid;
+  gap: 3px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.debug-panel em {
+  font: 600 9px/1 var(--mono, monospace);
+  letter-spacing: .2em;
+  color: rgba(255, 255, 255, .3);
+  font-style: normal;
+}
+.debug-panel code {
+  font: 400 9px/1.5 var(--mono, monospace);
+  color: rgba(255, 255, 255, .5);
+  word-break: break-all;
+}

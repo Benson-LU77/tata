@@ -6,6 +6,7 @@ import { NotesPanel } from "./components/notes";
 import { Hum } from "./lib/hum";
 import { planCity } from "./lib/city/plan";
 import { CityMinimap } from "./components/city-minimap";
+import { DebugPanel } from "./components/debug-panel";
 import { demoMetrics, loadCityMetrics, dateOf } from "./lib/city/metrics";
 import type { NoteMetric } from "./lib/city/metrics";
 import { ObsidianClient, loadConfig } from "./lib/obsidian";
@@ -2372,6 +2373,7 @@ export default function Home() {
             ×
           </button>
         </div>
+        <DebugPanel />
         <div className="panel-toggles">
           {canFullscreen && (
             <label>
