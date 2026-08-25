@@ -3,126 +3,260 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tata 施工圖</title>
+<title>TATA 施工圖</title>
 <style>
-  :root { --k:#06070a; --c:#171a20; --c2:#2a2e36; --g:#8b9099; --w:#f2f3f5; --amber:#e0a84f; }
+  :root {
+    --bg:#0b0d10; --card:#12151a; --line:#22262e; --txt:#e8eaee; --dim:#8b9099;
+    --amber:#e0a84f; --blue:#7fa7d9; --pink:#d98fa7; --green:#8fc9a0; --violet:#a99ad9;
+  }
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:var(--k); color:var(--w); font:15px/1.9 ui-monospace,"SF Mono",Menlo,monospace; padding:40px 20px 80px; }
-  .wrap { max-width:880px; margin:0 auto; }
-  h1 { font-size:26px; letter-spacing:.2em; border-bottom:3px solid var(--amber); padding-bottom:14px; margin-bottom:6px; }
-  .sub { color:var(--g); margin-bottom:36px; font-size:13px; }
-  h2 { font-size:17px; letter-spacing:.14em; color:var(--amber); margin:44px 0 14px; }
-  h2::before { content:"■ "; }
-  p { margin:10px 0; color:#c9ccd2; }
-  strong { color:var(--w); }
-  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
-  th,td { border:2px solid var(--c2); padding:8px 10px; text-align:left; vertical-align:top; }
-  th { background:var(--c); color:var(--amber); letter-spacing:.08em; }
-  td code, p code, li code { background:var(--c); padding:1px 6px; color:var(--amber); font-size:12px; }
-  ul,ol { margin:10px 0 10px 22px; color:#c9ccd2; }
-  li { margin:6px 0; }
-  .box { border:2px solid var(--c2); background:var(--c); padding:16px 18px; margin:14px 0; }
-  .amber-box { border-color:var(--amber); }
-  /* the block diagram */
-  .diagram { display:grid; gap:10px; margin:18px 0; }
-  .lane { display:grid; grid-template-columns:130px 1fr; gap:10px; align-items:stretch; }
-  .lane em { display:flex; align-items:center; justify-content:center; font-style:normal; font-size:11px;
-             letter-spacing:.18em; color:var(--g); border:2px dashed var(--c2); padding:8px; text-align:center; }
-  .cells { display:flex; gap:10px; flex-wrap:wrap; }
-  .cell { border:2px solid var(--w); background:var(--c); padding:10px 14px; font-size:12.5px; flex:1; min-width:150px; }
-  .cell b { display:block; color:var(--amber); letter-spacing:.06em; margin-bottom:4px; font-size:13px; }
-  .cell.ghost { border-color:var(--c2); color:var(--g); }
-  .arrow { text-align:center; color:var(--amber); font-size:16px; letter-spacing:.4em; }
-  .inv { border-left:4px solid var(--amber); padding:6px 14px; margin:10px 0; background:var(--c); font-size:13.5px; }
-  .tag { display:inline-block; border:1px solid var(--g); color:var(--g); font-size:10px; padding:1px 7px; letter-spacing:.14em; margin-right:6px; vertical-align:2px; }
-  footer { margin-top:60px; color:var(--c2); font-size:11px; letter-spacing:.2em; text-align:center; }
+  body { background:var(--bg); color:var(--txt); font:14.5px/1.85 "PingFang TC","Noto Sans TC",system-ui,sans-serif; padding:56px 24px 90px; }
+  .wrap { max-width:1080px; margin:0 auto; }
+
+  h1 { font-family:Georgia,"Songti TC",serif; font-size:44px; font-weight:600; text-align:center; letter-spacing:.06em; }
+  .sub { text-align:center; color:var(--dim); font-size:13px; letter-spacing:.3em; margin:10px 0 26px; }
+  .tagline { display:block; width:fit-content; margin:0 auto 46px; padding:10px 26px;
+             border:1px solid rgba(224,168,79,.5); border-radius:12px; color:var(--amber);
+             background:rgba(224,168,79,.06); font-size:14px; letter-spacing:.12em; }
+
+  .tier { display:grid; grid-template-columns:120px 1fr; gap:18px; margin:6px 0; }
+  .tier > aside { padding-top:6px; }
+  .tier .no { font-family:Georgia,serif; font-size:19px; color:var(--txt); }
+  .tier .name { font-size:15px; margin-top:2px; }
+  .tier .note { font-size:11px; color:var(--dim); line-height:1.6; margin-top:4px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; }
+  .card { border:1px solid var(--line); border-radius:14px; padding:16px 18px; background:var(--card); }
+  .card .cat { font-size:10.5px; letter-spacing:.28em; color:var(--dim); margin-bottom:6px; }
+  .card h3 { font-size:18px; font-weight:650; margin-bottom:6px; }
+  .card p { font-size:12.5px; color:#b7bcc4; line-height:1.75; }
+  .chips { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font:11.5px/1 ui-monospace,Menlo,monospace; padding:5px 9px; border-radius:7px;
+          background:rgba(255,255,255,.05); border:1px solid var(--line); color:#cfd3da; }
+  /* tinted families */
+  .t-blue   { background:rgba(127,167,217,.07); border-color:rgba(127,167,217,.32); } .t-blue .cat{color:var(--blue)}
+  .t-pink   { background:rgba(217,143,167,.07); border-color:rgba(217,143,167,.32); } .t-pink .cat{color:var(--pink)}
+  .t-amber  { background:rgba(224,168,79,.08);  border-color:rgba(224,168,79,.4);  } .t-amber .cat{color:var(--amber)}
+  .t-green  { background:rgba(143,201,160,.07); border-color:rgba(143,201,160,.3); } .t-green .cat{color:var(--green)}
+  .t-violet { background:rgba(169,154,217,.08); border-color:rgba(169,154,217,.32);} .t-violet .cat{color:var(--violet)}
+
+  .down { text-align:center; color:var(--dim); font-size:20px; margin:16px 0; }
+  .rowlabel { grid-column:1 / -1; color:var(--dim); font-size:11.5px; letter-spacing:.12em; margin:4px 2px -4px; }
+
+  .lawlist { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:10px; }
+  .law { border-left:3px solid var(--amber); background:var(--card); border-radius:0 10px 10px 0;
+         padding:9px 14px; font-size:12.8px; color:#c9cdd4; }
+  .law b { color:var(--txt); }
+
+  h2.section { font-family:Georgia,"Songti TC",serif; font-size:22px; margin:56px 0 18px; text-align:center; letter-spacing:.2em; }
+  h2.section span { border-bottom:2px solid var(--amber); padding-bottom:6px; }
+
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
+  th,td { border:1px solid var(--line); padding:8px 12px; text-align:left; }
+  th { color:var(--amber); background:var(--card); letter-spacing:.1em; font-weight:600; }
+  td code { font-family:ui-monospace,Menlo,monospace; color:var(--amber); font-size:12px; }
+  footer { margin-top:70px; text-align:center; color:#3a3f48; font-size:11px; letter-spacing:.3em; }
+  @media (max-width:720px){ .tier{grid-template-columns:1fr} .tier>aside{display:flex;gap:10px;align-items:baseline} }
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <h1>TATA 施工圖</h1>
-<p class="sub">給維護這座城市的人 · 2026-08 · 黑 / 白 / 琥珀,僅此三色</p>
+<p class="sub">本地優先 · 2026-08-25 現況(含資料防線與維運)</p>
+<span class="tagline">夜城筆記 · 寫字的人 · 先寫字 → 字成樓 → 月成島 → 城記得你</span>
 
-<h2>一句話</h2>
-<p><strong>Tata 是一個本地優先的筆記城市</strong>:你每晚在像素筆記本裡寫字,字透過 Obsidian Local REST API 存進你自己的 vault;每一天的字長成一棟樓,每個月是一座島。Tata 沒有伺服器、沒有帳號、不收費——刪掉它,你的字一個都不少。</p>
-
-<h2>系統總覽</h2>
-<div class="diagram">
-  <div class="lane"><em>介面層<br>(可整個換皮)</em>
-    <div class="cells">
-      <div class="cell"><b>page.tsx</b>城市主頁:羅盤、頂欄、月份清單、海圖、名冊、補給站、鏡子、信件、儀式</div>
-      <div class="cell"><b>notes.tsx</b>筆記本外殼:書 plate、旗標書籤、檔案櫃、衝突對話框、保管庫設定</div>
-      <div class="cell"><b>editor.tsx</b>CodeMirror 6:/ 指令、::印章、[[連結、todo、docVersion 單向契約、定稿唯讀</div>
+<!-- ① 真相層 -->
+<div class="tier">
+  <aside>
+    <div class="no">①</div>
+    <div class="name">真相層</div>
+    <div class="note">你的機器<br>唯一字源</div>
+  </aside>
+  <div class="cards">
+    <div class="card t-amber">
+      <div class="cat">VAULT · 唯一字源</div>
+      <h3>Obsidian Vault</h3>
+      <p>你的 .md 檔=一切真相。Tata 不建資料庫、不架伺服器——刪掉 Tata,字一個不少。<code style="color:var(--amber)">tata.json</code> 是 vault 裡唯一屬於 Tata 的檔案(名字/購買/好感/地標)。</p>
+      <div class="chips"><span class="chip">*.md</span><span class="chip">tata.json</span><span class="chip">Templates/ 不入城</span><span class="chip">Letters/ 不入城</span></div>
     </div>
-  </div>
-  <div class="arrow">▼ 訂閱快照 · 表達意圖(介面永遠碰不到存檔內部)▼</div>
-  <div class="lane"><em>資料層<br>(零 React,14 組測試看守)</em>
-    <div class="cells">
-      <div class="cell"><b>notes/doc-store.ts</b>開頁/存檔/衝突狀態機。原子文件四元組、in-flight 鎖、開啟序號 epoch、4s 存檔 + 0.4s 草稿計時器</div>
-      <div class="cell"><b>lib/obsidian.ts</b>網路客戶端。<b>writeGuarded = 全 app 唯一寫入門</b>(寫前重讀比對)</div>
-      <div class="cell"><b>lib/drafts.ts</b>IndexedDB 草稿日誌 + 頁面摘要/城市快取(單一版本化連線)</div>
-      <div class="cell"><b>game/shop.ts</b>遊戲狀態 tata.json:decideVaultWrite 守衛、跨裝置合併(空值永不勝出)</div>
+    <div class="card t-blue">
+      <div class="cat">BRIDGE · 唯一通道</div>
+      <h3>Local REST API 外掛</h3>
+      <p>HTTP 127.0.0.1:27123 / https:27124(Safari)。金鑰驗證;Obsidian 開著,城才是 live。</p>
+      <div class="chips"><span class="chip">GET /vault/</span><span class="chip">PUT 全檔</span><span class="chip">POST /open</span><span class="chip">mtime 可能缺席</span></div>
     </div>
-  </div>
-  <div class="arrow">▼ HTTP · 127.0.0.1:27123/27124(金鑰驗證)▼</div>
-  <div class="lane"><em>真相層<br>(你的機器)</em>
-    <div class="cells">
-      <div class="cell amber-box" style="border-color:var(--amber)"><b>Obsidian Vault</b>你的 .md 檔案 = 唯一真相。Tata 只帶鑰匙,不建資料庫</div>
-      <div class="cell ghost"><b>tata.json</b>vault 裡唯一屬於 Tata 的檔案(名字/購買/好感/地標)</div>
+    <div class="card t-green">
+      <div class="cat">HOST · 靜態</div>
+      <h3>GitHub Pages + PWA</h3>
+      <p>純靜態站(base /tata/),Service Worker 採「提示制」更新——部署後使用者按一次 Update。</p>
+      <div class="chips"><span class="chip">gh-pages</span><span class="chip">registerType: prompt</span><span class="chip">?oldnotes 逃生口</span></div>
     </div>
   </div>
 </div>
 
-<h2>渲染管線(城市怎麼畫出來)</h2>
-<ul>
-  <li><code>city/metrics.ts</code> 讀 vault → 每檔算日期/字數/連結/標籤(<code>Templates/</code>、<code>Letters/</code> 不入城)</li>
-  <li><code>city/plan.ts</code> 確定性佈局:月份=7×6 街區(<code>cellOf</code> 同時是筆記本與海圖的格線)、蛇行排列、<code>STREET=3</code> 留出海峽</li>
-  <li><code>city/terrain.ts</code> 逐街區距離場 → 每月一島、噪聲海岸線、夜海帶、跨島棧道</li>
-  <li><code>city3d.tsx</code> Three.js 正交相機 → <strong>量化後處理:8 階灰 + Bayer 抖動</strong>;aTint 通道旗標(琥珀焦點/樹葉/燈頭,互斥);ASCII sprite 圖集(居民/貓狗/樹/動畫點)</li>
-  <li>筆記本本體 = <strong>程式生成的 220×150 像素 SVG plate</strong>(封面/雙頁/書脊縫線/頁疊),內容以百分比疊上畫好的頁面;<code>flex:none</code> 鎖形狀</li>
-  <li>字體:三個變數 <code>--display/--ui/--mono</code> 全指向 <strong>Cubic 11(CJK 點陣)+ Silkscreen</strong></li>
-</ul>
+<div class="down">↓</div>
 
-<h2>資料流:一個字的旅程</h2>
-<div class="box">
-<p><span class="tag">寫入</span>敲鍵 → <code>edit()</code> → 0.4s 後草稿落 IndexedDB(安全網)→ 4s 靜止後 <code>flush()</code> → <code>writeGuarded</code> 先重讀 vault 比對 → 無人動過才寫入 → 成功後刪草稿。失焦 / 切背景 / 收書都會立即 flush。</p>
-<p><span class="tag">開啟</span>每次開啟領一個 <strong>epoch 序號</strong>;慢到的舊開啟一律作廢。「為某頁而開」的面板跳過「開今天」路徑。草稿優先於網路;唯有 HTTP 404 才給空白頁。</p>
-<p><span class="tag">衝突</span>兩邊都只是「往同一開頭續寫」→ 靜默合併;開頭分歧 → 三選:用他們的(我方留墓碑草稿)/ 用我的 / 兩者都留(另存副本,絕不覆蓋既有)。</p>
-<p><span class="tag">tata.json</span>寫入前必須「讀過 vault 副本」;讀不到/壞檔一律拒寫;遠端較新先合併。合併規則:數值取大、集合聯集、<strong>空值永不勝出</strong>(別台的空名字蓋不掉你的名字)。</p>
+<!-- ② 資料層 -->
+<div class="tier">
+  <aside>
+    <div class="no">②</div>
+    <div class="name">資料層</div>
+    <div class="note">零 React<br>14 組測試看守</div>
+  </aside>
+  <div class="cards">
+    <div class="card t-pink">
+      <div class="cat">STORE · 心臟</div>
+      <h3>doc-store.ts</h3>
+      <p>開頁/存檔/衝突的狀態機。<b>原子四元組</b>(檔名+內容+基準 mtime+基準內容)永遠一起旅行;in-flight 鎖一次一寫;<b>開啟序號 epoch</b>——慢到的舊開啟一律作廢。</p>
+      <div class="chips"><span class="chip">putDoc 唯一採用門</span><span class="chip">flush 4s</span><span class="chip">draft 0.4s</span><span class="chip">openSeq</span></div>
+    </div>
+    <div class="card t-pink">
+      <div class="cat">CLIENT · 守門</div>
+      <h3>obsidian.ts</h3>
+      <p><b>writeGuarded=全 app 唯一寫入門</b>:寫前重讀比對,「有字的檔案永不靜默覆蓋」。續寫自動合併;真分歧才升衝突。讀取失敗自動重試一次並記進診斷環。</p>
+      <div class="chips"><span class="chip">writeGuarded</span><span class="chip">writeOwn(tata.json 專用)</span><span class="chip">404=新檔</span><span class="chip">logDebug</span></div>
+    </div>
+    <div class="card t-pink">
+      <div class="cat">SAFETY NET</div>
+      <h3>drafts.ts</h3>
+      <p>IndexedDB 草稿日誌:打字 0.4 秒落本機,送達 vault 才刪;衝突選「用他們的」時,我方版本留成墓碑草稿。單一版本化連線,升級不互鎖。</p>
+      <div class="chips"><span class="chip">drafts</span><span class="chip">metaCache</span><span class="chip">cityCache(可丟)</span></div>
+    </div>
+    <div class="card t-pink">
+      <div class="cat">SAVE · 遊戲狀態</div>
+      <h3>game/shop.ts</h3>
+      <p>tata.json 的守衛 <code>decideVaultWrite</code>:沒讀過 vault 不准寫、壞檔拒寫、遠端較新先合併。合併律:數值取大、集合聯集、<b>空值永不勝出</b>。</p>
+      <div class="chips"><span class="chip">decideVaultWrite</span><span class="chip">mergeStates</span><span class="chip">雙裝置安全</span></div>
+    </div>
+  </div>
 </div>
 
-<h2>守護不變式(改code前先背這些)</h2>
-<div class="inv">1 · <strong>有字的檔案永不靜默覆蓋</strong> —— writeGuarded 是唯一寫入門,新增寫入點自動繼承此律</div>
-<div class="inv">2 · <strong>只有 HTTP 404 才能呈現空白頁</strong> —— 斷線不等於沒寫過</div>
-<div class="inv">3 · <strong>檔名+內容+基準版本 = 一個原子四元組</strong> —— 永遠一起搬運,分開組裝=8/21 事故</div>
-<div class="inv">4 · <strong>動畫只讀狀態,永不延後/取消存檔</strong> —— 先 flush,後闔書</div>
-<div class="inv">5 · <strong>關閉路徑只負責關</strong> —— 畫面狀態一律在「下次開啟」時重設(否則淡出閃frame)</div>
-<div class="inv">6 · <strong>過去的頁面定稿唯讀</strong> —— 要改historia,去 Obsidian</div>
-<div class="inv">7 · <strong>不懲罰斷更</strong> —— earnedFloor 只升不降、刪筆記不縮城、缺月不留空島</div>
-<div class="inv">8 · <strong>三色鐵律</strong> —— 黑/白/琥珀;像素=畫出來的結構(階梯圓、硬影、crispEdges),不是 CSS 濾鏡</div>
-<div class="inv">9 · <strong>中文使用者的觸發符號要收全形</strong> —— :: 已收 ::,新觸發符照辦</div>
+<div class="down">↓</div>
 
-<h2>測試與交付</h2>
+<!-- ③ 介面層 -->
+<div class="tier">
+  <aside>
+    <div class="no">③</div>
+    <div class="name">介面層</div>
+    <div class="note">訂閱快照<br>表達意圖</div>
+  </aside>
+  <div class="cards">
+    <div class="card t-blue">
+      <div class="cat">STAGE</div>
+      <h3>page.tsx</h3>
+      <p>城市主頁:羅盤(上書/左檔案櫃/右鏡子/下補給/中名冊)、右上搜尋+⋯、月份膠囊與海圖、儀式(落成/收書琥珀)、信件與名冊。</p>
+      <div class="chips"><span class="chip">dpad</span><span class="chip">CityMinimap</span><span class="chip">ceremony</span></div>
+    </div>
+    <div class="card t-blue">
+      <div class="cat">BOOK</div>
+      <h3>notes.tsx</h3>
+      <p>書的外殼:220×150 像素 SVG plate(封面/雙頁/書脊縫線/頁疊)、書口旗標=近5+[+]、檔案櫃先翻檔後開書、衝突三選、保管庫卡。關閉路徑只負責關,狀態下次開啟重設。</p>
+      <div class="chips"><span class="chip">plate 底圖</span><span class="chip">claimed 開啟</span><span class="chip">quiet-closing</span></div>
+    </div>
+    <div class="card t-blue">
+      <div class="cat">EDITOR</div>
+      <h3>editor.tsx</h3>
+      <p>CodeMirror 6。<b>單向契約</b>:外部內容只在 docVersion bump 時採用,組字中一律延後——IME 永不被打斷。/ 指令、::印章(全半形)、[[連結、todo 勾選;過去頁 editable=false 定稿。</p>
+      <div class="chips"><span class="chip">docVersion</span><span class="chip">External annotation</span><span class="chip">composing guard</span><span class="chip">sealed</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="down">↓</div>
+
+<!-- ④ 渲染 -->
+<div class="tier">
+  <aside>
+    <div class="no">④</div>
+    <div class="name">渲染管線</div>
+    <div class="note">字 → 城</div>
+  </aside>
+  <div class="cards">
+    <div class="card t-violet">
+      <div class="cat">DERIVE</div>
+      <h3>metrics → plan → terrain</h3>
+      <p>讀檔算字數日期 → 確定性佈局(月=7×6 街區,<code>cellOf</code> 同時是海圖格線;STREET=3 留海峽)→ 逐街區距離場:每月一島、噪聲海岸、夜海、跨島棧道。</p>
+      <div class="chips"><span class="chip">確定性</span><span class="chip">NFC 穩定</span><span class="chip">缺月不留空島</span></div>
+    </div>
+    <div class="card t-violet">
+      <div class="cat">PAINT</div>
+      <h3>city3d.tsx</h3>
+      <p>Three.js 正交 → <b>量化後處理:8 階灰 + Bayer 抖動</b>;aTint 旗標(琥珀焦點/樹葉/燈頭,互斥);ASCII sprite 圖集畫居民貓狗樹;天空記錄星座/月相/姊妹星。</p>
+      <div class="chips"><span class="chip">uPal 8 灰</span><span class="chip">crispEdges</span><span class="chip">sprite atlas</span></div>
+    </div>
+    <div class="card t-violet">
+      <div class="cat">TYPE</div>
+      <h3>一個聲音</h3>
+      <p>三個字體變數(display/ui/mono)全指向 <b>Cubic 11(CJK 點陣,OFL)+ Silkscreen</b>——品牌到內文,整座城說同一種像素。</p>
+      <div class="chips"><span class="chip">Cubic 11 400KB</span><span class="chip">--px 家族</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="down">↓</div>
+
+<!-- ⑤ 防線 -->
+<div class="tier">
+  <aside>
+    <div class="no">⑤</div>
+    <div class="name">防線</div>
+    <div class="note">事故換來的<br>鐵律</div>
+  </aside>
+  <div class="cards" style="grid-template-columns:1fr">
+    <div class="lawlist">
+      <div class="law"><b>有字不覆蓋</b> — writeGuarded 唯一寫入門,新寫入點自動繼承</div>
+      <div class="law"><b>404 才空白</b> — 斷線≠沒寫過,錯誤絕不偽裝成新頁</div>
+      <div class="law"><b>原子四元組</b> — 檔名/內容/基準分開組裝=8/21 事故</div>
+      <div class="law"><b>先存檔,後動畫</b> — 儀式讀狀態,永不延後 flush</div>
+      <div class="law"><b>開啟即佔位</b> — epoch 序號,舊開啟不得覆蓋新開啟</div>
+      <div class="law"><b>關閉只負責關</b> — 狀態重設留給下次開啟(否則閃 frame)</div>
+      <div class="law"><b>過去定稿</b> — 舊頁唯讀;要改歷史,去 Obsidian</div>
+      <div class="law"><b>不懲罰斷更</b> — earnedFloor 只升不降;刪筆記不縮城</div>
+      <div class="law"><b>三色鐵律</b> — 黑/白/琥珀;像素=畫出來的結構,不是濾鏡</div>
+      <div class="law"><b>全形也算數</b> — 中文使用者的觸發符號(:: 等)收全形</div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section"><span>維運 · 交付</span></h2>
+<div class="tier">
+  <aside>
+    <div class="no">⑥</div>
+    <div class="name">維運</div>
+    <div class="note">改前必讀</div>
+  </aside>
+  <div class="cards">
+    <div class="card t-green">
+      <div class="cat">TESTS</div>
+      <h3>兩套看守</h3>
+      <p><code>test:city</code> 17 組(佈局/瓦特/身分/守衛/tata.json 決策)+ <code>test:notes</code> 14 組特徵測試——每組對應一種真實資料事故形狀。</p>
+      <div class="chips"><span class="chip">vitest+jsdom</span><span class="chip">FakeObsidianClient</span><span class="chip">fake-indexeddb</span></div>
+    </div>
+    <div class="card t-green">
+      <div class="cat">SHIP</div>
+      <h3>建置與部署</h3>
+      <p><code>dev</code>(:8080)→ <code>build:web</code> → <code>deploy</code>(gh-pages)。<b>tsc 必須手動跑</b>——vite 不做型別檢查,漏跑曾藏 bug 三天。</p>
+      <div class="chips"><span class="chip">npx tsc --noEmit</span><span class="chip">lint</span><span class="chip">deploy</span></div>
+    </div>
+    <div class="card t-green">
+      <div class="cat">FIELD DEBUG</div>
+      <h3>診斷環</h3>
+      <p>readDoc 失敗/未捕捉錯誤都進本機環形日誌;設定面板(⋯)底部 diagnostics 可截圖回報。不外傳。</p>
+      <div class="chips"><span class="chip">debuglog.ts</span><span class="chip">window.__tataLog</span></div>
+    </div>
+  </div>
+</div>
+
+<h2 class="section"><span>已知邊界 · 下一步</span></h2>
 <table>
-<tr><th>指令</th><th>內容</th></tr>
-<tr><td><code>npm run test:city</code></td><td>17 組:佈局確定性、瓦特單調、身分永續、writeGuarded 守衛、tata.json 決策…</td></tr>
-<tr><td><code>npm run test:notes</code></td><td>14 組特徵測試(vitest+jsdom+fake vault):每組對應一種真實資料事故形狀</td></tr>
-<tr><td><code>npx tsc --noEmit</code></td><td><strong>必須手動跑</strong> —— vite build 不做型別檢查,漏跑曾藏 bug 三天</td></tr>
-<tr><td><code>npm run build:web</code></td><td>Vite 靜態建置 → <code>dist-web</code>(base <code>/tata/</code>)</td></tr>
-<tr><td><code>npm run deploy</code></td><td>build + 發佈 gh-pages → benson-lu77.github.io/tata</td></tr>
+  <tr><th>項目</th><th>現況</th></tr>
+  <tr><td>iOS 支援</td><td>需 17.2+(:has);舊版退回抽屜面板,不壞</td></tr>
+  <tr><td>手機直式</td><td>用素頁版;橫向書 plate 待畫直式單頁變體</td></tr>
+  <tr><td>結構防線待建</td><td>寫入前 shadow 備份 · 草稿 append-only · tata.json per-field 時間戳</td></tr>
+  <tr><td>真機注音</td><td>組字防護已上;診斷環待使用者回報確認</td></tr>
 </table>
-<p>開發:<code>npm run dev</code>(port 8080)。PWA 更新採「提示制」——部署後使用者要按一次 Update。逃生口:網址加 <code>?oldnotes</code> 回素面板。</p>
 
-<h2>已知邊界與下一步</h2>
-<ul>
-  <li>iPhone 需 iOS 17.2+(<code>:has</code> 選擇器);舊版退回抽屜式面板,不壞</li>
-  <li>手機直式用素頁版——橫向書 plate 需要另畫直式單頁版</li>
-  <li>結構防線待建:寫入前 shadow 備份、草稿改 append-only、tata.json per-field 時間戳</li>
-  <li>真機注音回報中:診斷面板(⋯ 底部)已就位,錯誤會留在裝置上等截圖</li>
-</ul>
-
-<footer>TATA · SIGNAL BECOMES STRUCTURE · 施工圖 v1</footer>
+<footer>TATA · SIGNAL BECOMES STRUCTURE · 施工圖 V2</footer>
 </div>
 </body>
 </html>
