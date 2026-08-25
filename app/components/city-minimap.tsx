@@ -123,6 +123,7 @@ export function CityMinimap({
     <canvas
       ref={canvasRef}
       className="city-chart"
+      style={{ width: Math.max(120, Math.round(geo.w * 1.6)) }}
       onClick={pick}
       aria-label="sea chart"
       role="img"
