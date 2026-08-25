@@ -2866,3 +2866,18 @@ button:focus-visible, input:focus-visible {
 .archive-stand .archive-month button,
 .archive-head strong,
 .archive-note { font-family: var(--px); }
+
+/* ink for the page furniture: bullets, numbers and to-do boxes were the
+   dark theme's white accent — invisible on paper */
+.notebook .cm-bullet,
+.notebook .note-cm .cm-olmark { color: var(--p3); }
+.notebook .cm-taskbox {
+  border: 2px solid var(--p3);
+  border-radius: 0;
+}
+.notebook .cm-taskbox:hover { border-color: var(--amber, #e0a84f); }
+.notebook .cm-taskbox.done {
+  border-color: var(--amber, #e0a84f);
+  background: var(--amber, #e0a84f);
+}
+.notebook .cm-task-done { opacity: .55; }

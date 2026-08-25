@@ -113,10 +113,19 @@ export function stampRows(name: string): string[] | null {
   return STAMPS[name] ?? STAMPS[STAMP_ALIAS[name]] ?? null;
 }
 
-/** every way to type every stamp, for the ::picker */
-export function stampMenu(): { insert: string; id: string }[] {
+/** the ::picker speaks ONE language — every alias still types fine */
+export function stampMenu(lang?: "en" | "zh"): { insert: string; id: string }[] {
   const out: { insert: string; id: string }[] = [];
-  for (const id of Object.keys(STAMPS)) out.push({ insert: id, id });
-  for (const [alias, id] of Object.entries(STAMP_ALIAS)) out.push({ insert: alias, id });
+  if (lang === "zh") {
+    const covered = new Set<string>();
+    for (const [alias, id] of Object.entries(STAMP_ALIAS)) {
+      if (!/[\u2e80-\u9fff]/.test(alias) || covered.has(id)) continue;
+      covered.add(id);
+      out.push({ insert: alias, id }); // one row per stamp — every alias still types
+    }
+    for (const id of Object.keys(STAMPS)) if (!covered.has(id)) out.push({ insert: id, id });
+  } else {
+    for (const id of Object.keys(STAMPS)) out.push({ insert: id, id });
+  }
   return out;
 }
