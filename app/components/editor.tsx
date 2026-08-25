@@ -449,7 +449,8 @@ function slashSource(
 
 function stampSource(lang: () => "en" | "zh" | undefined) {
   return (context: CompletionContext) => {
-    const match = context.matchBefore(/::[\p{L}\p{N}_]*$/u);
+    // fullwidth colons count: a Chinese IME types :: without switching
+    const match = context.matchBefore(/[:\uff1a]{2}[\p{L}\p{N}_]*$/u);
     if (!match) return null;
     const options: Completion[] = stampMenu(lang() === "zh" ? "zh" : "en").map(({ insert, id }) => ({
       label: `::${insert}::`,
@@ -462,7 +463,7 @@ function stampSource(lang: () => "en" | "zh" | undefined) {
         });
       },
     }));
-    return { from: match.from, options, validFor: /^::[\p{L}\p{N}_]*$/u };
+    return { from: match.from, options, validFor: /^[:\uff1a]{2}[\p{L}\p{N}_]*$/u };
   };
 }
 
