@@ -5,10 +5,13 @@ import {
   DEFAULT_OBSIDIAN_URL,
   ObsidianClient,
   clearConfig,
-  loadConfig,
   saveConfig,
 } from "../lib/obsidian";
 import type { ObsidianConfig } from "../lib/obsidian";
+import { resolveBridge } from "../lib/bridge";
+import type { VaultBridge } from "../lib/bridge/types";
+import { BRIDGE_MODE_KEY, saveBridgeMode } from "../lib/bridge/types";
+import { loadConfig } from "../lib/obsidian";
 import { migrateLegacyDraft } from "../lib/drafts";
 import { countWords } from "../lib/city/metrics";
 import { CABINET_ICON } from "../lib/game/icons";
@@ -147,7 +150,9 @@ export function NotesPanel({
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const { file: activeFile, content, status, conflict } = snap;
 
-  const clientRef = useRef<ObsidianClient | null>(null);
+  const clientRef = useRef<VaultBridge | null>(null);
+  /* render-safe mirror of a bridge capability — refs must not be read in JSX */
+  const [canObsidian, setCanObsidian] = useState(false);
   const openedRef = useRef(false);
   const requestSeenRef = useRef(0);
   const archiveSeenRef = useRef(0);
@@ -232,6 +237,8 @@ export function NotesPanel({
   const makeClient = useCallback(
     (config: ObsidianConfig) => {
       clientRef.current = new ObsidianClient(config);
+      saveBridgeMode("rest");
+      setCanObsidian(true);
       store.setClient(clientRef.current);
       return clientRef.current;
     },
@@ -239,7 +246,7 @@ export function NotesPanel({
   );
 
   const checkConnection = useCallback(
-    async (client: ObsidianClient, quiet = false) => {
+    async (client: VaultBridge, quiet = false) => {
       if (!quiet) {
         store.setStatus("loading", null);
         setError(null);
@@ -256,8 +263,8 @@ export function NotesPanel({
         store.setStatus("error");
         let message = t("notes.error.connect");
         try {
-          const h = await client.health();
-          if (h.ok && !h.authenticated) {
+          const h = await client.health?.();
+          if (h && h.ok && !h.authenticated) {
             message = t("notes.error.keymismatch");
           }
         } catch {
@@ -344,14 +351,22 @@ export function NotesPanel({
     void (async () => {
       await migrateLegacyDraft(newNoteName);
       if (cancelled) return;
-      const config = loadConfig();
-      if (config) {
-        setUrl(config.url);
-        setKey(config.key);
-        setFolder(config.folder);
-        const client = makeClient(config);
+      const resolved = await resolveBridge();
+      if (cancelled) return;
+      if (resolved.mode === "rest") {
+        const config = loadConfig();
+        if (config) {
+          setUrl(config.url);
+          setKey(config.key);
+          setFolder(config.folder);
+        }
+      }
+      if (resolved.bridge) {
+        clientRef.current = resolved.bridge;
+        setCanObsidian(!!resolved.bridge.openInObsidian);
+        store.setClient(resolved.bridge);
         setConnected(true);
-        void checkConnection(client);
+        void checkConnection(resolved.bridge);
       }
       if (claimed) return;
       const resumed = await store.resume();
@@ -648,6 +663,9 @@ export function NotesPanel({
               className="notes-plain notes-forget"
               onClick={() => {
                 clearConfig();
+                try {
+                  window.localStorage.removeItem(BRIDGE_MODE_KEY);
+                } catch {}
                 window.location.reload();
               }}
             >
@@ -811,12 +829,12 @@ export function NotesPanel({
                 })()}
                 {statusLabel}
               </em>
-              {connected && activeFile && (
+              {connected && activeFile && canObsidian && (
                 <button
                   type="button"
                   className="bar-obsidian"
                   onClick={() => {
-                    void clientRef.current?.openInObsidian(activeFile).catch(() => {});
+                    void clientRef.current?.openInObsidian?.(activeFile).catch(() => {});
                     // the REST call opens the note; the protocol brings
                     // Obsidian itself to the front (macOS won't focus an
                     // app for a background request)

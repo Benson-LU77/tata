@@ -9,7 +9,9 @@ import { CityMinimap } from "./components/city-minimap";
 import { DebugPanel } from "./components/debug-panel";
 import { demoMetrics, loadCityMetrics, dateOf } from "./lib/city/metrics";
 import type { NoteMetric } from "./lib/city/metrics";
-import { ObsidianClient, loadConfig } from "./lib/obsidian";
+import { loadConfig } from "./lib/obsidian";
+import { resolveBridge } from "./lib/bridge";
+import type { VaultBridge } from "./lib/bridge/types";
 import { cityCache } from "./lib/drafts";
 import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
 import { dateAtCell, floorsOf } from "./lib/city/plan";
@@ -117,7 +119,7 @@ export default function Home() {
   const t = useMemo(() => makeT(lang), [lang]);
 
   const humRef = useRef<Hum | null>(null);
-  const clientRef = useRef<ObsidianClient | null>(null);
+  const clientRef = useRef<VaultBridge | null>(null);
   const idleTimerRef = useRef<number | null>(null);
   const writeOpenRef = useRef(false);
   const wordsThrottleRef = useRef(0);
@@ -137,8 +139,6 @@ export default function Home() {
   /** re-pull metrics from Obsidian; safe to call any time */
   const resync = useCallback(() => {
     if (new URLSearchParams(window.location.search).get("demo")) return;
-    const config = loadConfig();
-    if (config && !clientRef.current) clientRef.current = new ObsidianClient(config);
     lastSyncRef.current = Date.now();
     void loadCityMetrics(clientRef.current, (fresh) => {
       setMetrics(fresh);
@@ -194,11 +194,12 @@ export default function Home() {
 
   /* the notes panel just connected — adopt the client for the city too */
   const onConnected = useCallback(() => {
-    const config = loadConfig();
-    if (!config) return;
-    clientRef.current = new ObsidianClient(config);
-    resync();
-    void loadGameState(clientRef.current).then((state) => setGame(state));
+    void resolveBridge().then((r) => {
+      if (!r.bridge) return;
+      clientRef.current = r.bridge;
+      resync();
+      void loadGameState(r.bridge).then((state) => setGame(state));
+    });
   }, [resync]);
 
   /* ---------- data ---------- */
@@ -239,7 +240,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    void Promise.resolve().then(() => {
+    void Promise.resolve().then(async () => {
       const now = Date.now();
       setNowTs(now);
       const demo = new URLSearchParams(window.location.search).get("demo");
@@ -249,8 +250,8 @@ export default function Home() {
         setSynced("local");
         return;
       }
-      const config = loadConfig();
-      const client = config ? new ObsidianClient(config) : null;
+      const resolved = await resolveBridge();
+      const client = resolved.bridge;
       clientRef.current = client;
       void loadCityMetrics(client, (fresh) => {
         setMetrics(fresh);
@@ -984,6 +985,7 @@ export default function Home() {
     }
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
+      if (!client.search) return; // this bridge has no full-text road yet
       client
         .search(q, controller.signal)
         .then((found) => {
