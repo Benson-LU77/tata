@@ -5,7 +5,7 @@ import { VitePWA } from "vite-plugin-pwa";
 // Standalone static build for GitHub Pages (gh-pages branch of this repo).
 export default defineConfig({
   root: "web",
-  base: "/tata/",
+  base: "/",
   publicDir: "../public",
   plugins: [
     react(),
@@ -20,7 +20,7 @@ export default defineConfig({
         // claim the open pages so controllerchange fires and we reload
         clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,svg,png,woff2,webmanifest}"],
-        navigateFallback: "/tata/index.html",
+        navigateFallback: "/index.html",
         runtimeCaching: [],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
