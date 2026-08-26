@@ -9,7 +9,7 @@
 // compatibility — renaming it would orphan every user's drafts,
 // purchases and settings. It's an internal key, never shown anywhere.
 const DB_NAME = "yeyufm";
-const DB_VERSION = 2;
+const DB_VERSION = 3; // v3: shadow copies (pre-overwrite backups)
 const LEGACY_DRAFT_KEY = "yeyufm.draft";
 
 import { logDebug } from "./debuglog";
@@ -55,6 +55,10 @@ export function db(): Promise<IDBDatabase> {
         }
         if (!database.objectStoreNames.contains("city")) {
           database.createObjectStore("city", { keyPath: "file" });
+        }
+        if (!database.objectStoreNames.contains("shadows")) {
+          const s = database.createObjectStore("shadows", { keyPath: "id", autoIncrement: true });
+          s.createIndex("file", "file");
         }
       };
       req.onsuccess = () => {

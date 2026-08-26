@@ -1,4 +1,5 @@
 import { logDebug } from "./debuglog";
+import { saveShadow } from "./bridge/shadow";
 
 export type ObsidianConfig = {
   url: string;
@@ -204,6 +205,10 @@ export class ObsidianClient {
       } else if (remote.mtime !== baseMtime) {
         return { ok: false, reason: "conflict", remote };
       }
+    }
+    // about to replace real words: the old version parks in the shadows
+    if (remote && remote.content !== content) {
+      void saveShadow(name, remote.content, remote.mtime);
     }
     try {
       await this.write(name, content);
