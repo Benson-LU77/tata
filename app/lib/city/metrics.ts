@@ -118,7 +118,7 @@ function rngSimple(seed: number): () => number {
  * given, a background sync refreshes from Obsidian and calls `onFresh`.
  */
 export async function loadCityMetrics(
-  client: ObsidianClient | null,
+  client: Pick<ObsidianClient, "list" | "readDoc"> | null,
   onFresh?: (metrics: NoteMetric[]) => void,
 ): Promise<NoteMetric[]> {
   const cached = await cityCache.all();

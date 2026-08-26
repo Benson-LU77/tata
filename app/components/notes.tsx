@@ -8,9 +8,13 @@ import {
   saveConfig,
 } from "../lib/obsidian";
 import type { ObsidianConfig } from "../lib/obsidian";
-import { resolveBridge } from "../lib/bridge";
+import { resolveBridge, regrantFolder } from "../lib/bridge";
 import type { VaultBridge } from "../lib/bridge/types";
-import { BRIDGE_MODE_KEY, saveBridgeMode } from "../lib/bridge/types";
+import { BRIDGE_MODE_KEY, loadBridgeMode, saveBridgeMode } from "../lib/bridge/types";
+import { buildFsBridge } from "../lib/bridge/fs-bridge";
+import { opfsAvailable, opfsStore } from "../lib/bridge/opfs";
+import { fsapiAvailable, pickFolder, fsapiStore, forgetHandle } from "../lib/bridge/fsapi";
+import { logDebug } from "../lib/debuglog";
 import { loadConfig } from "../lib/obsidian";
 import { migrateLegacyDraft } from "../lib/drafts";
 import { countWords } from "../lib/city/metrics";
@@ -153,6 +157,10 @@ export function NotesPanel({
   const clientRef = useRef<VaultBridge | null>(null);
   /* render-safe mirror of a bridge capability — refs must not be read in JSX */
   const [canObsidian, setCanObsidian] = useState(false);
+  /* setup card: first the three roads, then (optionally) the plugin form */
+  const [setupMode, setSetupMode] = useState<"choose" | "rest">("choose");
+  /* fsapi: a folder is remembered but the browser wants a click first */
+  const [needsPermission, setNeedsPermission] = useState(false);
   const openedRef = useRef(false);
   const requestSeenRef = useRef(0);
   const archiveSeenRef = useRef(0);
@@ -361,6 +369,7 @@ export function NotesPanel({
           setFolder(config.folder);
         }
       }
+      if (resolved.needsPermission) setNeedsPermission(true);
       if (resolved.bridge) {
         clientRef.current = resolved.bridge;
         setCanObsidian(!!resolved.bridge.openInObsidian);
@@ -390,6 +399,64 @@ export function NotesPanel({
     requestSeenRef.current = requestOpen.n;
     void openNote(requestOpen.file);
   }, [requestOpen, openNote]);
+
+  /* a live bridge was chosen or revived — the notebook takes it as-is */
+  const adoptBridge = useCallback(
+    (bridge: VaultBridge) => {
+      clientRef.current = bridge;
+      setCanObsidian(!!bridge.openInObsidian);
+      store.setClient(bridge);
+      setConnected(true);
+      setNeedsPermission(false);
+      setError(null);
+      onConnected?.();
+      if (store.hasUnsentWords()) setView("edit");
+      else void openTonight();
+    },
+    [store, onConnected, openTonight],
+  );
+
+  const handleOpfs = useCallback(() => {
+    saveBridgeMode("opfs");
+    adoptBridge(buildFsBridge(opfsStore()));
+  }, [adoptBridge]);
+
+  const handlePickFolder = useCallback(async () => {
+    const handle = await pickFolder();
+    if (!handle) return; // user closed the picker — nothing changes
+    saveBridgeMode("fsapi");
+    const dest = fsapiStore(handle);
+    /* moving day: pages from the local bookcase follow into the folder —
+       only names the folder does not already have; nothing is overwritten */
+    try {
+      if (opfsAvailable()) {
+        const src = opfsStore();
+        const have = new Set(
+          await (async () => {
+            const out: string[] = [];
+            try {
+              return await buildFsBridge(dest).list();
+            } catch {
+              return out;
+            }
+          })(),
+        );
+        for (const name of await src.list()) {
+          if (have.has(name)) continue;
+          const doc = await src.read(name);
+          if (doc && doc.text.trim() !== "") await dest.write(name, doc.text);
+        }
+      }
+    } catch (err) {
+      logDebug("move", String(err).slice(0, 60));
+    }
+    adoptBridge(buildFsBridge(dest));
+  }, [adoptBridge]);
+
+  const handleRegrant = useCallback(async () => {
+    const bridge = await regrantFolder();
+    if (bridge) adoptBridge(bridge);
+  }, [adoptBridge]);
 
   const connect = useCallback(() => {
     const config: ObsidianConfig = {
@@ -592,6 +659,46 @@ export function NotesPanel({
             {t("notes.setup.ios.ok")}
           </button>
         </div>
+          ) : setupMode === "choose" ? (
+        <div className="notes-setup">
+          {needsPermission && (
+            <button type="button" className="notes-primary" onClick={() => void handleRegrant()}>
+              {t("notes.setup.regrant")}
+            </button>
+          )}
+          <p className="notes-help">{t("notes.setup.choose")}</p>
+          <div className="setup-cards">
+            {fsapiAvailable() && (
+              <button type="button" className="setup-card" onClick={() => void handlePickFolder()}>
+                <strong>{t("notes.setup.card.folder")}</strong>
+                <span>{t("notes.setup.card.folder.desc")}</span>
+              </button>
+            )}
+            <button type="button" className="setup-card" onClick={() => setSetupMode("rest")}>
+              <strong>{t("notes.setup.card.rest")}</strong>
+              <span>{t("notes.setup.card.rest.desc")}</span>
+            </button>
+            <button type="button" className="setup-card" onClick={handleOpfs}>
+              <strong>{t("notes.setup.card.opfs")}</strong>
+              <span>{t("notes.setup.card.opfs.desc")}</span>
+            </button>
+          </div>
+          {(loadBridgeMode() !== null || loadConfig() !== null) && (
+            <button
+              type="button"
+              className="notes-plain notes-forget"
+              onClick={() => {
+                clearConfig();
+                try {
+                  window.localStorage.removeItem(BRIDGE_MODE_KEY);
+                } catch {}
+                void forgetHandle().finally(() => window.location.reload());
+              }}
+            >
+              {t("notes.setup.forget")}
+            </button>
+          )}
+        </div>
           ) : (
         <div className="notes-setup">
           <p className="notes-help">{t("notes.setup.help")}</p>
@@ -657,21 +764,9 @@ export function NotesPanel({
           <button type="button" className="notes-primary" onClick={connect}>
             {t("notes.setup.connect")}
           </button>
-          {loadConfig() !== null && (
-            <button
-              type="button"
-              className="notes-plain notes-forget"
-              onClick={() => {
-                clearConfig();
-                try {
-                  window.localStorage.removeItem(BRIDGE_MODE_KEY);
-                } catch {}
-                window.location.reload();
-              }}
-            >
-              {t("notes.setup.forget")}
-            </button>
-          )}
+          <button type="button" className="notes-plain" onClick={() => setSetupMode("choose")}>
+            {t("notes.setup.back")}
+          </button>
           <button type="button" className="notes-plain" onClick={() => setAdvanced((v) => !v)}>
             {advanced ? t("notes.setup.hideadvanced") : t("notes.setup.advanced")}
           </button>
@@ -899,7 +994,14 @@ export function NotesPanel({
             </div>
           )}
           {!connected && !isIOS && (
-            <em className="page-sealed">{t("notes.unsynced")}</em>
+            <em className="page-sealed">
+              {t("notes.unsynced")}
+              {needsPermission && (
+                <button type="button" className="page-regrant" onClick={() => void handleRegrant()}>
+                  {t("notes.setup.regrant")}
+                </button>
+              )}
+            </em>
           )}
           {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
           {notebookSkin && (
