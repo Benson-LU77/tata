@@ -33,7 +33,7 @@ export type DocSnapshot = {
 };
 
 type WriteResult =
-  | { ok: true; mtime: number | null }
+  | { ok: true; mtime: number | null; verified?: boolean }
   | { ok: false; reason: "conflict"; remote: { content: string; mtime: number | null } }
   | { ok: false; reason: "offline" };
 
@@ -208,7 +208,10 @@ export function createDocStore() {
           window.clearTimeout(draftTimer);
           draftTimer = null;
         }
-        void drafts.remove(file);
+        if (result.verified === false) {
+          // unverified landing: the journal keeps our copy until a seen one
+          logDebug("save", `${file}: kept draft (unverified write)`);
+        } else void drafts.remove(file);
         void metaCache.put({ file, excerpt: firstLine(content), mtime: result.mtime ?? 0 });
         setStatus("saved");
         callbacks.onSaved?.(file, wasNew);
@@ -450,17 +453,24 @@ export function createDocStore() {
     const ours = doc.content;
     const c = conflict;
     if (file && ours.trim().length > 0 && ours.trim() !== c.remote.trim()) {
-      void drafts.put({
-        file: `${file.replace(/\.md$/, "")} (tata ${timeStamp().replace(":", ".")}).md`,
-        content: ours,
-        seed: "",
-        baseMtime: null,
-        updatedAt: Date.now(),
-      });
+      void drafts
+        .put({
+          file: `${file.replace(/\.md$/, "")} (tata ${timeStamp().replace(":", ".")}).md`,
+          content: ours,
+          seed: "",
+          baseMtime: null,
+          updatedAt: Date.now(),
+        })
+        .then((kept) => {
+          // the original journal entry dies only once the tombstone stands
+          if (kept) void drafts.remove(file);
+          else logDebug("draft", `tombstone failed for ${file}; keeping original`);
+        });
+    } else if (file) {
+      void drafts.remove(file);
     }
     conflict = null;
     putDoc(file, c.remote.trimEnd() + "\n", c.mtime, c.remote, false);
-    if (file) void drafts.remove(file);
     setStatus("idle");
   }
 

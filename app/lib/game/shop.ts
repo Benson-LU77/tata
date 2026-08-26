@@ -35,6 +35,7 @@ export const CATALOG: ShopItem[] = [
 
 export type Weather = "none" | "rain" | "snow" | "fog";
 
+import { logDebug } from "../debuglog";
 import type { YouLook } from "../city/sprites/compose";
 import { DEFAULT_LOOK } from "../city/sprites/compose";
 import type { Bonds } from "./bonds";
@@ -273,7 +274,9 @@ export async function saveGameState(state: GameState, client?: VaultClient | nul
         tx.onerror = () => resolve();
       });
     }
-  } catch {}
+  } catch (err) {
+    logDebug("save", `local: ${String(err).slice(0, 60)}`);
+  }
   if (client) {
     let raw: string | null = null;
     let readFailed = false;
@@ -287,6 +290,8 @@ export async function saveGameState(state: GameState, client?: VaultClient | nul
     if (decision.action !== "write") return;
     try {
       await client.writeOwn(VAULT_FILE, JSON.stringify(decision.state));
-    } catch {}
+    } catch (err) {
+      logDebug("save", `tata.json: ${String(err).slice(0, 60)}`);
+    }
   }
 }

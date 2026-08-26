@@ -9,13 +9,14 @@
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev --port 8080",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "npm run test:city && npm run test:notes",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-web --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "build:web": "vite build --config web/vite.config.ts",
     "deploy": "npm run build:web && gh-pages -d dist-web -m \"deploy 夜雨 FM\"",
     "test:city": "node scripts/test-city.mjs",
-    "test:notes": "vitest run"
+    "test:notes": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

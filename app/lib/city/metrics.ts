@@ -133,7 +133,7 @@ export async function loadCityMetrics(
           // building (letters would also ratchet earnedFloor for good)
           (n) => !/^(Templates|Letters)\//i.test(n),
         );
-        const metas = await pool(names, async (name) => {
+        const metas = await pool(names, async (name): Promise<NoteMetric> => {
           const doc = await client.readDoc(name);
           return {
             file: name,

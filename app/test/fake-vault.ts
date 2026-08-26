@@ -12,7 +12,7 @@
  */
 
 export type WriteResult =
-  | { ok: true; mtime: number | null }
+  | { ok: true; mtime: number | null; verified?: boolean }
   | { ok: false; reason: "conflict"; remote: { content: string; mtime: number | null } }
   | { ok: false; reason: "offline" };
 
@@ -27,6 +27,8 @@ export class FakeObsidianClient {
   delayWrites = 0;
   /** ms each read hangs — for open-race scenarios */
   delayReads = 0;
+  /** the write lands but the confirming read fails — an unverified landing */
+  failVerify = false;
   writes: Array<{ name: string; content: string }> = [];
   private clock = 1000;
 
@@ -91,7 +93,8 @@ export class FakeObsidianClient {
     }
     this.writes.push({ name, content });
     this.files.set(name, { content, mtime: (this.clock += 7) });
-    return { ok: true, mtime: this.hideMtime ? null : this.files.get(name)!.mtime };
+    if (this.failVerify) return { ok: true, mtime: null, verified: false };
+    return { ok: true, mtime: this.hideMtime ? null : this.files.get(name)!.mtime, verified: true };
   }
 }
 
@@ -106,4 +109,5 @@ export function resetVault() {
   vault.hideMtime = false;
   vault.delayWrites = 0;
   vault.delayReads = 0;
+  vault.failVerify = false;
 }

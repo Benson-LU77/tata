@@ -161,6 +161,20 @@ describe("saving", () => {
     expect(vault.contentOf(todayName())).toContain("補一句。");
   });
 
+  it("an unverified landing keeps the journal copy", async () => {
+    vault.failVerify = true; // the write lands, but nobody sees it land
+    openPanel();
+    await settle();
+    await type(page().value + "沒被看見的降落。\n");
+    await autosave();
+    expect(vault.contentOf(todayName())).toContain("沒被看見的降落。");
+    const parked = await drafts.all();
+    expect(
+      parked.some((d) => d.content.includes("沒被看見的降落。")),
+      "the draft must survive until a landing is SEEN",
+    ).toBe(true);
+  });
+
   it("offline words wait in the journal, then reach the vault", async () => {
     vault.offline = true;
     openPanel();

@@ -12,6 +12,8 @@ const DB_NAME = "yeyufm";
 const DB_VERSION = 2;
 const LEGACY_DRAFT_KEY = "yeyufm.draft";
 
+import { logDebug } from "./debuglog";
+
 export type Draft = {
   file: string;
   content: string;
@@ -94,15 +96,23 @@ function tx<T>(
 export const drafts = {
   get: (file: string) =>
     tx<Draft | undefined>("drafts", "readonly", (s) => s.get(file)).catch(() => undefined),
+  /** resolves FALSE when the journal could not keep the words — callers
+   *  that would delete another copy must check, not assume */
   put: (draft: Draft) =>
     tx("drafts", "readwrite", (s) => s.put(draft)).then(
-      () => undefined,
-      () => undefined,
+      () => true,
+      (err) => {
+        logDebug("draft", `put ${draft.file}: ${String(err).slice(0, 60)}`);
+        return false;
+      },
     ),
   remove: (file: string) =>
     tx("drafts", "readwrite", (s) => s.delete(file)).then(
       () => undefined,
-      () => undefined,
+      (err) => {
+        logDebug("draft", `remove ${file}: ${String(err).slice(0, 60)}`);
+        return undefined;
+      },
     ),
   all: () => tx<Draft[]>("drafts", "readonly", (s) => s.getAll()).catch(() => [] as Draft[]),
 };
@@ -152,7 +162,7 @@ export async function migrateLegacyDraft(fallbackName: () => string): Promise<vo
     if (!raw) return;
     const old = JSON.parse(raw) as { file: string | null; content?: string; seed?: string };
     if (old.content && old.content.trim() !== (old.seed ?? "").trim()) {
-      await drafts.put({
+      const kept = await drafts.put({
         file: old.file ?? fallbackName(),
         content: old.content,
         seed: old.seed ?? "",

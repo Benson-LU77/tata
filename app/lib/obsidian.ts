@@ -13,7 +13,7 @@ export type NoteDoc = {
 };
 
 export type WriteResult =
-  | { ok: true; mtime: number | null }
+  | { ok: true; mtime: number | null; verified?: boolean }
   | { ok: false; reason: "conflict"; remote: NoteDoc }
   | { ok: false; reason: "offline" };
 
@@ -212,9 +212,12 @@ export class ObsidianClient {
     }
     try {
       const after = await this.readDoc(name);
-      return { ok: true, mtime: after.mtime };
-    } catch {
-      return { ok: true, mtime: null };
+      return { ok: true, mtime: after.mtime, verified: true };
+    } catch (err) {
+      // the write may have landed — but nobody saw it land. Callers must
+      // NOT delete their local copy on this answer.
+      logDebug("write", `${name}: unverified (${String(err).slice(0, 50)})`);
+      return { ok: true, mtime: null, verified: false };
     }
   }
 
