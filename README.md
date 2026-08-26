@@ -11,7 +11,7 @@ amber figure walking the newest streets: you.
 **Local-first, free, forever.** Your notes never leave your machine and are
 never deleted — Tata only reads your vault and writes with a conflict guard.
 
-→ **[benson-lu77.github.io/tata](https://benson-lu77.github.io/tata/)**
+→ **[tata.page](https://tata.page)**
 
 ## How it plays
 
