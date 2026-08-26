@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import {
   DEFAULT_OBSIDIAN_URL,
   ObsidianClient,
+  clearConfig,
   loadConfig,
   saveConfig,
 } from "../lib/obsidian";
@@ -452,7 +453,8 @@ export function NotesPanel({
   useEffect(() => {
     if (!open || !notebookSkin || view !== "edit") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      // an IME uses Escape to cancel a candidate — never steal it mid-word
+      if (e.key === "Escape" && !e.isComposing) handleClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -578,6 +580,23 @@ export function NotesPanel({
           ) : (
         <div className="notes-setup">
           <p className="notes-help">{t("notes.setup.help")}</p>
+          <ol className="notes-steps">
+            <li>
+              <a href="https://obsidian.md" target="_blank" rel="noreferrer">
+                {t("notes.setup.step1")} ↗
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://obsidian.md/plugins?id=obsidian-local-rest-api"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t("notes.setup.step2")} ↗
+              </a>
+            </li>
+            <li>{t("notes.setup.step3")}</li>
+          </ol>
           {isSafari && (
             <ol className="notes-steps">
               <li>{t("notes.setup.safari.1")}</li>
@@ -618,10 +637,23 @@ export function NotesPanel({
               </label>
             </>
           )}
+          <p className="notes-keynote">{t("notes.setup.keynote")}</p>
           {shownError && <p className="notes-error">{shownError}</p>}
           <button type="button" className="notes-primary" onClick={connect}>
             {t("notes.setup.connect")}
           </button>
+          {loadConfig() !== null && (
+            <button
+              type="button"
+              className="notes-plain notes-forget"
+              onClick={() => {
+                clearConfig();
+                window.location.reload();
+              }}
+            >
+              {t("notes.setup.forget")}
+            </button>
+          )}
           <button type="button" className="notes-plain" onClick={() => setAdvanced((v) => !v)}>
             {advanced ? t("notes.setup.hideadvanced") : t("notes.setup.advanced")}
           </button>
@@ -847,6 +879,9 @@ export function NotesPanel({
                 </button>
               ))}
             </div>
+          )}
+          {!connected && !isIOS && (
+            <em className="page-sealed">{t("notes.unsynced")}</em>
           )}
           {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
           {notebookSkin && (

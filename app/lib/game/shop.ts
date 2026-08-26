@@ -151,8 +151,10 @@ export function decideVaultWrite(
   } catch {
     return { action: "skip", why: "corrupt" }; // half-written file: leave it
   }
-  if ((remote.updatedAt ?? 0) > state.updatedAt) {
-    // another device moved on while we held this copy — fold it in
+  {
+    // ALWAYS fold the remote copy in. Gating the merge on "remote newer"
+    // meant it almost never ran — every local action bumps updatedAt, so
+    // a second tab or device was silently overwritten wholesale.
     return {
       action: "write",
       state: mergeStates(state, {
@@ -173,7 +175,6 @@ export function decideVaultWrite(
       }),
     };
   }
-  return { action: "write", state };
 }
 
 /** the vault copy has been read (or confirmed absent) at least once */

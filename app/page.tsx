@@ -55,6 +55,7 @@ const CHIME_KEY = "yeyufm.chime";
 
 export default function Home() {
   const [metrics, setMetrics] = useState<NoteMetric[]>([]);
+  const [isDemoCity, setIsDemoCity] = useState(false);
 
   const [nowTs, setNowTs] = useState(0);
   const [intro, setIntro] = useState(false);
@@ -243,6 +244,7 @@ export default function Home() {
       setNowTs(now);
       const demo = new URLSearchParams(window.location.search).get("demo");
       if (demo) {
+        setIsDemoCity(true);
         setMetrics(demoMetrics(Number(demo) || 50, now));
         setSynced("local");
         return;
@@ -1078,7 +1080,6 @@ export default function Home() {
 
   useEffect(() => {
     const seen = window.localStorage.getItem("tata.visited");
-    window.localStorage.setItem("tata.visited", "1");
     let welcomeTimer: number | null = null;
     if (!seen && !new URLSearchParams(window.location.search).get("demo")) {
       welcomeTimer = window.setTimeout(() => setWelcomeOpen(true), 0);
@@ -1383,6 +1384,8 @@ export default function Home() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       registerActivity();
+      // an IME uses Escape/Enter to steer candidates — never act mid-composition
+      if (event.isComposing) return;
       if (event.key === "Escape") {
         if (encounterKey) {
           clearEncounterTimers();
@@ -1637,6 +1640,8 @@ export default function Home() {
                 className="welcome-write"
                 onClick={() => {
                   setWelcomeOpen(false);
+                  window.localStorage.setItem("tata.visited", "1");
+                  setWelcomeOpen(false);
                   openWrite();
                 }}
               >
@@ -1645,6 +1650,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => {
+                  // looking at the sample must not burn the welcome for later
                   window.location.search = "?demo=40";
                 }}
               >
@@ -1741,6 +1747,7 @@ export default function Home() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
+                if (event.nativeEvent.isComposing) return; // picking a candidate, not submitting
                 if (event.key === "Enter" && matches && matches.size > 0) {
                   const best = metrics
                     .filter((m) => matches.has(m.file))
@@ -1987,6 +1994,17 @@ export default function Home() {
             }}
           />
         </div>
+      )}
+      {isDemoCity && (
+        <button
+          type="button"
+          className="demo-exit immersion-ui"
+          onClick={() => {
+            window.location.search = "";
+          }}
+        >
+          {t("demo.exit")}
+        </button>
       )}
       {gl3d && !empty && !writeOpen && cityPlan.blocks.length > 0 && (
         <div className="month-dock immersion-ui" aria-label={t("months.aria")}>

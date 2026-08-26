@@ -2906,3 +2906,32 @@ button:focus-visible, input:focus-visible {
   color: rgba(255, 255, 255, .5);
   word-break: break-all;
 }
+
+/* the sample city says so, and offers the way back */
+.demo-exit {
+  position: absolute;
+  z-index: 11;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border: 1px solid rgba(224, 168, 79, .55);
+  border-radius: 0;
+  background: rgba(13, 15, 19, .85);
+  color: var(--amber, #e0a84f);
+  font: 500 12px/1 var(--ui);
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+.demo-exit:hover { background: rgba(224, 168, 79, .15); }
+
+/* setup steps carry the app's first hyperlinks */
+.notes-steps a { color: var(--amber, #e0a84f); text-decoration: none; border-bottom: 1px solid rgba(224,168,79,.4); }
+.notes-steps a:hover { border-bottom-color: var(--amber, #e0a84f); }
+.notes-keynote {
+  margin: 2px 0 0;
+  font: 400 11px/1.7 var(--px, monospace);
+  color: rgba(255, 255, 255, .45);
+}
+.notes-forget { color: rgba(255, 255, 255, .4); }
+.notes-forget:hover { color: #d98fa7; }

@@ -349,6 +349,12 @@ assert.strictEqual(dateAtCell("2026-02", 6, 4), null, "past month end is empty g
   assert.strictEqual(d.action, "write", "an absent save is created");
   d = decideVaultWrite(mine, JSON.stringify({ updatedAt: 10 }), { loaded: true, readFailed: false });
   assert.strictEqual(d.action, "write", "our newer state saves normally");
+  assert.ok(d.state.owned.includes("cats"), "and still carries what we own");
+
+  // f) merging is UNCONDITIONAL now: even when we are newer, a remote
+  //    with things we lack folds in instead of being overwritten wholesale
+  d = decideVaultWrite(mine, JSON.stringify({ owned: ["dog"], updatedAt: 10 }), { loaded: true, readFailed: false });
+  assert.ok(d.state.owned.includes("dog"), "an older remote's purchases survive the write");
 }
 
 console.log("city tests: all passed");

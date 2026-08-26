@@ -33,6 +33,13 @@ export function loadConfig(): ObsidianConfig | null {
   }
 }
 
+/** forget the vault: the key leaves this browser */
+export function clearConfig() {
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {}
+}
+
 export function saveConfig(config: ObsidianConfig) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
