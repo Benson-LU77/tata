@@ -34,6 +34,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".claude/**", // agent worktrees carry their own dist output
+    "dist/**",
+    "dist-web/**",
   ]),
 ]);
 

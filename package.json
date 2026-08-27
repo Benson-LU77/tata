@@ -11,7 +11,6 @@
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run test:city && npm run test:notes",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-web --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate",
     "build:web": "vite build --config web/vite.config.ts",
     "deploy": "npm run build:web && gh-pages -d dist-web -m \"deploy 夜雨 FM\"",
     "test:city": "node scripts/test-city.mjs",
@@ -32,7 +31,6 @@
     "@fontsource/newsreader": "^5.3.0",
     "@fontsource/silkscreen": "^5.3.0",
     "@lezer/highlight": "^1.2.3",
-    "drizzle-orm": "0.45.2",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -49,7 +47,7 @@
     "@types/three": "^0.185.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
-    "drizzle-kit": "0.31.10",
+    "esbuild": "^0.27.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "fake-indexeddb": "^6.2.5",
@@ -64,5 +62,12 @@
     "vitest": "^4.1.11",
     "wrangler": "4.92.0"
   },
-  "type": "module"
+  "type": "module",
+  "allowScripts": {
+    "esbuild@0.27.3": true,
+    "workerd@1.20260515.1": true,
+    "unrs-resolver@1.11.1": true,
+    "fsevents@2.3.3": true,
+    "sharp@0.34.5": true
+  }
 }
