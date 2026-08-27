@@ -823,6 +823,17 @@ export function NotesPanel({
       )}
       {view === "edit" && (!notebookSkin || bookOpen) && (
         <div className={"notes-editor size-" + fontSize}>
+          <button
+            type="button"
+            className="book-close"
+            onClick={() => {
+              if (notebookSkin && bookOpen && view === "edit") void handlePutAway();
+              else handleClose();
+            }}
+            aria-label={t("common.close")}
+          >
+            ×
+          </button>
           {(notebookSkin || (recent && recent.length > 1)) && (
             <div className="notes-tabs-row">
             <div className="notes-recent" aria-label={t("notes.recent.aria")}>

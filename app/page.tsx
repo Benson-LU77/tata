@@ -1206,7 +1206,8 @@ export default function Home() {
   const scheduleIdle = useCallback(() => {
     if (idleTimerRef.current !== null) window.clearTimeout(idleTimerRef.current);
     if (writeOpenRef.current) return;
-    idleTimerRef.current = window.setTimeout(() => setUiVisible(false), 6000);
+    const idleMs = window.matchMedia("(pointer: coarse)").matches ? 3500 : 6000;
+    idleTimerRef.current = window.setTimeout(() => setUiVisible(false), idleMs);
   }, []);
 
   const registerActivity = useCallback(() => {
