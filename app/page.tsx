@@ -11,7 +11,7 @@ import { demoMetrics, loadCityMetrics, dateOf } from "./lib/city/metrics";
 import type { NoteMetric } from "./lib/city/metrics";
 import { loadConfig } from "./lib/obsidian";
 import { resolveBridge } from "./lib/bridge";
-import { zipSync, strToU8 } from "fflate";
+import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import { logDebug } from "./lib/debuglog";
 import type { VaultBridge } from "./lib/bridge/types";
 import { cityCache } from "./lib/drafts";
@@ -177,6 +177,30 @@ export default function Home() {
       setSynced((prev) => (prev === "live" ? prev : clientRef.current ? "cached" : "local"));
     });
   }, []);
+
+  /* the way back in: pages from a zip settle only where no page stands */
+  const importPages = useCallback(async (file: File) => {
+    const client = clientRef.current;
+    if (!client) return;
+    try {
+      const files = unzipSync(new Uint8Array(await file.arrayBuffer()));
+      const have = new Set(await client.list());
+      let landed = 0;
+      for (const [name, data] of Object.entries(files)) {
+        if (!name.toLowerCase().endsWith(".md") || name.includes("..")) continue;
+        if (have.has(name)) continue; // nothing standing is ever replaced
+        const text = strFromU8(data);
+        if (text.trim() === "") continue;
+        await client.writeOwn(name, text);
+        landed += 1;
+      }
+      logDebug("import", `${landed} pages landed`);
+      if (landed > 0) resync();
+    } catch (err) {
+      logDebug("import", String(err).slice(0, 60));
+    }
+  }, [resync]);
+
 
   /* returning to the app (PWA re-open, tab re-focus) reconnects Obsidian */
   useEffect(() => {
@@ -1403,7 +1427,11 @@ export default function Home() {
 
   useEffect(() => {
     // deferred: probing the fullscreen API is a one-time external read
-    const id = window.setTimeout(() => setCanFullscreen(Boolean(document.fullscreenEnabled)), 0);
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const id = window.setTimeout(
+      () => setCanFullscreen(Boolean(document.fullscreenEnabled) && !coarse),
+      0,
+    );
     const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onChange);
     return () => {
@@ -2483,6 +2511,19 @@ export default function Home() {
           <button type="button" className="panel-export" onClick={() => void exportPages()}>
             {t("settings.export")}
           </button>
+          <label className="panel-export">
+            {t("settings.import")}
+            <input
+              type="file"
+              accept=".zip"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void importPages(f);
+              }}
+            />
+          </label>
         </div>
         <div className="panel-shortcuts">
           <span><b>← → ↑ ↓</b> {t("shortcuts.pan")}</span>
