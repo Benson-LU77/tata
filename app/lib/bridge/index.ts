@@ -16,6 +16,7 @@ import { loadBridgeMode } from "./types";
 import { buildFsBridge } from "./fs-bridge";
 import { opfsAvailable, opfsStore } from "./opfs";
 import { fsapiAvailable, loadHandle, ensurePermission, fsapiStore } from "./fsapi";
+import { nativeAvailable, nativeStore } from "./native";
 
 export type ResolvedBridge = {
   mode: BridgeKind;
@@ -26,6 +27,11 @@ export type ResolvedBridge = {
 };
 
 export async function resolveBridge(): Promise<ResolvedBridge> {
+  /* inside the iOS shell there is exactly one road: the app's own
+     Documents folder. No chooser, no fallbacks. */
+  if (nativeAvailable()) {
+    return { mode: "native", bridge: buildFsBridge(nativeStore()) };
+  }
   const chosen = loadBridgeMode();
 
   if (chosen === "fsapi" || (!chosen && fsapiAvailable())) {

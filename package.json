@@ -15,9 +15,13 @@
     "deploy": "npm run build:web && gh-pages -d dist-web -m \"deploy 夜雨 FM\"",
     "test:city": "node scripts/test-city.mjs",
     "test:notes": "vitest run",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "ios:sync": "npm run build:web && cap sync ios"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-markdown": "^6.5.1",

@@ -10,7 +10,7 @@
 
 import type { NoteDoc, WriteResult } from "../obsidian";
 
-export type BridgeKind = "rest" | "fsapi" | "opfs";
+export type BridgeKind = "rest" | "fsapi" | "opfs" | "native";
 
 export type VaultBridge = {
   list(): Promise<string[]>;
@@ -38,7 +38,7 @@ export const BRIDGE_MODE_KEY = "tata.bridge";
 export function loadBridgeMode(): BridgeKind | null {
   try {
     const raw = window.localStorage.getItem(BRIDGE_MODE_KEY);
-    if (raw === "rest" || raw === "fsapi" || raw === "opfs") return raw;
+    if (raw === "rest" || raw === "fsapi" || raw === "opfs" || raw === "native") return raw;
     return null;
   } catch {
     return null;
