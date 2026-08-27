@@ -1510,6 +1510,7 @@ export default function Home() {
   const rootClass = [
     "city-app",
     writeOpen ? "writing" : "",
+    bubble ? "talking" : "",
     uiVisible || writeOpen || settingsOpen ? "ui-visible" : "ui-hidden",
     introDone ? "intro-done" : "intro-running",
     zen ? "zen" : "",

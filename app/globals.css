@@ -3109,6 +3109,13 @@ label.panel-export { text-align: center; }
 
   /* idle compass sinks deeper into the night, and sooner */
   .ui-hidden .immersion-ui { opacity: .22; }
+
+  /* a conversation owns the bottom of the screen: the bubble rises
+     above the compass, and the compass stops taking taps entirely */
+  .city-bubble--docked {
+    bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+  }
+  .talking .dpad { opacity: .12; pointer-events: none; }
 }
 
 @keyframes sheet-rise {
