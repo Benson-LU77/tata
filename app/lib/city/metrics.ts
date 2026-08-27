@@ -8,6 +8,7 @@
 
 import type { ObsidianClient } from "../obsidian";
 import { cityCache, drafts } from "../drafts";
+import { logDebug } from "../debuglog";
 import type { NoteMetric } from "./layout";
 
 export type { NoteMetric };
@@ -117,6 +118,12 @@ function rngSimple(seed: number): () => number {
  * Load metrics. Fast path returns cache/drafts immediately; when a client is
  * given, a background sync refreshes from Obsidian and calls `onFresh`.
  */
+/* one background vault read at a time — heartbeat and wake both call in */
+let syncInFlight = false;
+/* a sync that sees far fewer pages than the cache is usually a flap, not a
+   purge — only believe the shrink when it repeats */
+let shrinkStreak = 0;
+
 export async function loadCityMetrics(
   client: Pick<ObsidianClient, "list" | "readDoc"> | null,
   onFresh?: (metrics: NoteMetric[]) => void,
@@ -124,7 +131,8 @@ export async function loadCityMetrics(
   const cached = await cityCache.all();
   const quick = cached.length > 0 ? cached : await fromDrafts();
 
-  if (client) {
+  if (client && !syncInFlight) {
+    syncInFlight = true;
     void (async () => {
       try {
         const names = (await client.list()).filter(
@@ -156,12 +164,26 @@ export async function loadCityMetrics(
           }
           return m;
         });
-        if (fresh.length > 0) {
-          await cityCache.replaceAll(fresh);
-          onFresh?.(fresh);
+        const suspicious = cached.length >= 8 && fresh.length < cached.length / 2;
+        if (suspicious && shrinkStreak < 2) {
+          shrinkStreak += 1;
+          logDebug("metrics", `partial sync? kept cache (${fresh.length}/${cached.length})`);
+          const merged = new Map(cached.map((c) => [c.file, c]));
+          for (const m of fresh) merged.set(m.file, m);
+          const out = [...merged.values()];
+          await cityCache.replaceAll(out);
+          onFresh?.(out);
+        } else {
+          shrinkStreak = 0;
+          if (fresh.length > 0) {
+            await cityCache.replaceAll(fresh);
+            onFresh?.(fresh);
+          }
         }
       } catch {
         /* stay on cache */
+      } finally {
+        syncInFlight = false;
       }
     })();
   }
