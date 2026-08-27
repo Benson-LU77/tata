@@ -1140,9 +1140,6 @@ label.panel-export { text-align: center; }
   /* the status bar already tells the time — the corner clock retires */
   .night-clock { display: none; }
 
-  /* bottom shelf, rearranged: compass keeps the left and steps fully
-     into view; the month dock takes the corner the clock left behind */
-  .dpad { left: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
 
   /* the top-left block earns its corner back */
   .topbar { align-items: flex-start; }
@@ -2546,7 +2543,13 @@ label.panel-export { text-align: center; }
 .dpad-core { left: 50%; top: 50%; transform: translate(-50%, -50%); }
 .dpad-core .unread-dot { position: absolute; top: 2px; right: 2px; }
 @media (max-width: 900px) {
-  .dpad { width: 128px; height: 128px; }
+  /* native 148px only — a resized ring throws the pixel sprites off-grid.
+     The compass anchors bottom-center, the phone's thumb row. */
+  .dpad {
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 
@@ -2685,6 +2688,9 @@ label.panel-export { text-align: center; }
   /* small screens fold back to the plain page — one sheet, framed by
      the night, breathing inside the safe area */
   .city-app .notes-panel.notebook {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     padding:
       calc(env(safe-area-inset-top, 0px) + 14px)
       12px
@@ -2693,7 +2699,8 @@ label.panel-export { text-align: center; }
   .notebook .notes-editor {
     aspect-ratio: auto;
     width: auto;
-    flex: 1;
+    flex: 0 1 auto;
+    max-height: min(74dvh, 600px);
     min-height: 0;
     display: flex;
     flex-direction: column;
