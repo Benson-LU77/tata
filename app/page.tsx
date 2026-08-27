@@ -11,6 +11,8 @@ import { demoMetrics, loadCityMetrics, dateOf } from "./lib/city/metrics";
 import type { NoteMetric } from "./lib/city/metrics";
 import { loadConfig } from "./lib/obsidian";
 import { resolveBridge } from "./lib/bridge";
+import { zipSync, strToU8 } from "fflate";
+import { logDebug } from "./lib/debuglog";
 import type { VaultBridge } from "./lib/bridge/types";
 import { cityCache } from "./lib/drafts";
 import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
@@ -120,6 +122,33 @@ export default function Home() {
 
   const humRef = useRef<Hum | null>(null);
   const clientRef = useRef<VaultBridge | null>(null);
+
+  /* every page, plus the city's own tata.json, into one honest zip */
+  const exportPages = useCallback(async () => {
+    const client = clientRef.current;
+    if (!client) return;
+    try {
+      const files: Record<string, Uint8Array> = {};
+      const names = await client.list();
+      for (const name of names) {
+        try {
+          files[name] = strToU8(await client.read(name));
+        } catch {}
+      }
+      try {
+        files["tata.json"] = strToU8(await client.read("tata.json"));
+      } catch {}
+      if (Object.keys(files).length === 0) return;
+      const blob = new Blob([zipSync(files).slice().buffer], { type: "application/zip" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "tata-pages.zip";
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (err) {
+      logDebug("export", String(err).slice(0, 60));
+    }
+  }, []);
   const idleTimerRef = useRef<number | null>(null);
   const writeOpenRef = useRef(false);
   const wordsThrottleRef = useRef(0);
@@ -2451,6 +2480,9 @@ export default function Home() {
               </button>
             </span>
           </label>
+          <button type="button" className="panel-export" onClick={() => void exportPages()}>
+            {t("settings.export")}
+          </button>
         </div>
         <div className="panel-shortcuts">
           <span><b>← → ↑ ↓</b> {t("shortcuts.pan")}</span>

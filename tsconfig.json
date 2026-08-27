@@ -38,9 +38,6 @@
   ],
   "exclude": [
     "node_modules",
-    "db",
-    "worker",
-    "drizzle",
-    "examples"
+    "worker"
   ]
 }
