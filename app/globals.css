@@ -1145,11 +1145,13 @@ label.panel-export { text-align: center; }
   .dpad { left: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
 
   /* the top-left block earns its corner back */
+  .topbar { align-items: flex-start; }
   .brand { gap: 9px; }
   .brand-col { gap: 4px; padding-top: 1px; }
   .brand-word { font-size: 12px; }
   .brand-eyebrow { font-size: 7px; letter-spacing: .24em; }
-  .brand-ledger { font-size: 8px; }
+  /* the ledger line is desk furniture — the mirror still tells it all */
+  .brand-ledger { display: none; }
   .signal { gap: 5px; }
 }
 
@@ -1327,13 +1329,8 @@ label.panel-export { text-align: center; }
 }
 .month-dock button:hover { color: var(--v7); border-color: var(--v4); }
 @media (max-width: 720px) {
-  /* the corner the clock left behind is the dock's now */
-  .month-dock {
-    left: auto;
-    right: 18px;
-    transform: none;
-    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  }
+  /* the compass month list is the phone's month switch — no second dock */
+  .month-dock { display: none; }
 }
 
 .signal { cursor: pointer; border: 0; background: transparent; padding: 0; }
@@ -2685,20 +2682,44 @@ label.panel-export { text-align: center; }
 }
 
 @media (max-width: 900px) {
-  /* small screens fold back to the plain page — the plate needs room */
+  /* small screens fold back to the plain page — one sheet, framed by
+     the night, breathing inside the safe area */
+  .city-app .notes-panel.notebook {
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 14px)
+      12px
+      calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
   .notebook .notes-editor {
     aspect-ratio: auto;
     width: auto;
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     background:
       linear-gradient(180deg, var(--p7) 0%, var(--p6) 100%);
     border: 2px solid var(--p0);
     filter: none;
   }
-  .notebook .notes-tabs-row { position: static; background: #171a20; padding: 10px 14px 0; }
-  .notebook .book { position: static; flex-direction: column; }
+  /* while the book is open the city holds its breath — no topbar */
+  .city-app.writing .topbar { display: none; }
+  /* bookmarks become upright tabs on the sheet's top edge */
+  .notebook .notes-tabs-row {
+    position: static;
+    background: transparent;
+    padding: 0 10px;
+    margin-bottom: -2px;
+  }
+  .notebook .notes-recent { flex-direction: row; gap: 6px; overflow-x: auto; }
+  .notebook .book { position: static; flex-direction: column; flex: 1; min-height: 0; }
   .notebook .book-page-left { width: auto; margin: 0; padding: 12px 16px 10px; border-bottom: 2px solid rgba(6,7,10,.5); }
-  .notebook .book-page-right { padding: 10px 16px; }
+  .notebook .book-page-right {
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
   .notebook .book-x { position: static; margin-left: auto; }
 }
 
@@ -2751,6 +2772,26 @@ label.panel-export { text-align: center; }
 }
 .notebook .notes-recent button:hover,
 .notebook .tab-plus:hover { background: #ffffff; }
+
+@media (max-width: 900px) {
+  /* horizontal shelf: the side flags stand up as top-edge tabs */
+  .notebook .notes-recent button,
+  .notebook .tab-plus {
+    width: 44px;
+    height: 26px;
+    line-height: 26px;
+    padding: 0 8px;
+    clip-path: none;
+    filter: none;
+    border: 2px solid var(--p0);
+    border-bottom: 0;
+    box-shadow: inset 0 3px 0 var(--p5);
+  }
+  .notebook .notes-recent button.current {
+    box-shadow: inset 0 3px 0 var(--amber, #e0a84f);
+  }
+  .notebook .tab-plus { text-align: center; padding: 0; }
+}
 
 /* the archive: a card over the left page, summoned by the compass */
 .book-archive {
