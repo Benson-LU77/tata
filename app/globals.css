@@ -206,7 +206,8 @@ button:focus-visible, input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 22px 28px;
+  /* the notch and status bar own the very top on iOS — write below them */
+  padding: calc(22px + env(safe-area-inset-top, 0px)) 28px 22px;
 }
 .brand { display: flex; align-items: flex-start; gap: 16px; }
 .brand-you {
@@ -1129,7 +1130,7 @@ button:focus-visible, input:focus-visible {
 }
 
 @media (max-width: 720px) {
-  .topbar { padding: 16px 18px; }
+  .topbar { padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 16px; }
   .brand-word { font-size: 15px; }
   .topbar-actions { gap: 5px; }
   .topbar-actions button { width: 40px; height: 40px; }
