@@ -33,7 +33,8 @@ import {
   progressOf,
   resolveCommissions,
 } from "./lib/game/commissions";
-import { PET_ACTIONS, QUEST_LINES, REPLY_PAIRS } from "./lib/game/bonds-lines";
+import { PET_ACTIONS, QUEST_LINES } from "./lib/game/bonds-lines";
+import { repliesFor, closerFor, QUIET_EXIT } from "./lib/game/replies";
 import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
@@ -121,9 +122,13 @@ export default function Home() {
   const [compassOpen, setCompassOpen] = useState(false);
   const encTimersRef = useRef<number[]>([]);
   const encStageRef = useRef<"their" | "reply" | "closer" | null>(null);
-  const encReplyRef = useRef<string>("");
   const encCloserRef = useRef<string | null>(null);
   const encNameRef = useRef<string>("");
+  /* today's favour, read at meeting time — a ref because the quest is
+     computed further down the file and the greeting must never hold a
+     stale copy of it */
+  type Quest = { key: string; seed: number; orderId: string; done: boolean } | null;
+  const questRef = useRef<Quest>(null);
   const [bubble, setBubble] = useState<{
     key: string;
     name: string;
@@ -636,6 +641,7 @@ export default function Home() {
       const sinceGreet = had
         ? Math.round((now - new Date(had.last + "T00:00:00").getTime()) / 86400000)
         : 0;
+      const quest = questRef.current;
       const isGiver = quest !== null && hit.key === quest.key;
       const questText = isGiver
         ? (quest.done ? QUEST_LINES[quest.orderId]?.thanks : QUEST_LINES[quest.orderId]?.ask)
@@ -643,7 +649,7 @@ export default function Home() {
       const addressed = questText
         ? (game.name ? `${game.name}\uff0c` : "") + (lang === "zh" ? questText.zh : questText.en)
         : null;
-      const line = addressed ?? lineFor(
+      const spoken = addressed ? { text: addressed, topic: undefined } : lineFor(
         {
           kind,
           tier: tierAfter,
@@ -660,7 +666,8 @@ export default function Home() {
         Math.random(),
         lang,
       );
-      const shownName = had ? name : "someone";
+      const line = spoken.text;
+      const shownName = had ? name : t("bubble.someone");
       encNameRef.current = shownName;
       // the exchange is a fork now: you choose what to say or do
       let choices: { label: string; pick: () => void }[];
@@ -681,23 +688,35 @@ export default function Home() {
           },
         }));
       } else {
-        const pool = [...REPLY_PAIRS].sort(() => Math.random() - 0.5).slice(0, 2);
-        choices = pool.map((r) => ({
+        // the replies answer the topic that was just raised, and only the
+        // warmth this friendship has earned is on the table
+        choices = repliesFor(spoken.topic, tierAfter, Math.random()).map((r) => ({
           label: lang === "zh" ? r.reply.zh : r.reply.en,
           pick: () => {
             encStageRef.current = "reply";
             // the closer answers THIS reply, not the void
-            const closer = r.closers[Math.floor(Math.random() * r.closers.length)];
-            encCloserRef.current = lang === "zh" ? closer.zh : closer.en;
+            encCloserRef.current = closerFor(r, Math.random(), lang);
             hum().click();
             setBubble({
               key: "you:0",
-              name: "you",
+              name: t("bubble.you"),
               text: lang === "zh" ? r.reply.zh : r.reply.en,
               until: Date.now() + 30000,
             });
           },
         }));
+        // saying nothing is an answer too — it always ends the meeting well
+        choices.push({
+          label: lang === "zh" ? QUIET_EXIT.zh : QUIET_EXIT.en,
+          pick: () => {
+            clearEncounterTimers();
+            encStageRef.current = null;
+            encCloserRef.current = null;
+            hum().click();
+            setBubble(null);
+            setEncounterKey(null);
+          },
+        });
       }
       setBubble({ key: hit.key, name: shownName, text: line, until: now + 30000, choices });
       setEmote({
@@ -717,7 +736,7 @@ export default function Home() {
       encStageRef.current = "their";
       encTimersRef.current.push(window.setTimeout(() => setEncounterKey(null), 45000));
     },
-    [game, hum, scheduleBondSave, lang, metrics, effectiveWeather],
+    [game, hum, scheduleBondSave, lang, metrics, effectiveWeather, clearEncounterTimers, t],
   );
 
   /* bubbles and emotes fade on their own clock */
@@ -1028,6 +1047,9 @@ export default function Home() {
     const giver = persons[hash32(today + ":giver") % persons.length];
     return { key: giver.key, seed: giver.seed, orderId: order.id, done: order.done };
   }, [metrics, today, cityPlan, extras]);
+  useEffect(() => {
+    questRef.current = quest;
+  }, [quest]);
   const decor = useMemo(() => {
     const on = (id: string) => game.owned.includes(id) && !(game.stashed ?? []).includes(id);
     return {

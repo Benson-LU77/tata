@@ -124,9 +124,23 @@ export type LineCtx = {
   profession?: string;
 };
 
+/**
+ * What a line is *about*. The reply you are offered answers the topic
+ * that was just raised — a conversation, not two monologues.
+ *   night   · the hour, the quiet, the stars (the default small talk)
+ *   city    · the streets, the towers, the lamps, the growing
+ *   writing · your pages, your streak, the lit windows
+ *   weather · rain, snow, fog
+ *   you     · you personally — your colour, your name, being noticed
+ *   them    · themselves: their trade, their memory, their life
+ */
+export type Topic = "night" | "city" | "writing" | "weather" | "you" | "them";
+
 export type LineDef = {
   /** minimum tier (default 1); firstMeet lines use tier 0 */
   tier?: Tier;
+  /** what this line is about — steers which replies you are offered */
+  topic?: Topic;
   /** situational guard — omit for always-eligible */
   when?: (ctx: LineCtx) => boolean;
   /** situational lines are preferred over plain tier lines */
@@ -144,7 +158,10 @@ function fill(line: string, ctx: LineCtx): string {
     .replace(/\{name\}/g, ctx.name ?? "");
 }
 
-export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): string {
+/** the line they say, and what it was about — the reply answers the topic */
+export type SpokenLine = { text: string; topic?: Topic };
+
+export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): SpokenLine {
   const table =
     ctx.kind === "cat"
       ? CAT_LINE_DEFS
@@ -156,14 +173,14 @@ export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): s
   const eligible = table.filter(
     (l) => (l.tier ?? 0) <= ctx.tier && (!l.when || l.when(ctx)),
   );
-  if (eligible.length === 0) return lang === "zh" ? "……" : "...";
+  if (eligible.length === 0) return { text: lang === "zh" ? "……" : "..." };
   // weighted pick: situational lines carry more weight so they surface
   const total = eligible.reduce((s2, l) => s2 + (l.weight ?? (l.when ? 3 : 1)), 0);
   let at = (Math.abs(roll * 7919) % 1) * total;
   for (const l of eligible) {
     at -= l.weight ?? (l.when ? 3 : 1);
-    if (at <= 0) return fill(lang === "zh" ? l.zh : l.en, ctx);
+    if (at <= 0) return { text: fill(lang === "zh" ? l.zh : l.en, ctx), topic: l.topic };
   }
   const last = eligible[eligible.length - 1];
-  return fill(lang === "zh" ? last.zh : last.en, ctx);
+  return { text: fill(lang === "zh" ? last.zh : last.en, ctx), topic: last.topic };
 }
