@@ -82,7 +82,8 @@ export function buildFsBridge(store: FileStore): VaultBridge {
           };
         }
         // about to replace real words: the old version parks in the shadows
-        void saveShadow(name, remote.text, remote.mtime);
+        // FIRST — fire-and-forget would race the very write it protects
+        await saveShadow(name, remote.text, remote.mtime);
       }
       try {
         await store.write(name, content);

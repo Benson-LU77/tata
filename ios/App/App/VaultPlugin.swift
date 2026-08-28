@@ -25,8 +25,14 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
     /// let one climb out of Documents
     private func resolve(_ name: String) -> URL? {
         if name.isEmpty || name.hasPrefix("/") { return nil }
+        // standardizing collapses "..", but it does not follow symlinks, and
+        // on iOS /var is a link to /private/var — compare resolved paths, and
+        // refuse the climb explicitly rather than trusting the collapse
+        if name.split(separator: "/").contains("..") { return nil }
         let url = root.appendingPathComponent(name).standardizedFileURL
-        guard url.path.hasPrefix(root.standardizedFileURL.path + "/") else { return nil }
+        let inside = url.resolvingSymlinksInPath().path
+        let top = root.resolvingSymlinksInPath().path
+        guard inside.hasPrefix(top + "/") else { return nil }
         return url
     }
 
@@ -34,15 +40,25 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
         var out: [String] = []
         let fm = FileManager.default
         let base = root.standardizedFileURL.path
-        if let walker = fm.enumerator(
+        // A vault we could not open is not an empty vault. Returning [] here
+        // would read as "every page is gone": the city empties, the panel
+        // still says connected, and every write becomes a free write onto a
+        // name the guard believes is unused.
+        guard let walker = fm.enumerator(
             at: root,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
-        ) {
-            for case let item as URL in walker {
-                guard item.pathExtension.lowercased() == "md" else { continue }
-                let rel = String(item.standardizedFileURL.path.dropFirst(base.count + 1))
-                if rel.split(separator: "/").count <= 4 { out.append(rel) }
+        ) else {
+            call.reject("cannot read the vault folder")
+            return
+        }
+        for case let item as URL in walker {
+            guard item.pathExtension.lowercased() == "md" else { continue }
+            let rel = String(item.standardizedFileURL.path.dropFirst(base.count + 1))
+            // depth 3, the same ceiling every other bridge walks to — one
+            // vault must not show different pages through different roads
+            if rel.split(separator: "/").count <= 3 {
+                out.append(rel.precomposedStringWithCanonicalMapping)
             }
         }
         call.resolve(["names": out.sorted(by: >)])
