@@ -2025,6 +2025,8 @@ label.panel-export { text-align: center; }
   margin-bottom: 4px;
 }
 .mirror-name span {
+  flex: none;
+  white-space: nowrap;
   font: 400 10.5px/1 var(--mono);
   letter-spacing: .08em;
   color: var(--v5);
@@ -3151,6 +3153,13 @@ label.panel-export { text-align: center; }
 
   /* idle compass sinks deeper into the night, and sooner */
   .ui-hidden .immersion-ui { opacity: .22; }
+
+  /* a phone has no keyboard — the shortcut list is desk furniture */
+  .panel-shortcuts { display: none; }
+
+  /* four bookmarks and the new-page tab: any more and the last one
+     slides under the X in the corner */
+  .notebook .notes-recent > :nth-child(n + 6) { display: none; }
 
   /* one button holds the whole compass; tapping it blooms the ring */
   .dpad-summon {
