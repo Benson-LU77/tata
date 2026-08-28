@@ -76,8 +76,11 @@ export function opfsStore(): FileStore {
         const fh = await at.dir.getFileHandle(at.leaf);
         const file = await fh.getFile();
         return { text: await file.text(), mtime: file.lastModified };
-      } catch {
-        return null;
+      } catch (err) {
+        // only a genuine "no such entry" is absence; every other failure
+        // must travel as a throw so the guard refuses instead of replacing
+        if ((err as DOMException)?.name === "NotFoundError") return null;
+        throw err;
       }
     },
 

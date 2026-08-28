@@ -136,8 +136,9 @@ export function fsapiStore(handle: FileSystemDirectoryHandle): FileStore {
         const fh = await at.dir.getFileHandle(at.leaf);
         const file = await fh.getFile();
         return { text: await file.text(), mtime: file.lastModified };
-      } catch {
-        return null;
+      } catch (err) {
+        if ((err as DOMException)?.name === "NotFoundError") return null;
+        throw err; // a lapsed permission is not an empty page
       }
     },
 

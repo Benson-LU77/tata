@@ -15,7 +15,17 @@ import { logDebug } from "../debuglog";
 /** the whole surface a storage medium must offer */
 export type FileStore = {
   list(): Promise<string[]>;
-  /** null = the file does not exist */
+  /**
+   * `null` means PROVABLY ABSENT — nothing is stored under this name.
+   *
+   * Anything else that stops a read must THROW, never return null. The
+   * difference is the whole ballgame: an absent file may be written
+   * freely, while a file that merely could not be read this second (an
+   * iCloud page still downloading, a folder whose permission just
+   * lapsed, a transient I/O error) may hold words that would be
+   * silently destroyed. writeGuarded turns a throw into a refusal and
+   * keeps the draft; it turns null into a green light.
+   */
   read(name: string): Promise<{ text: string; mtime: number } | null>;
   write(name: string, text: string): Promise<void>;
 };

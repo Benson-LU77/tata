@@ -70,3 +70,48 @@ describe("the filesystem guard", () => {
     await expect(b.readDoc("ghost.md")).rejects.toThrow("HTTP 404");
   });
 });
+
+/**
+ * The difference between "there is nothing here" and "I could not look"
+ * is the difference between a free write and destroyed words. An iCloud
+ * page still downloading reads as the second; it must never be treated
+ * as the first.
+ */
+describe("unreadable is not absent", () => {
+  const unreadable = (): FileStore => ({
+    list: async () => ["2026-08-28 Today.md"],
+    read: async () => {
+      throw new Error("still downloading from iCloud");
+    },
+    write: async () => {
+      throw new Error("the guard should never have got this far");
+    },
+  });
+
+  it("refuses to write over a page it could not read", async () => {
+    const bridge = buildFsBridge(unreadable());
+    const res = await bridge.writeGuarded("2026-08-28 Today.md", "my local draft", null);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toBe("offline");
+  });
+
+  it("keeps refusing for a page it was already editing", async () => {
+    const bridge = buildFsBridge(unreadable());
+    const res = await bridge.writeGuarded("2026-08-28 Today.md", "more words", 1000, "before");
+    expect(res.ok).toBe(false);
+  });
+
+  it("still writes freely where nothing is stored", async () => {
+    let written: string | null = null;
+    const empty: FileStore = {
+      list: async () => [],
+      read: async () => null,
+      write: async (_n, text) => {
+        written = text;
+      },
+    };
+    const res = await buildFsBridge(empty).writeGuarded("new.md", "first words", null);
+    expect(res.ok).toBe(true);
+    expect(written).toBe("first words");
+  });
+});

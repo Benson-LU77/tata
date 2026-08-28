@@ -53,11 +53,20 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("bad name")
             return
         }
+        // "absent" and "unreadable" are different answers. Only a file the
+        // system says is not there may be reported absent — everything else
+        // (a page still coming down from iCloud, a lapsed folder grant, a
+        // bad byte) is rejected, so the JS guard refuses the write and keeps
+        // the draft instead of replacing words it never managed to see.
+        if !FileManager.default.fileExists(atPath: url.path) {
+            call.resolve(["exists": false])
+            return
+        }
         guard
             let data = try? Data(contentsOf: url),
             let text = String(data: data, encoding: .utf8)
         else {
-            call.resolve(["exists": false])
+            call.reject("unreadable: \(name)")
             return
         }
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
