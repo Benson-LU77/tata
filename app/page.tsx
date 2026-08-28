@@ -57,6 +57,19 @@ const ARCH_PINS: Record<string, number> = (() => {
 const HUM_KEY = "yeyufm.hum";
 const CHIME_KEY = "yeyufm.chime";
 
+/* a nine-pixel compass rose for the summon button */
+const COMPASS_ROSE = [
+  "....6....",
+  "....6....",
+  "..6.6.6..",
+  "...666...",
+  "66655666.",
+  "...666...",
+  "..6.6.6..",
+  "....6....",
+  "....6....",
+];
+
 export default function Home() {
   const [metrics, setMetrics] = useState<NoteMetric[]>([]);
   const [isDemoCity, setIsDemoCity] = useState(false);
@@ -104,6 +117,8 @@ export default function Home() {
   const [replayDate, setReplayDate] = useState<string | null>(null);
   const [moveToast, setMoveToast] = useState<string | null>(null);
   const [encounterKey, setEncounterKey] = useState<string | null>(null);
+  /* phone: the compass sleeps behind one button until summoned */
+  const [compassOpen, setCompassOpen] = useState(false);
   const encTimersRef = useRef<number[]>([]);
   const encStageRef = useRef<"their" | "reply" | "closer" | null>(null);
   const encReplyRef = useRef<string>("");
@@ -1131,6 +1146,22 @@ export default function Home() {
     };
   }, [replayOn, metrics, today]);
 
+  /* summoned compass: any outside tap or six idle seconds puts it away */
+  useEffect(() => {
+    if (!compassOpen) return;
+    const close = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest(".dpad") || el?.closest(".dpad-summon")) return;
+      setCompassOpen(false);
+    };
+    document.addEventListener("pointerdown", close, true);
+    const id = window.setTimeout(() => setCompassOpen(false), 8000);
+    return () => {
+      document.removeEventListener("pointerdown", close, true);
+      window.clearTimeout(id);
+    };
+  }, [compassOpen]);
+
   /* ---------- intro ---------- */
 
   useEffect(() => {
@@ -1511,6 +1542,7 @@ export default function Home() {
     "city-app",
     writeOpen ? "writing" : "",
     bubble ? "talking" : "",
+    compassOpen ? "compass-open" : "",
     uiVisible || writeOpen || settingsOpen ? "ui-visible" : "ui-hidden",
     introDone ? "intro-done" : "intro-running",
     zen ? "zen" : "",
@@ -1867,7 +1899,25 @@ export default function Home() {
       )}
 
       {!writeOpen && (
-        <nav className="dpad immersion-ui" aria-label={t("topbar.settings")}>
+        <>
+        <button
+          type="button"
+          className="dpad-summon immersion-ui"
+          onClick={() => {
+            hum().click();
+            registerActivity();
+            setCompassOpen((v) => !v);
+          }}
+          aria-label={t("compass.aria")}
+          aria-expanded={compassOpen}
+        >
+          <PixelIcon rows={COMPASS_ROSE} size={22} />
+        </button>
+        <nav
+          className="dpad immersion-ui"
+          aria-label={t("topbar.settings")}
+          onClickCapture={() => setCompassOpen(false)}
+        >
           <PixelIcon rows={COMPASS_RING} size={148} pal={BOOK_PAL_PAGE} />
           <button
             type="button"
@@ -1933,6 +1983,7 @@ export default function Home() {
             <PixelIcon rows={REGISTRY_PX} size={18} />
           </button>
         </nav>
+        </>
       )}
 
       {idOpen && (

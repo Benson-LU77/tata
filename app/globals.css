@@ -3110,6 +3110,32 @@ label.panel-export { text-align: center; }
   /* idle compass sinks deeper into the night, and sooner */
   .ui-hidden .immersion-ui { opacity: .22; }
 
+  /* one button holds the whole compass; tapping it blooms the ring */
+  .dpad-summon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    z-index: 10;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    background: rgba(10, 12, 16, .92);
+    border: 2px solid var(--p0);
+    box-shadow: inset 0 0 0 1px rgba(238, 240, 244, .12), 3px 3px 0 rgba(0, 0, 0, .5);
+    cursor: pointer;
+  }
+  .compass-open .dpad-summon { display: none; }
+  .talking .dpad-summon { opacity: .12; pointer-events: none; }
+  /* states switch instantly, the pixel way — no transition to freeze */
+  .dpad { transition: none; }
+  .city-app:not(.compass-open) .dpad {
+    display: none;
+  }
+
   /* a conversation owns the bottom of the screen: the bubble rises
      above the compass, and the compass stops taking taps entirely */
   .city-bubble--docked {
