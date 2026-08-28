@@ -713,6 +713,9 @@ export function City3D({
   const buildingsDirtyRef = useRef(true);
   const weatherSeedsRef = useRef<Float32Array | null>(null);
   const ceremonyRef = useRef<{ x: number; z: number; start: number } | null>(null);
+  /* a settling is a moment, not a state: replaying it every time the plan
+     changes would relight a building you finished with days ago */
+  const ceremonySeenRef = useRef(0);
   const waveRef = useRef<{ x: number; z: number; start: number; oldCap: number } | null>(null);
   const prevCapRef = useRef<number | null>(null);
   const hoverRef = useRef<string | null>(null);
@@ -2024,9 +2027,10 @@ export function City3D({
 
   /* a new structure settles: amber beam + camera glide */
   useEffect(() => {
-    if (!ceremony) return;
+    if (!ceremony || ceremony.n === ceremonySeenRef.current) return;
     const lot = plan.lots.find((l) => l.file === ceremony.file);
-    if (!lot) return;
+    if (!lot) return; // the plan has not caught up yet — the next one will
+    ceremonySeenRef.current = ceremony.n;
     ceremonyRef.current = { x: lot.x, z: lot.z, start: performance.now() };
     buildingsDirtyRef.current = true;
     panTargetRef.current = {
