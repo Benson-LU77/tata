@@ -35,6 +35,7 @@ import {
 } from "./lib/game/commissions";
 import { PET_ACTIONS, QUEST_LINES } from "./lib/game/bonds-lines";
 import { repliesFor, closerFor, QUIET_EXIT } from "./lib/game/replies";
+import { nativeAvailable } from "./lib/bridge/native";
 import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
@@ -1748,7 +1749,7 @@ export default function Home() {
           <div className="welcome-card" role="dialog" aria-label="Tata">
             <p>{t("welcome.l1")}</p>
             <p>{t("welcome.l2")}</p>
-            <p>{t("welcome.l3")}</p>
+            <p>{t(nativeAvailable() ? "welcome.l3.native" : "welcome.l3")}</p>
             <div className="welcome-actions">
               <button
                 type="button"

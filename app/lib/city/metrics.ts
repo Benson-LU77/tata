@@ -175,7 +175,9 @@ export async function loadCityMetrics(
           onFresh?.(out);
         } else {
           shrinkStreak = 0;
-          if (fresh.length > 0) {
+          // an empty vault is a real answer, not a failure: a brand-new
+          // writer is connected even before the first page exists
+          if (fresh.length > 0 || cached.length === 0) {
             await cityCache.replaceAll(fresh);
             onFresh?.(fresh);
           }
