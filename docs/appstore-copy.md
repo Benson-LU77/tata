@@ -46,12 +46,13 @@ The desktop version at tata.page can connect straight to an Obsidian vault.
 - **年齡分級**: 4+
 - **App Privacy 問卷**: Data Not Collected(全部勾「不收集」)
 - **價格**: 免費,無內購
+- **裝置**: 僅 iPhone(v1);**直向鎖定**——橫向的手機版面在 720/900 兩個斷點之間會破碎,而 Tata 本來就是直的:筆記本、往上長的城市。iPad 實測可跑(相容模式以外的原生版面),留待 v1.1 專門調校後再開。
 
 ## 審查備註(App Review Notes 欄位,英文)
 
 Tata is a fully interactive pixel-art journaling game, not a website wrapper: the entire experience (isometric city rendering, notebook, day/night cycle, in-game economy) runs offline from bundled assets, and all writing is stored as plain Markdown files in the app's own Documents directory via a native file plugin (visible in the Files app). No account, no network requests, no data collection. The web version at tata.page is a companion, not the content source.
 
-## 截圖清單(模擬器可產,6.7" 與 6.1" 各一組)
+## 截圖清單(模擬器可產;iPhone 直向,6.9"/6.5" 各一組)
 
 1. 夜晚城市全景(有燈)
 2. 攤開的筆記本(正在寫字)
