@@ -50,3 +50,6 @@ ios/App/App/public
 ios/App/App/capacitor.config.json
 ios/App/build
 ios/App/DerivedData*
+
+# App Store deliverables live beside the repo, not in it
+Tata-appstore/
