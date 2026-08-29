@@ -84,7 +84,20 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate,
 
     /// names are vault-relative ("Journal/2026-08-27 Today.md"); never
     /// let one climb out of Documents
-    private func resolve(_ name: String) -> URL? {
+    /**
+     * An iCloud page whose bytes are not here yet exists on disk as a
+     * hidden stub beside where it belongs: ".Aug 28 Today.md.icloud".
+     * Anything asking "is this page here?" has to know that name too.
+     */
+    private func placeholder(for url: URL) -> URL {
+        url.deletingLastPathComponent()
+            .appendingPathComponent("." + url.lastPathComponent + ".icloud")
+    }
+
+    private func resolve(_ raw: String) -> URL? {
+        // list() hands out NFC; take it back the same way, so a vault synced
+        // from an older Mac cannot hand us a name we then fail to find
+        let name = raw.precomposedStringWithCanonicalMapping
         if name.isEmpty || name.hasPrefix("/") { return nil }
         // standardizing collapses "..", but it does not follow symlinks, and
         // on iOS /var is a link to /private/var — compare resolved paths, and
@@ -109,17 +122,35 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate,
         // would read as "every page is gone": the city empties, the panel
         // still says connected, and every write becomes a free write onto a
         // name the guard believes is unused.
+        // Hidden files are NOT skipped wholesale: an iCloud page that has
+        // not come down yet is a hidden stub, and skipping it would make a
+        // page written on the desktop simply invisible here — which reads
+        // as "does not exist", which reads as "free to overwrite".
         guard let walker = fm.enumerator(
             at: root,
-            includingPropertiesForKeys: [.isRegularFileKey],
-            options: [.skipsHiddenFiles]
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: []
         ) else {
             call.reject("cannot read the vault folder")
             return
         }
         for case let item as URL in walker {
-            guard item.pathExtension.lowercased() == "md" else { continue }
-            let rel = String(item.standardizedFileURL.path.dropFirst(base.count + 1))
+            let leaf = item.lastPathComponent
+            let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            var real = leaf
+            if leaf.hasPrefix(".") {
+                if leaf.hasSuffix(".icloud") {
+                    real = String(leaf.dropFirst().dropLast(".icloud".count))
+                } else {
+                    // .obsidian, .git, .trash — do not even walk into them
+                    if isDir { walker.skipDescendants() }
+                    continue
+                }
+            }
+            guard !isDir, real.lowercased().hasSuffix(".md") else { continue }
+            let parent = item.deletingLastPathComponent().standardizedFileURL.path
+            let dir = parent.count > base.count ? String(parent.dropFirst(base.count + 1)) + "/" : ""
+            let rel = dir + real
             // depth 3, the same ceiling every other bridge walks to — one
             // vault must not show different pages through different roads
             if rel.split(separator: "/").count <= 3 {
@@ -143,17 +174,30 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate,
         // (a page still coming down from iCloud, a lapsed folder grant, a
         // bad byte) is rejected, so the JS guard refuses the write and keeps
         // the draft instead of replacing words it never managed to see.
-        if !FileManager.default.fileExists(atPath: url.path) {
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: url.path) {
+            // only a stub? then the page exists — it is just still in the air
+            if fm.fileExists(atPath: placeholder(for: url).path) {
+                beginDownload(url)
+                call.reject("still coming down from iCloud: \(name)", "ICLOUD_DOWNLOADING")
+                return
+            }
             call.resolve(["exists": false])
             return
         }
         if presence(of: url) == .notDownloaded {
-            beginDownload(url) // and do not wait for it
+            beginDownload(url) // outside any coordinator: coordinating here
             call.reject("still coming down from iCloud: \(name)", "ICLOUD_DOWNLOADING")
-            return
+            return           // would wait on the very download it triggers
+        }
+        var readData: Data?
+        var coordErr: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordErr) { at in
+            readData = try? Data(contentsOf: at)
         }
         guard
-            let data = try? Data(contentsOf: url),
+            coordErr == nil,
+            let data = readData,
             let text = String(data: data, encoding: .utf8)
         else {
             call.reject("unreadable: \(name)", "READ_FAILED")
@@ -182,11 +226,33 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate,
                 at: url.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            try Data(text.utf8).write(to: url, options: .atomic)
-            call.resolve()
         } catch {
-            call.reject("write failed: \(error.localizedDescription)")
+            call.reject("write failed: \(error.localizedDescription)", "WRITE_FAILED")
+            return
         }
+        /*
+         * In place, and deliberately NOT atomic.
+         *
+         * An atomic write is a temp file and a rename, which inside someone
+         * else's vault reads as delete-then-create: Obsidian may close the
+         * tab they had open, and iCloud may treat it as a brand new file and
+         * drop its version history. A page is worth more than the small risk
+         * of a torn write, which the shadow copy and the read-back check on
+         * the JS side already cover.
+         *
+         * Nothing inside this block may coordinate again or ask iCloud for a
+         * download — either would wait on the coordinator that is holding it.
+         */
+        var failure: Error?
+        var coordErr: NSError?
+        NSFileCoordinator().coordinate(writingItemAt: url, options: [], error: &coordErr) { at in
+            do { try Data(text.utf8).write(to: at) } catch { failure = error }
+        }
+        if let err = coordErr ?? failure {
+            call.reject("write failed: \(err.localizedDescription)", "WRITE_FAILED")
+            return
+        }
+        call.resolve()
     }
 
     // MARK: - choosing a folder of one's own
