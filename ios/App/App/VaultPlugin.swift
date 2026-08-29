@@ -82,6 +82,36 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate,
         try? FileManager.default.startDownloadingUbiquitousItem(at: url)
     }
 
+    /**
+     * Ask iCloud for every page at once and wait for none of them. Run
+     * whenever a folder is adopted, so "still coming down" is the rare
+     * answer rather than the usual one — the writer opens their vault and
+     * it fills in behind them, instead of one page at a time as they
+     * happen to reach for it.
+     */
+    private func warmUp() {
+        guard let walker = FileManager.default.enumerator(
+            at: root, includingPropertiesForKeys: [.isDirectoryKey], options: []
+        ) else { return }
+        for case let item as URL in walker {
+            let leaf = item.lastPathComponent
+            let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            if leaf.hasPrefix(".") && !leaf.hasSuffix(".icloud") {
+                if isDir { walker.skipDescendants() }
+                continue
+            }
+            if leaf.hasPrefix("."), leaf.hasSuffix(".icloud") {
+                let real = String(leaf.dropFirst().dropLast(".icloud".count))
+                guard real.lowercased().hasSuffix(".md") else { continue }
+                // the stub is the proof it is not here yet
+                beginDownload(item.deletingLastPathComponent().appendingPathComponent(real))
+            } else if !isDir, leaf.lowercased().hasSuffix(".md"),
+                      presence(of: item) == .notDownloaded {
+                beginDownload(item)
+            }
+        }
+    }
+
     /// names are vault-relative ("Journal/2026-08-27 Today.md"); never
     /// let one climb out of Documents
     /**
@@ -283,6 +313,7 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate,
         folder = url
         holdingScope = true
         if stale { saveBookmark(for: url) } // rebuild while the scope is open
+        warmUp()
     }
 
     private func retryRestore(_ attempt: Int) {
@@ -349,6 +380,7 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate,
             self.holdingScope = true
             self.saveBookmark(for: url) // built while the scope is open
             call?.resolve(["name": url.lastPathComponent, "path": url.path])
+            self.warmUp() // after the answer: the writer waits for nothing
         }
     }
 

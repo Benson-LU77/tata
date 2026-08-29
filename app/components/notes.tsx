@@ -303,10 +303,16 @@ export function NotesPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cityLive, connected]);
 
-  /* while the panel is open and the link is down, quietly retry every 8 s
-     on our own — and push any waiting words the moment it heals */
+  /* While the panel is open, quietly retry every 8 s and push any waiting
+     words the moment the road clears. This runs on the phone too now: a
+     page that answered "still coming down from iCloud" is usually there a
+     few seconds later, and without a retry that save would simply be lost
+     until the writer happened to type again. Words the store is still
+     holding count as a reason to retry, even when the link looks fine —
+     a failed write never lowers `connected`. */
   useEffect(() => {
-    if (!open || connected || view === "setup" || isIOS) return;
+    if (!open || view === "setup") return;
+    if (connected && !store.getSnapshot().dirty) return;
     const id = window.setInterval(() => {
       const client = clientRef.current;
       if (!client || document.hidden) return;
@@ -315,7 +321,7 @@ export function NotesPanel({
       });
     }, 8000);
     return () => window.clearInterval(id);
-  }, [open, connected, view, checkConnection, store]);
+  }, [open, connected, view, checkConnection, store, snap.dirty]);
 
   const cursorSoon = useCallback((delay: number) => {
     window.setTimeout(() => editorRef.current?.cursorToEnd(), delay);
@@ -427,31 +433,28 @@ export function NotesPanel({
     if (!handle) return; // user closed the picker — nothing changes
     saveBridgeMode("fsapi");
     const dest = fsapiStore(handle);
-    /* moving day: pages from the local bookcase follow into the folder —
-       only names the folder does not already have; nothing is overwritten */
+    /* Moving day: pages from the local bookcase follow into the folder.
+       A folder we cannot read is NOT an empty folder — believing that
+       would pour our whole bookcase into a vault that already holds years
+       of someone's writing. And every landing goes through the guard, so
+       even a name we think is free is checked before it is used. */
+    const bridge = buildFsBridge(dest);
     try {
       if (opfsAvailable()) {
+        const have = new Set(await bridge.list()); // throws → no move at all
         const src = opfsStore();
-        const have = new Set(
-          await (async () => {
-            const out: string[] = [];
-            try {
-              return await buildFsBridge(dest).list();
-            } catch {
-              return out;
-            }
-          })(),
-        );
         for (const name of await src.list()) {
           if (have.has(name)) continue;
           const doc = await src.read(name);
-          if (doc && doc.text.trim() !== "") await dest.write(name, doc.text);
+          if (!doc || doc.text.trim() === "") continue;
+          const res = await bridge.writeGuarded(name, doc.text, null, null);
+          if (!res.ok) logDebug("move", `${name}: ${res.reason}`);
         }
       }
     } catch (err) {
-      logDebug("move", String(err).slice(0, 60));
+      logDebug("move", `stopped: ${String(err).slice(0, 60)}`);
     }
-    adoptBridge(buildFsBridge(dest));
+    adoptBridge(bridge);
   }, [adoptBridge]);
 
   /* the shell's repair is to choose again — there is no silent handle to

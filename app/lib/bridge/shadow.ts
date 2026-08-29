@@ -46,6 +46,25 @@ export async function saveShadow(file: string, content: string, mtime: number | 
   }
 }
 
+/**
+ * Every shadow we hold, newest first. The export uses this: a safety net
+ * with no way out of it is not a safety net, and a zip of files is the
+ * plainest exit there is.
+ */
+export async function allShadows(): Promise<Shadow[]> {
+  try {
+    const database = await db();
+    if (!database.objectStoreNames.contains("shadows")) return [];
+    return await new Promise((resolve, reject) => {
+      const req = database.transaction("shadows", "readonly").objectStore("shadows").getAll();
+      req.onsuccess = () => resolve((req.result as Shadow[]).sort((a, b) => b.at - a.at));
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function shadowsFor(file: string): Promise<Shadow[]> {
   try {
     const database = await db();

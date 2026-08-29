@@ -36,6 +36,7 @@ import {
 import { PET_ACTIONS, QUEST_LINES } from "./lib/game/bonds-lines";
 import { repliesFor, closerFor, QUIET_EXIT } from "./lib/game/replies";
 import { nativeAvailable } from "./lib/bridge/native";
+import { allShadows } from "./lib/bridge/shadow";
 import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
@@ -159,6 +160,12 @@ export default function Home() {
       try {
         files["tata.json"] = strToU8(await client.read("tata.json"));
       } catch {}
+      /* the versions something replaced, carried out with the rest — an
+         undo that needs no new machinery, only a door */
+      for (const s of await allShadows()) {
+        const stamp = new Date(s.at).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        files[`replaced/${s.file.replace(/\.md$/i, "")} ${stamp}.md`] = strToU8(s.content);
+      }
       if (Object.keys(files).length === 0) return;
       const blob = new Blob([zipSync(files).slice().buffer], { type: "application/zip" });
       const a = document.createElement("a");
