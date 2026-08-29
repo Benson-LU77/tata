@@ -14,6 +14,7 @@ import { BRIDGE_MODE_KEY, loadBridgeMode, saveBridgeMode } from "../lib/bridge/t
 import { buildFsBridge } from "../lib/bridge/fs-bridge";
 import { opfsAvailable, opfsStore } from "../lib/bridge/opfs";
 import { fsapiAvailable, pickFolder, fsapiStore, forgetHandle } from "../lib/bridge/fsapi";
+import { nativeAvailable, pickVaultFolder, forgetVaultFolder } from "../lib/bridge/native";
 import { logDebug } from "../lib/debuglog";
 import { loadConfig } from "../lib/obsidian";
 import { migrateLegacyDraft } from "../lib/drafts";
@@ -453,10 +454,29 @@ export function NotesPanel({
     adoptBridge(buildFsBridge(dest));
   }, [adoptBridge]);
 
+  /* the shell's repair is to choose again — there is no silent handle to
+     re-grant, and we refuse to write anywhere but the folder they meant */
+  const handlePickNative = useCallback(async () => {
+    const picked = await pickVaultFolder();
+    if (!picked) return;
+    const resolved = await resolveBridge();
+    if (resolved.bridge) adoptBridge(resolved.bridge);
+  }, [adoptBridge]);
+
+  const handleUseOwnFolder = useCallback(async () => {
+    await forgetVaultFolder();
+    const resolved = await resolveBridge();
+    if (resolved.bridge) adoptBridge(resolved.bridge);
+  }, [adoptBridge]);
+
   const handleRegrant = useCallback(async () => {
+    if (nativeAvailable()) {
+      await handlePickNative();
+      return;
+    }
     const bridge = await regrantFolder();
     if (bridge) adoptBridge(bridge);
-  }, [adoptBridge]);
+  }, [adoptBridge, handlePickNative]);
 
   const connect = useCallback(() => {
     const config: ObsidianConfig = {
@@ -668,20 +688,36 @@ export function NotesPanel({
           )}
           <p className="notes-help">{t("notes.setup.choose")}</p>
           <div className="setup-cards">
-            {fsapiAvailable() && (
+            {nativeAvailable() && (
+              <>
+                <button type="button" className="setup-card" onClick={() => void handlePickNative()}>
+                  <strong>{t("notes.setup.card.pick")}</strong>
+                  <span>{t("notes.setup.card.pick.desc")}</span>
+                </button>
+                <button type="button" className="setup-card" onClick={() => void handleUseOwnFolder()}>
+                  <strong>{t("notes.setup.card.own")}</strong>
+                  <span>{t("notes.setup.card.own.desc")}</span>
+                </button>
+              </>
+            )}
+            {!nativeAvailable() && fsapiAvailable() && (
               <button type="button" className="setup-card" onClick={() => void handlePickFolder()}>
                 <strong>{t("notes.setup.card.folder")}</strong>
                 <span>{t("notes.setup.card.folder.desc")}</span>
               </button>
             )}
-            <button type="button" className="setup-card" onClick={() => setSetupMode("rest")}>
-              <strong>{t("notes.setup.card.rest")}</strong>
-              <span>{t("notes.setup.card.rest.desc")}</span>
-            </button>
-            <button type="button" className="setup-card" onClick={handleOpfs}>
-              <strong>{t("notes.setup.card.opfs")}</strong>
-              <span>{t("notes.setup.card.opfs.desc")}</span>
-            </button>
+            {!nativeAvailable() && (
+              <>
+                <button type="button" className="setup-card" onClick={() => setSetupMode("rest")}>
+                  <strong>{t("notes.setup.card.rest")}</strong>
+                  <span>{t("notes.setup.card.rest.desc")}</span>
+                </button>
+                <button type="button" className="setup-card" onClick={handleOpfs}>
+                  <strong>{t("notes.setup.card.opfs")}</strong>
+                  <span>{t("notes.setup.card.opfs.desc")}</span>
+                </button>
+              </>
+            )}
           </div>
           {(loadBridgeMode() !== null || loadConfig() !== null) && (
             <button

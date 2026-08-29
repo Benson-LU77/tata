@@ -1,25 +1,49 @@
 import Foundation
+import UIKit
+import UniformTypeIdentifiers
 import Capacitor
 
 /**
- * The native vault: the app's own Documents folder, visible in the
- * Files app and carried by iCloud device backup. Three methods only —
- * the JS guard-brain (buildFsBridge) owns every rule about conflicts,
- * shadows and verified writes; this file just moves bytes.
+ * The native vault. By default the app's own Documents folder — visible
+ * in the Files app, carried by device backup. If the writer points us at
+ * a folder of their own (an iCloud Drive folder, an Obsidian vault), the
+ * pages live there instead and Apple's own sync carries them between
+ * devices; Tata never operates a server.
+ *
+ * The JS guard-brain (buildFsBridge) owns every rule about conflicts,
+ * shadows and verified writes. This file only moves bytes — and is very
+ * careful about the difference between "absent", "not downloaded yet"
+ * and "I could not look".
  */
 @objc(VaultPlugin)
-public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
+public class VaultPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPickerDelegate,
+    UIAdaptivePresentationControllerDelegate {
     public let identifier = "VaultPlugin"
     public let jsName = "Vault"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "list", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "read", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "write", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pickFolder", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "folderStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "forgetFolder", returnType: CAPPluginReturnPromise),
     ]
 
-    private var root: URL {
+    private static let bookmarkKey = "tata.vault.bookmark"
+    private static let displayKey = "tata.vault.display"
+
+    /** the chosen folder, held open for the whole process once opened */
+    private var folder: URL?
+    private var holdingScope = false
+    /** the one in-flight picker call — main thread only */
+    private var pickCall: CAPPluginCall?
+
+    private var documents: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
+
+    /** the chosen folder if we hold one, otherwise our own Documents */
+    private var root: URL { folder ?? documents }
 
     /**
      * Every file touch happens here, never on Capacitor's bridge queue.
@@ -164,4 +188,140 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("write failed: \(error.localizedDescription)")
         }
     }
+
+    // MARK: - choosing a folder of one's own
+
+    /**
+     * Restore the remembered folder. Called once at load, and retried with
+     * backoff: right after a reboot the file provider may not be up yet,
+     * and a bookmark that fails at that moment is not a bookmark that is
+     * broken. We never throw one away on failure — only the writer does,
+     * by choosing again or by forgetting it on purpose.
+     */
+    override public func load() {
+        io.async { self.restoreFolder(attempt: 0) }
+    }
+
+    private func restoreFolder(attempt: Int) {
+        guard let data = UserDefaults.standard.data(forKey: Self.bookmarkKey) else { return }
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: data, bookmarkDataIsStale: &stale) else {
+            retryRestore(attempt)
+            return
+        }
+        // on iOS the real failure signal is this call, not the stale flag
+        guard url.startAccessingSecurityScopedResource() else {
+            retryRestore(attempt)
+            return
+        }
+        folder = url
+        holdingScope = true
+        if stale { saveBookmark(for: url) } // rebuild while the scope is open
+    }
+
+    private func retryRestore(_ attempt: Int) {
+        let delays: [Double] = [0.5, 2, 5]
+        guard attempt < delays.count else { return } // folderStatus will ask for a re-pick
+        io.asyncAfter(deadline: .now() + delays[attempt]) {
+            self.restoreFolder(attempt: attempt + 1)
+        }
+    }
+
+    private func saveBookmark(for url: URL) {
+        guard let data = try? url.bookmarkData() else { return }
+        UserDefaults.standard.set(data, forKey: Self.bookmarkKey)
+        UserDefaults.standard.set(url.lastPathComponent, forKey: Self.displayKey)
+    }
+
+    @objc func pickFolder(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard self.pickCall == nil else {
+                call.reject("a folder picker is already open", "PICKER_BUSY")
+                return
+            }
+            guard let host = self.bridge?.viewController else {
+                call.reject("no window to present from", "NO_HOST")
+                return
+            }
+            self.pickCall = call
+            let picker = UIDocumentPickerViewController(
+                forOpeningContentTypes: [UTType.folder], asCopy: false)
+            picker.delegate = self
+            picker.allowsMultipleSelection = false
+            // a swipe-down dismissal is neither "picked" nor "cancelled" as
+            // far as the picker is concerned — without this the JS promise
+            // would hang forever
+            picker.presentationController?.delegate = self
+            host.present(picker, animated: true)
+        }
+    }
+
+    /** main thread only; hands the call over exactly once */
+    private func takePickCall() -> CAPPluginCall? {
+        let call = pickCall
+        pickCall = nil
+        return call
+    }
+
+    public func documentPicker(
+        _ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]
+    ) {
+        let call = takePickCall()
+        guard let url = urls.first else {
+            call?.reject("nothing chosen", "PICK_CANCELLED")
+            return
+        }
+        io.async {
+            guard url.startAccessingSecurityScopedResource() else {
+                call?.reject("could not open that folder", "NO_ACCESS")
+                return
+            }
+            if let old = self.folder, self.holdingScope, old != url {
+                old.stopAccessingSecurityScopedResource()
+            }
+            self.folder = url
+            self.holdingScope = true
+            self.saveBookmark(for: url) // built while the scope is open
+            call?.resolve(["name": url.lastPathComponent, "path": url.path])
+        }
+    }
+
+    public func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        takePickCall()?.reject("cancelled", "PICK_CANCELLED")
+    }
+
+    public func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        takePickCall()?.reject("cancelled", "PICK_CANCELLED")
+    }
+
+    /**
+     * Where the pages live right now, and whether we are locked out.
+     * "needsPick" is the honest middle state: a folder was chosen once and
+     * we cannot reach it — better to say so than to quietly write somewhere
+     * else and split the vault in two.
+     */
+    @objc func folderStatus(_ call: CAPPluginCall) {
+        io.async {
+            let remembered = UserDefaults.standard.data(forKey: Self.bookmarkKey) != nil
+            call.resolve([
+                "mode": self.folder != nil ? "folder" : "documents",
+                "needsPick": remembered && self.folder == nil,
+                "name": UserDefaults.standard.string(forKey: Self.displayKey) ?? "",
+            ])
+        }
+    }
+
+    @objc func forgetFolder(_ call: CAPPluginCall) {
+        io.async {
+            if let f = self.folder, self.holdingScope {
+                f.stopAccessingSecurityScopedResource()
+            }
+            self.folder = nil
+            self.holdingScope = false
+            UserDefaults.standard.removeObject(forKey: Self.bookmarkKey)
+            UserDefaults.standard.removeObject(forKey: Self.displayKey)
+            call.resolve()
+        }
+    }
 }
+

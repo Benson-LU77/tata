@@ -16,7 +16,7 @@ import { loadBridgeMode } from "./types";
 import { buildFsBridge } from "./fs-bridge";
 import { opfsAvailable, opfsStore } from "./opfs";
 import { fsapiAvailable, loadHandle, ensurePermission, fsapiStore } from "./fsapi";
-import { nativeAvailable, nativeStore } from "./native";
+import { nativeAvailable, nativeStore, folderStatus } from "./native";
 
 export type ResolvedBridge = {
   mode: BridgeKind;
@@ -30,6 +30,13 @@ export async function resolveBridge(): Promise<ResolvedBridge> {
   /* inside the iOS shell there is exactly one road: the app's own
      Documents folder. No chooser, no fallbacks. */
   if (nativeAvailable()) {
+    const status = await folderStatus();
+    if (status.needsPick) {
+      // A folder was chosen once and we cannot reach it. Falling back to
+      // the app's own Documents would quietly start a second vault beside
+      // the real one — better to hold still and ask.
+      return { mode: "native", bridge: null, needsPermission: true };
+    }
     return { mode: "native", bridge: buildFsBridge(nativeStore()) };
   }
   const chosen = loadBridgeMode();
