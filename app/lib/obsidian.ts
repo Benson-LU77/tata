@@ -80,17 +80,29 @@ export class ObsidianClient {
     // folders recurse (depth 3) — a vault organised as Journal/2026/…
     // must not read as an empty city
     const folder = this.folder();
-    const walk = async (prefix: string, depth: number): Promise<string[]> => {
+    const walk = async (prefix: string, depth: number, top: boolean): Promise<string[]> => {
       const path = prefix ? `/vault/${encodePath(prefix)}/` : "/vault/";
       const res = await fetch(this.base() + path, { headers: this.headers() });
-      if (res.status === 404) return [];
+      if (res.status === 404) {
+        // A subfolder that is not there holds no pages — fine. But the
+        // configured folder not being there is a vault we cannot see, and
+        // answering "empty" would make the city vanish while the panel
+        // still reads connected, and every page look absent and therefore
+        // free to overwrite. Renaming a folder must not cost words.
+        if (top) throw new Error("HTTP 404");
+        return [];
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { files?: string[] };
       const out: string[] = [];
       for (const file of data.files ?? []) {
         if (file.endsWith("/")) {
           if (depth > 0) {
-            const sub = await walk(prefix ? `${prefix}/${file.slice(0, -1)}` : file.slice(0, -1), depth - 1);
+            const sub = await walk(
+              prefix ? `${prefix}/${file.slice(0, -1)}` : file.slice(0, -1),
+              depth - 1,
+              false,
+            );
             // names stay relative to the configured folder
             out.push(...sub.map((f) => `${file}${f}`));
           }
@@ -100,7 +112,7 @@ export class ObsidianClient {
       }
       return out;
     };
-    const files = await walk(folder, 3);
+    const files = await walk(folder, 3, true);
     return files.sort((a, b) => b.localeCompare(a));
   }
 
