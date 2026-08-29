@@ -21,6 +21,43 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 
+    /**
+     * Every file touch happens here, never on Capacitor's bridge queue.
+     *
+     * Capacitor runs all plugin calls for the whole app on one shared
+     * serial queue, and a coordinated read of an iCloud file that has not
+     * come down yet blocks for an unbounded time — so a single such read
+     * on the bridge queue would freeze every other call in the app with it.
+     */
+    private let io = DispatchQueue(label: "page.tata.vault.io")
+
+    /** is the content here, or only the name? */
+    private enum Presence { case here, notDownloaded, unsure }
+
+    private func presence(of url: URL) -> Presence {
+        guard
+            let v = try? url.resourceValues(forKeys: [
+                .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey,
+            ])
+        else { return .unsure }
+        guard v.isUbiquitousItem == true else { return .here } // an ordinary local file
+        switch v.ubiquitousItemDownloadingStatus {
+        case .some(.current), .some(.downloaded): return .here
+        case .some(.notDownloaded): return .notDownloaded
+        default: return .unsure
+        }
+    }
+
+    /**
+     * Ask iCloud for the file and return immediately. Waiting is what
+     * freezes apps; the page will be here on a later read, and until then
+     * the JS guard treats "not downloaded" as a refusal to write, which is
+     * the only answer that cannot lose words.
+     */
+    private func beginDownload(_ url: URL) {
+        try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+    }
+
     /// names are vault-relative ("Journal/2026-08-27 Today.md"); never
     /// let one climb out of Documents
     private func resolve(_ name: String) -> URL? {
@@ -37,6 +74,10 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func list(_ call: CAPPluginCall) {
+        io.async { self.listOnQueue(call) }
+    }
+
+    private func listOnQueue(_ call: CAPPluginCall) {
         var out: [String] = []
         let fm = FileManager.default
         let base = root.standardizedFileURL.path
@@ -65,8 +106,12 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func read(_ call: CAPPluginCall) {
+        io.async { self.readOnQueue(call) }
+    }
+
+    private func readOnQueue(_ call: CAPPluginCall) {
         guard let name = call.getString("name"), let url = resolve(name) else {
-            call.reject("bad name")
+            call.reject("bad name", "BAD_NAME")
             return
         }
         // "absent" and "unreadable" are different answers. Only a file the
@@ -78,11 +123,16 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve(["exists": false])
             return
         }
+        if presence(of: url) == .notDownloaded {
+            beginDownload(url) // and do not wait for it
+            call.reject("still coming down from iCloud: \(name)", "ICLOUD_DOWNLOADING")
+            return
+        }
         guard
             let data = try? Data(contentsOf: url),
             let text = String(data: data, encoding: .utf8)
         else {
-            call.reject("unreadable: \(name)")
+            call.reject("unreadable: \(name)", "READ_FAILED")
             return
         }
         let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
@@ -91,6 +141,10 @@ public class VaultPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func write(_ call: CAPPluginCall) {
+        io.async { self.writeOnQueue(call) }
+    }
+
+    private func writeOnQueue(_ call: CAPPluginCall) {
         guard
             let name = call.getString("name"),
             let text = call.getString("text"),
