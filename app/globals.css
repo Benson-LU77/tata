@@ -3195,6 +3195,14 @@ label.panel-export { text-align: center; }
   .brand-col { gap: 2px; }
   .signal { margin-top: 1px; }
 
+  /* one sheet, one scroller. A nested scrolling list inside a sheet that
+     already scrolls gives a phone two things to fight over, and the inner
+     one is short enough to show a single card at a time. */
+  .depot-items,
+  .depot-orders,
+  .month-list,
+  .dex-list { overflow: visible; max-height: none; }
+
   /* a phone has no keyboard — the shortcut list is desk furniture */
   .panel-shortcuts { display: none; }
 
