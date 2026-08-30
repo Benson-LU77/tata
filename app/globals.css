@@ -3203,9 +3203,13 @@ label.panel-export {
      notch then pushed straight underneath it */
   .search-veil { top: calc(84px + env(safe-area-inset-top, 0px)); }
 
-  /* 8 — the signal sits under the name, not adrift below it */
+  /* 8 — the signal sits under the name, not adrift below it.
+     It is a button in the topbar, so touch gives it a 44px target and
+     centres the text inside that — which is the real distance you see,
+     not the 2px between the boxes. Keep the target, lift the words. */
   .brand-col { gap: 2px; }
-  .signal { margin-top: 1px; }
+  .signal { align-items: flex-start; margin-top: 1px; }
+  .signal i { margin-top: 3px; }
 
   /* one sheet, one scroller. A nested scrolling list inside a sheet that
      already scrolls gives a phone two things to fight over, and the inner
