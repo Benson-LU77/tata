@@ -25,7 +25,7 @@ import { floorsOf } from "../lib/city/plan";
 import { wordWatts } from "../lib/game/watts";
 import { MarkdownEditor } from "./editor";
 import type { EditorApi } from "./editor";
-import { createDocStore, newNoteName, todayStamp } from "../lib/notes/doc-store";
+import { createDocStore, isSealed, newNoteName, todayStamp } from "../lib/notes/doc-store";
 import { PageTurn } from "./page-turn";
 import type { DocStore } from "../lib/notes/doc-store";
 
@@ -620,11 +620,7 @@ export function NotesPanel({
 
   /* past days are the record, not the draft: sealed here, editable only
      in Obsidian itself */
-  const sealed =
-    notebookSkin &&
-    !!activeFile &&
-    /^\d{4}-\d{2}-\d{2} /.test(activeFile) &&
-    activeFile.slice(0, 10) < todayStamp();
+  const sealed = notebookSkin && isSealed(activeFile, todayStamp());
 
   return (
     <aside

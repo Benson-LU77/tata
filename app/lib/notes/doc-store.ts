@@ -55,6 +55,24 @@ export type DocCallbacks = {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+/**
+ * Is this page the record rather than the draft?
+ *
+ * A past day you wrote is sealed — it stands as what that day was. A past
+ * day you left dark is not sealed, because you can still fill it in.
+ *
+ * Both shapes name the same day and both must be recognised: pages written
+ * on the day are "2026-08-25 Today.md", pages backfilled later are
+ * "2026-08-25.md". Matching only the first shape left every backfilled page
+ * editable forever, which put two kinds of past under two different rules
+ * for no reason but a space.
+ */
+export function isSealed(file: string | null, today: string): boolean {
+  if (!file) return false;
+  if (!/^\d{4}-\d{2}-\d{2}[ .]/.test(file)) return false;
+  return file.slice(0, 10) < today;
+}
+
 export function todayStamp() {
   const now = new Date();
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
