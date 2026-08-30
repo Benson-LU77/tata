@@ -46,6 +46,8 @@ The desktop version at tata.page can connect straight to an Obsidian vault.
 - **年齡分級**: 4+
 - **App Privacy 問卷**: Data Not Collected(全部勾「不收集」)
 - **價格**: 免費,無內購
+- **保管庫**: v1 只用 App 自己的文件夾(「檔案」App 看得到)。選使用者自己的
+  資料夾 / iCloud 同步的功能已寫好但未上場,等真機驗證後於 v1.1 開放。
 - **裝置**: 僅 iPhone(v1);**直向鎖定**——橫向的手機版面在 720/900 兩個斷點之間會破碎,而 Tata 本來就是直的:筆記本、往上長的城市。iPad 實測可跑(相容模式以外的原生版面),留待 v1.1 專門調校後再開。
 
 ## 審查備註(App Review Notes 欄位,英文)

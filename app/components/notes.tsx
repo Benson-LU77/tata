@@ -54,6 +54,17 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 
 
 
+/**
+ * Choosing a folder of your own is built and works in the simulator, but
+ * not one line of it has been proven on a real device with real iCloud:
+ * whether a bookmark survives a reboot, what an undownloaded page looks
+ * like on disk, whether the download call needs an entitlement. Until
+ * that list is walked on hardware, v1 offers the one road that has been
+ * proven end to end — the app's own Documents folder. Flip this to true
+ * for v1.1 and the cards come back; nothing else has to change.
+ */
+const FOLDER_PICKING_SHIPPED = false;
+
 const noSubscription = () => () => {};
 const readNotebookFlag = () => !new URLSearchParams(window.location.search).has("oldnotes");
 
@@ -400,7 +411,6 @@ export function NotesPanel({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, makeClient, checkConnection, openTonight, store, cursorSoon, requestOpen, requestArchive]);
 
   /* open a specific building */
@@ -694,7 +704,7 @@ export function NotesPanel({
           )}
           <p className="notes-help">{t("notes.setup.choose")}</p>
           <div className="setup-cards">
-            {nativeAvailable() && (
+            {nativeAvailable() && FOLDER_PICKING_SHIPPED && (
               <>
                 <button type="button" className="setup-card" onClick={() => void handlePickNative()}>
                   <strong>{t("notes.setup.card.pick")}</strong>
@@ -1057,7 +1067,11 @@ export function NotesPanel({
             </em>
           )}
           {shownError && view === "edit" && <p className="notes-error">{shownError}</p>}
-          {notebookSkin && (
+          {/* in the shell there is exactly one place pages can live, so the
+              vault button only appears where there is a choice to make —
+              or a folder grant to repair */}
+          {notebookSkin &&
+            (!nativeAvailable() || FOLDER_PICKING_SHIPPED || needsPermission) && (
             <button
               type="button"
               className="page-gear"
