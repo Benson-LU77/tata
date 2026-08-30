@@ -1150,7 +1150,14 @@ label.panel-export {
 
   /* the top-left block earns its corner back */
   .topbar { align-items: flex-start; }
-  .brand { gap: 5px; } /* the words keep the figure company */
+  /* The figure's button is a 44px touch cell around a 30px sprite, so it
+     reserves dead space on both sides and pushes the words away. Keep the
+     cell, let it overlap its neighbours instead of shouldering them. */
+  .brand-you { margin: -2px -6px -2px -6px; }
+  .brand { gap: 0; } /* the words keep the figure company */
+  /* a tap leaves :hover stuck on a touch screen — the frame would sit
+     around the figure long after the finger left */
+  .brand-you:hover { border-color: transparent; }
   .brand-col { gap: 4px; padding-top: 1px; }
   .brand-word { font-size: 12px; }
   .brand-eyebrow { font-size: 7px; letter-spacing: .24em; }
