@@ -870,7 +870,9 @@ export function NotesPanel({
                 </div>
               ));
           })()}
-          <p className="archive-note">{t("notes.sealed")}</p>
+          <p className="archive-note">
+            {t(nativeAvailable() ? "notes.sealed.native" : "notes.sealed")}
+          </p>
         </div>
       )}
       {view === "edit" && (!notebookSkin || bookOpen) && (

@@ -1117,6 +1117,7 @@ label.panel-export { text-align: center; }
   .city-app.writing:has(.notes-panel.notebook) .city-field { height: 100dvh; }
 
   .panel-heading { position: relative; padding-bottom: 12px; }
+  .panel-heading.dex-sub::before { content: none; }
   .panel-heading::before {
     content: "";
     width: 42px;
@@ -1917,6 +1918,8 @@ label.panel-export { text-align: center; }
 }
 .pick-chip em { font: 400 10.5px/1 var(--mono); color: var(--v4); font-style: normal; white-space: nowrap; }
 .pick-chip button {
+  flex: none;
+  white-space: nowrap; /* two CJK glyphs are a word, not a column */
   border: 1px solid var(--line);
   background: transparent;
   color: var(--v6);
@@ -1996,6 +1999,21 @@ label.panel-export { text-align: center; }
   vertical-align: -3px;
   margin: 0 2px;
   image-rendering: pixelated;
+}
+
+.city-bubble--docked { position: relative; }
+.bubble-close {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--v5);
+  font: 400 18px/1 var(--mono);
+  cursor: pointer;
 }
 
 /* the fork in the conversation */
@@ -3157,6 +3175,25 @@ label.panel-export { text-align: center; }
   /* the command menu's preview needs a margin to sit in, and a phone
      has none — it lands on top of the list it is describing */
   .cm-completionInfo { display: none; }
+
+  /* 2 — a sheet must never be wider than the phone it is on */
+  .settings-panel { overflow-x: hidden; }
+  .mirror-body { flex-wrap: wrap; }
+  .mirror-preview { flex: none; }
+  .mirror-controls { min-width: 0; }
+  .mirror-options { flex-wrap: wrap; }
+
+  /* 6 — the book may grow downwards with the words, never sideways */
+  .notebook .notes-editor { width: 100%; max-width: 100%; }
+  .notebook .notes-editor-bar { flex-wrap: wrap; row-gap: 4px; }
+
+  /* 7 — the search field cleared the topbar by a fixed 84px, which the
+     notch then pushed straight underneath it */
+  .search-veil { top: calc(84px + env(safe-area-inset-top, 0px)); }
+
+  /* 8 — the signal sits under the name, not adrift below it */
+  .brand-col { gap: 2px; }
+  .signal { margin-top: 1px; }
 
   /* a phone has no keyboard — the shortcut list is desk furniture */
   .panel-shortcuts { display: none; }

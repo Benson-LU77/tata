@@ -1725,6 +1725,24 @@ export default function Home() {
             }}
           >
             <strong>{bubble.name}</strong>
+            {!bubble.choices && (
+              /* nothing to answer here, so the only way out was to wait —
+                 give it the same corner X the notebook has */
+              <button
+                type="button"
+                className="bubble-close"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearEncounterTimers();
+                  encStageRef.current = null;
+                  setBubble(null);
+                  setEncounterKey(null);
+                }}
+                aria-label={t("common.close")}
+              >
+                ×
+              </button>
+            )}
             <span>{bubble.text}</span>
             {bubble.choices && (
               <div className="bubble-choices">
