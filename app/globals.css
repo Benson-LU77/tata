@@ -2058,6 +2058,10 @@ label.panel-export {
 }
 .mirror-name input {
   flex: 1;
+  /* a text input carries an intrinsic width of about twenty characters
+     and, as a flex item, will not shrink below it — which is how one
+     field made the whole mirror slide sideways */
+  min-width: 0;
   padding: 9px 10px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, .03);
@@ -3182,8 +3186,10 @@ label.panel-export {
      has none — it lands on top of the list it is describing */
   .cm-completionInfo { display: none; }
 
-  /* 2 — a sheet must never be wider than the phone it is on */
-  .settings-panel { overflow-x: hidden; }
+  /* 2 — a sheet must never be wider than the phone it is on. Fixed by
+     letting the contents fit, NOT by clipping: overflow-x on the sheet
+     changes how it scrolls, and a mirror you cannot scroll is worse than
+     a mirror that is slightly wide. */
   .mirror-body { flex-wrap: wrap; }
   .mirror-preview { flex: none; }
   .mirror-controls { min-width: 0; }
