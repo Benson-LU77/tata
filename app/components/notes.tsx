@@ -368,13 +368,16 @@ export function NotesPanel({
       if (cancelled) return;
       const resolved = await resolveBridge();
       if (cancelled) return;
-      if (resolved.mode === "rest") {
-        const config = loadConfig();
-        if (config) {
-          setUrl(config.url);
-          setKey(config.key);
-          setFolder(config.folder);
-        }
+      // Always mirror the saved config into the form, whichever bridge
+      // answered. Gating this on mode meant the folder box could sit empty
+      // while a folder was configured — and connect() writes the box back,
+      // so one press would silently move every future page to the vault
+      // root, leaving the old ones behind in a folder nothing writes to.
+      const saved = loadConfig();
+      if (saved) {
+        setUrl(saved.url);
+        setKey(saved.key);
+        setFolder(saved.folder);
       }
       if (resolved.needsPermission) setNeedsPermission(true);
       if (resolved.bridge) {

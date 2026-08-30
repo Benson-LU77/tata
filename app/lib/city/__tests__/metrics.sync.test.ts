@@ -28,7 +28,23 @@ function fakeClient(names: string[]) {
   };
 }
 
-const settle = () => new Promise((r) => setTimeout(r, 50));
+/**
+ * Wait for the background sync to actually finish, rather than for a
+ * fixed nap. The in-flight guard means a sync started while another is
+ * running is skipped silently — so a sleep that is long enough on an idle
+ * machine quietly tests nothing on a busy one.
+ */
+async function syncOnce(names: string[]): Promise<NoteMetric[] | null> {
+  let got: NoteMetric[] | null = null;
+  await loadCityMetrics(fakeClient(names), (m) => {
+    got = m;
+  });
+  const started = Date.now();
+  while (got === null && Date.now() - started < 5000) {
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  return got;
+}
 
 async function seedCache(n: number) {
   await cityCache.replaceAll(
@@ -41,39 +57,26 @@ describe("city sync guards", () => {
     await cityCache.replaceAll([metric("x.md")]); // reset via replace
     await seedCache(10);
     // drain any shrink streak left by a previous test: three healthy syncs
-    for (let i = 0; i < 3; i++) {
-      const all = (await cityCache.all()).map((m) => m.file);
-      await loadCityMetrics(fakeClient(all), () => {});
-      await settle();
+    for (let i = 0; i < 3; i += 1) {
+      await syncOnce((await cityCache.all()).map((m) => m.file));
     }
   });
 
   it("keeps the cached city when a sync suddenly sees half of it gone", async () => {
-    let fresh: NoteMetric[] = [];
-    await loadCityMetrics(fakeClient(["2026-08-01.md"]), (m) => {
-      fresh = m;
-    });
-    await settle();
-    expect(fresh.length).toBe(10); // merged, not collapsed
+    const fresh = await syncOnce(["2026-08-01.md"]);
+    expect(fresh?.length).toBe(10); // merged, not collapsed
     expect((await cityCache.all()).length).toBe(10);
   });
 
   it("believes the shrink once it repeats", async () => {
-    for (let i = 0; i < 3; i++) {
-      await loadCityMetrics(fakeClient(["2026-08-01.md"]), () => {});
-      await settle();
-    }
+    for (let i = 0; i < 3; i += 1) await syncOnce(["2026-08-01.md"]);
     expect((await cityCache.all()).length).toBe(1); // a real purge lands
   });
 
   it("small cities may shrink freely (no threshold below 8)", async () => {
     await seedCache(4);
-    let fresh: NoteMetric[] = [];
-    await loadCityMetrics(fakeClient(["2026-08-01.md"]), (m) => {
-      fresh = m;
-    });
-    await settle();
-    expect(fresh.length).toBe(1);
+    const fresh = await syncOnce(["2026-08-01.md"]);
+    expect(fresh?.length).toBe(1);
   });
 
   it("overlapping syncs collapse to one background read", async () => {
@@ -86,12 +89,18 @@ describe("city sync guards", () => {
       },
       readDoc: async () => ({ content: "hi", mtime: 2, tags: [] }),
     };
+    let done = false;
     await Promise.all([
-      loadCityMetrics(slow, () => {}),
+      loadCityMetrics(slow, () => {
+        done = true;
+      }),
       loadCityMetrics(slow, () => {}),
       loadCityMetrics(slow, () => {}),
     ]);
-    await settle();
+    const started = Date.now();
+    while (!done && Date.now() - started < 5000) {
+      await new Promise((r) => setTimeout(r, 20));
+    }
     expect(listCalls).toBe(1);
   });
 });

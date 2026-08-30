@@ -14,6 +14,7 @@ import type { DecorationSet } from "@codemirror/view";
 import { history, defaultKeymap, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { syntaxHighlighting, HighlightStyle, syntaxTree } from "@codemirror/language";
 import { autocompletion, startCompletion } from "@codemirror/autocomplete";
+import { tooltips } from "@codemirror/view";
 import type { CompletionContext, Completion } from "@codemirror/autocomplete";
 import { markdown, markdownLanguage, markdownKeymap } from "@codemirror/lang-markdown";
 import { stampRows, stampMenu } from "../lib/city/sprites/stamps";
@@ -671,6 +672,10 @@ export function MarkdownEditor({
           taskClick,
           wikiClick(() => openPageRef.current),
           tagClick(() => openTagRef.current),
+          // the book plate clips its own contents, so the command menu is
+          // hung on the body instead — otherwise it opens inside the page
+          // and half of it is simply not there
+          tooltips({ parent: document.body, position: "absolute" }),
           autocompletion({
             override: [
               slashSource(
