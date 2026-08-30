@@ -3154,6 +3154,10 @@ label.panel-export { text-align: center; }
   /* idle compass sinks deeper into the night, and sooner */
   .ui-hidden .immersion-ui { opacity: .22; }
 
+  /* the command menu's preview needs a margin to sit in, and a phone
+     has none — it lands on top of the list it is describing */
+  .cm-completionInfo { display: none; }
+
   /* a phone has no keyboard — the shortcut list is desk furniture */
   .panel-shortcuts { display: none; }
 

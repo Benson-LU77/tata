@@ -672,10 +672,13 @@ export function MarkdownEditor({
           taskClick,
           wikiClick(() => openPageRef.current),
           tagClick(() => openTagRef.current),
-          // the book plate clips its own contents, so the command menu is
+          // The book plate clips its own contents, so the command menu is
           // hung on the body instead — otherwise it opens inside the page
-          // and half of it is simply not there
-          tooltips({ parent: document.body, position: "absolute" }),
+          // and half of it is simply not there. Fixed, not absolute: the
+          // notebook is inside a translated container, and absolute
+          // coordinates measured against the viewport land thousands of
+          // pixels away once an ancestor transform is in play.
+          tooltips({ parent: document.body, position: "fixed" }),
           autocompletion({
             override: [
               slashSource(
