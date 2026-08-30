@@ -628,7 +628,13 @@ button:focus-visible, input:focus-visible {
   font-size: 12px;
 }
 .panel-export:hover { color: var(--p3); }
-label.panel-export { text-align: center; }
+label.panel-export {
+  /* this label lives among the settings rows, which are flex containers —
+     and in a flex box text-align centres nothing: the text becomes an
+     anonymous item placed by justify-content, which starts at the left */
+  justify-content: center;
+  text-align: center;
+}
 .debug-copy {
   margin-left: 8px;
   padding: 0 6px;
