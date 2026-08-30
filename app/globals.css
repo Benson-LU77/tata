@@ -1150,7 +1150,7 @@ label.panel-export {
 
   /* the top-left block earns its corner back */
   .topbar { align-items: flex-start; }
-  .brand { gap: 9px; }
+  .brand { gap: 5px; } /* the words keep the figure company */
   .brand-col { gap: 4px; padding-top: 1px; }
   .brand-word { font-size: 12px; }
   .brand-eyebrow { font-size: 7px; letter-spacing: .24em; }
@@ -3207,8 +3207,8 @@ label.panel-export {
      It is a button in the topbar, so touch gives it a 44px target and
      centres the text inside that — which is the real distance you see,
      not the 2px between the boxes. Keep the target, lift the words. */
-  .brand-col { gap: 2px; }
-  .signal { align-items: flex-start; margin-top: 1px; }
+  .brand-col { gap: 5px; }
+  .signal { align-items: flex-start; }
   .signal i { margin-top: 3px; }
 
   /* one sheet, one scroller. A nested scrolling list inside a sheet that
