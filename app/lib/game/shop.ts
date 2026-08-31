@@ -87,6 +87,38 @@ export const EMPTY_STATE: GameState = {
   updatedAt: 0,
 };
 
+/**
+ * The showcase save: a lived-in city for the demo — full registry,
+ * furnished streets, one public work standing, a sentence on the board.
+ * It exists in memory only and is NEVER persisted: the demo may spend,
+ * greet and redecorate freely without touching a real save.
+ */
+export function demoGameState(now: number): GameState {
+  const DAY = 86400000;
+  const d = (n: number) => {
+    const t = new Date(now - n * DAY);
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  };
+  const bonds: GameState["bonds"] = {};
+  // twelve neighbours across every tier: family down to just-met
+  [24, 18, 14, 11, 9, 7, 5, 4, 3, 2, 1, 1].forEach((n, i) => {
+    bonds[`person:${i}`] = { n, met: d(n + 3), last: d(i % 3) };
+  });
+  bonds["cat:0"] = { n: 6, met: d(12), last: d(1) };
+  bonds["dog:0"] = { n: 4, met: d(8), last: d(2) };
+  return {
+    ...EMPTY_STATE,
+    owned: ["cats", "birds", "dog", "lamps", "trees", "fountain", "harbor", "sister", "comet"],
+    look: { hat: "hat.tophat", hair: "hair.short", acc: "acc.none", tone: 2 },
+    bonds,
+    commissions: [
+      { id: "library", block: 0, placedAt: now - 9 * DAY, completedAt: now - 6 * DAY, rewardClaimed: true },
+    ],
+    billboard: { text: "今晚也有人在寫。", date: d(0) },
+    updatedAt: now,
+  };
+}
+
 /** minimal client surface so this module never imports the network layer */
 type VaultClient = {
   read(name: string): Promise<string>;

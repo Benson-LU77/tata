@@ -17,7 +17,7 @@ import type { VaultBridge } from "./lib/bridge/types";
 import { cityCache } from "./lib/drafts";
 import { bestStreakOf, earnedWatts, levelFromWatts, levelProgress, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
 import { dateAtCell, floorsOf } from "./lib/city/plan";
-import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
+import { CATALOG, EMPTY_STATE, demoGameState, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
 import { greet, remember, tierOf, nameOf, lineFor, tierName, type Tier, type Topic } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
@@ -198,6 +198,8 @@ export default function Home() {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const bondSaveTimerRef = useRef<number | null>(null);
   const bondSaveStateRef = useRef<GameState | null>(null);
+  /* the showcase city never writes home */
+  const demoRef = useRef(false);
   const metricsRef = useRef<NoteMetric[]>([]);
   const todayRef = useRef("");
 
@@ -342,7 +344,9 @@ export default function Home() {
       const demo = new URLSearchParams(window.location.search).get("demo");
       if (demo) {
         setIsDemoCity(true);
+        demoRef.current = true;
         setMetrics(demoMetrics(Number(demo) || 50, now));
+        setGame(demoGameState(now));
         setSynced("local");
         return;
       }
@@ -527,12 +531,12 @@ export default function Home() {
               weather: prev.weather === id ? "none" : (id as GameState["weather"]),
               updatedAt: Date.now(),
             };
-            void saveGameState(next, clientRef.current);
+            if (!demoRef.current) void saveGameState(next, clientRef.current);
             return next;
           }
           if (item.kind === "skin" && prev.skin !== id) {
             const next: GameState = { ...prev, skin: id as GameState["skin"], updatedAt: Date.now() };
-            void saveGameState(next, clientRef.current);
+            if (!demoRef.current) void saveGameState(next, clientRef.current);
             return next;
           }
           if (item.kind === "decor" || item.kind === "creature") {
@@ -541,7 +545,7 @@ export default function Home() {
               ? (prev.stashed ?? []).filter((s) => s !== id)
               : [...(prev.stashed ?? []), id];
             const next: GameState = { ...prev, stashed: pocket, updatedAt: Date.now() };
-            void saveGameState(next, clientRef.current);
+            if (!demoRef.current) void saveGameState(next, clientRef.current);
             return next;
           }
           return prev;
@@ -556,7 +560,7 @@ export default function Home() {
           weather: item.kind === "weather" ? (id as GameState["weather"]) : prev.weather,
           updatedAt: Date.now(),
         };
-        void saveGameState(next, clientRef.current);
+        if (!demoRef.current) void saveGameState(next, clientRef.current);
         hum().settle();
         return next;
       });
@@ -570,7 +574,7 @@ export default function Home() {
     if (bondSaveTimerRef.current !== null) window.clearTimeout(bondSaveTimerRef.current);
     bondSaveTimerRef.current = window.setTimeout(() => {
       bondSaveTimerRef.current = null;
-      if (bondSaveStateRef.current) void saveGameState(bondSaveStateRef.current, clientRef.current);
+      if (bondSaveStateRef.current) if (!demoRef.current) void saveGameState(bondSaveStateRef.current, clientRef.current);
     }, 5000);
   }, []);
 
@@ -819,7 +823,7 @@ export default function Home() {
           owned: [...prev.owned, id],
           updatedAt: Date.now(),
         };
-        void saveGameState(next, clientRef.current);
+        if (!demoRef.current) void saveGameState(next, clientRef.current);
         hum().purchase();
         return next;
       });
@@ -829,7 +833,7 @@ export default function Home() {
   const wearLook = useCallback((look: GameState["look"]) => {
     setGame((prev) => {
       const next: GameState = { ...prev, look, updatedAt: Date.now() };
-      void saveGameState(next, clientRef.current);
+      if (!demoRef.current) void saveGameState(next, clientRef.current);
       return next;
     });
     setMirrorOpen(false);
@@ -921,7 +925,7 @@ export default function Home() {
           ],
           updatedAt: now,
         };
-        void saveGameState(next, clientRef.current);
+        if (!demoRef.current) void saveGameState(next, clientRef.current);
         return next;
       });
       hum().levelUp();
@@ -949,7 +953,7 @@ export default function Home() {
           letters: [...(prev.letters ?? []), { id: id2, date: today, read: false }],
           updatedAt: Date.now(),
         };
-        void saveGameState(next, clientRef.current);
+        if (!demoRef.current) void saveGameState(next, clientRef.current);
         return next;
       });
     }, 1200);
@@ -975,7 +979,7 @@ export default function Home() {
           ],
           updatedAt: Date.now(),
         };
-        void saveGameState(next, clientRef.current);
+        if (!demoRef.current) void saveGameState(next, clientRef.current);
         return next;
       });
       hum().levelUp();
@@ -1006,7 +1010,7 @@ export default function Home() {
           ],
           updatedAt: Date.now(),
         };
-        void saveGameState(next, clientRef.current);
+        if (!demoRef.current) void saveGameState(next, clientRef.current);
         hum().purchase();
         return next;
       });
@@ -1404,7 +1408,7 @@ export default function Home() {
           billboard: { text: clean, date: todayRef.current || "" },
           updatedAt: Date.now(),
         };
-        void saveGameState(next, clientRef.current);
+        if (!demoRef.current) void saveGameState(next, clientRef.current);
         return next;
       });
       hum().settle();
@@ -1464,7 +1468,7 @@ export default function Home() {
         );
         if (Object.keys(left).length === Object.keys(prev.placedAt ?? {}).length) return prev;
         const next: GameState = { ...prev, placedAt: left, updatedAt: Date.now() };
-        void saveGameState(next, clientRef.current);
+        if (!demoRef.current) void saveGameState(next, clientRef.current);
         return next;
       });
       setMoveToast(t("move.yield"));
@@ -1518,7 +1522,7 @@ export default function Home() {
             placedAt: { ...(prev.placedAt ?? {}), [id2]: { month: block.month, col, row } },
             updatedAt: Date.now(),
           };
-          void saveGameState(next, clientRef.current);
+          if (!demoRef.current) void saveGameState(next, clientRef.current);
           return next;
         });
         return;
@@ -2484,7 +2488,7 @@ export default function Home() {
                         ),
                         updatedAt: Date.now(),
                       };
-                      void saveGameState(next, clientRef.current);
+                      if (!demoRef.current) void saveGameState(next, clientRef.current);
                       return next;
                     });
                   }}
@@ -2516,7 +2520,7 @@ export default function Home() {
         onName={(next) => {
           setGame((prev) => {
             const g2: GameState = { ...prev, name: next, updatedAt: Date.now() };
-            void saveGameState(g2, clientRef.current);
+            if (!demoRef.current) void saveGameState(g2, clientRef.current);
             return g2;
           });
         }}
