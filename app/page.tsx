@@ -102,6 +102,7 @@ export default function Home() {
   /* feedback: written here, carried by the visitor's own mail */
   const [fbOpen, setFbOpen] = useState(false);
   const [fbText, setFbText] = useState("");
+  const [fbNote, setFbNote] = useState<string | null>(null);
   const [game, setGame] = useState<GameState>(EMPTY_STATE);
   const [searchHits, setSearchHits] = useState<Set<string> | null>(null);
   const [monthIx, setMonthIx] = useState(-1);
@@ -2477,24 +2478,6 @@ export default function Home() {
           <span>
             {t("depot.balance.watts")} · {t("depot.balance.level")} {level} · {t("depot.balance.skyline")} {levelCap} {t("depot.balance.floors")}
           </span>
-          {(() => {
-            // the road to the next level, walked in earned light —
-            // spending never moves this bar backwards
-            const lp = levelProgress(earned);
-            return (
-              <div
-                className="lv-bar"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={lp.need}
-                aria-valuenow={lp.into}
-                aria-label={`${t("depot.balance.level")} ${lp.level + 1}: ${lp.into}/${lp.need} W`}
-                title={`${lp.into} / ${lp.need} W`}
-              >
-                <i style={{ width: `${Math.min(100, (lp.into / lp.need) * 100)}%` }} />
-              </div>
-            );
-          })()}
         </div>
         <div className="depot-orders" aria-label={t("orders.aria")}>
           {orders.map((o) => (
@@ -2734,8 +2717,11 @@ export default function Home() {
         </div>
         <DebugPanel />
         <div className="panel-toggles">
+          {/* three shelves: the room, your words, the small print */}
+          <p className="settings-sec">{t("settings.sec.env")}</p>
           {canFullscreen && (
-            <label>
+            // on phones the app already fills the glass — the row is noise
+            <label className="row-fullscreen">
               <span>{t("topbar.fullscreen.enter")}</span>
               <button
                 type="button"
@@ -2790,6 +2776,7 @@ export default function Home() {
               </button>
             </span>
           </label>
+          <p className="settings-sec">{t("settings.sec.pages")}</p>
           <button type="button" className="panel-export" onClick={() => void exportPages()}>
             {t("settings.export")}
           </button>
@@ -2806,6 +2793,7 @@ export default function Home() {
               }}
             />
           </label>
+          <p className="settings-sec">{t("settings.sec.about")}</p>
           <button
             type="button"
             className="panel-export"
@@ -2830,14 +2818,31 @@ export default function Home() {
                 disabled={!fbText.trim()}
                 onClick={() => {
                   // no server of ours in between: the words ride the
-                  // visitor's own mail, addressed to the city hall
-                  window.location.href = `mailto:hello@tata.page?subject=${encodeURIComponent(
-                    "Tata",
-                  )}&body=${encodeURIComponent(fbText.trim())}`;
+                  // visitor's own mail, addressed to the city hall.
+                  // mailto fails SILENTLY where no mail app is set up, so
+                  // the clipboard always gets a copy and the desk says so.
+                  const text = fbText.trim();
+                  // the receipt prints before the courier leaves — a blocked
+                  // mailto must not also swallow the acknowledgement
+                  setFbNote(t("feedback.handed"));
+                  window.setTimeout(() => setFbNote(null), 7000);
+                  try {
+                    void navigator.clipboard?.writeText(`${text}\n\n→ hello@tata.page`);
+                  } catch {
+                    /* no clipboard, no ceremony */
+                  }
+                  try {
+                    window.location.href = `mailto:hello@tata.page?subject=${encodeURIComponent(
+                      "Tata",
+                    )}&body=${encodeURIComponent(text)}`;
+                  } catch {
+                    /* some webviews refuse the scheme — the clipboard copy stands */
+                  }
                 }}
               >
                 {t("feedback.send")}
               </button>
+              {fbNote && <em className="feedback-note">{fbNote}</em>}
             </div>
           )}
           {/* guideline 5.1.1(i): the policy must be reachable from inside */}

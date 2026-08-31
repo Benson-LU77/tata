@@ -634,6 +634,25 @@ button:focus-visible, input:focus-visible {
 /* the privacy row is a link wearing the button's coat */
 a.panel-export { display: block; text-align: center; text-decoration: none; }
 
+/* settings shelves: a quiet label above each group */
+.settings-sec {
+  margin: 10px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font: 400 8.5px/1 var(--pixel);
+  letter-spacing: .22em;
+  color: var(--v4);
+  text-transform: uppercase;
+}
+.settings-sec:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* the desk answers back after Send */
+.feedback-note {
+  font: 400 10.5px/1.5 var(--mono);
+  font-style: normal;
+  color: var(--amber);
+}
+
 /* feedback: a small desk that unfolds under its row */
 .feedback-box { display: grid; gap: 8px; }
 .feedback-box textarea {
@@ -1186,6 +1205,8 @@ label.panel-export {
   .brand-eyebrow { font-size: 8px; letter-spacing: .24em; }
   /* the ledger line is desk furniture — the mirror still tells it all */
   .brand-ledger { display: none; }
+  /* the phone already fills the glass — no fullscreen row */
+  .row-fullscreen { display: none; }
   .signal { gap: 5px; font-size: 9px; }
 }
 
