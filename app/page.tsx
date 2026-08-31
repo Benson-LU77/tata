@@ -105,6 +105,8 @@ export default function Home() {
   const [fbNote, setFbNote] = useState<string | null>(null);
   const [game, setGame] = useState<GameState>(EMPTY_STATE);
   const [searchHits, setSearchHits] = useState<Set<string> | null>(null);
+  /* the slow-road search cache: page text by file, keyed off mtime */
+  const searchDocsRef = useRef(new Map<string, { mtime: number; text: string }>());
   const [monthIx, setMonthIx] = useState(-1);
   const [goMonth, setGoMonth] = useState<{ x: number; z: number; n: number } | null>(null);
   const [requestSetup, setRequestSetup] = useState(0);
@@ -1149,19 +1151,49 @@ export default function Home() {
     }
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      if (!client.search) return; // this bridge has no full-text road yet
-      client
-        .search(q, controller.signal)
-        .then((found) => {
-          if (!controller.signal.aborted) setSearchHits(new Set(found.map((f) => f.name)));
-        })
-        .catch(() => {});
+      const finish = (names: string[]) => {
+        if (!controller.signal.aborted) setSearchHits(new Set(names));
+      };
+      if (client.search) {
+        client
+          .search(q, controller.signal)
+          .then((found) => finish(found.map((f) => f.name)))
+          .catch(() => {});
+        return;
+      }
+      // no full-text road on this bridge — walk it: read the pages
+      // themselves. A decade of nightly pages weighs two megabytes;
+      // pretending the words inside them are unsearchable was absurd.
+      void (async () => {
+        const ql = q.toLowerCase();
+        const cache = searchDocsRef.current;
+        const hits: string[] = [];
+        const files = metrics.map((m) => ({ file: m.file, mtime: m.mtime }));
+        for (let i = 0; i < files.length && !controller.signal.aborted; i += 8) {
+          await Promise.all(
+            files.slice(i, i + 8).map(async ({ file, mtime }) => {
+              let entry = cache.get(file);
+              if (!entry || entry.mtime !== mtime) {
+                try {
+                  const doc = await client.readDoc(file);
+                  entry = { mtime, text: (doc.content ?? "").toLowerCase() };
+                  cache.set(file, entry);
+                } catch {
+                  return; // an unreadable page just isn't a hit
+                }
+              }
+              if (entry.text.includes(ql)) hits.push(file);
+            }),
+          );
+        }
+        finish(hits);
+      })();
     }, 350);
     return () => {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query, searchOpen]);
+  }, [query, searchOpen, metrics]);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();

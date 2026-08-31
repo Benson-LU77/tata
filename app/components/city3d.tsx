@@ -2254,8 +2254,8 @@ export function City3D({
         const h2 = hRef.current;
         const world = h2 ? (h2.camera.right - h2.camera.left) / (canvasRef.current?.clientWidth ?? 1) : 0.1;
         const yaw2 = yawRef.current;
-        panRef.current.x = pinch.px - (dcx * Math.cos(yaw2) - dcy * Math.sin(yaw2)) * world;
-        panRef.current.z = pinch.pz - (-dcx * Math.sin(yaw2) - dcy * Math.cos(yaw2)) * world;
+        panRef.current.x = pinch.px + (dcx * Math.cos(yaw2) - dcy * Math.sin(yaw2)) * world;
+        panRef.current.z = pinch.pz + (-dcx * Math.sin(yaw2) - dcy * Math.cos(yaw2)) * world;
         loop();
         return;
       }
@@ -2270,8 +2270,10 @@ export function City3D({
             const h = hRef.current;
             const world = h ? (h.camera.right - h.camera.left) / (canvasRef.current?.clientWidth ?? 1) : 0.1;
             const yaw = yawRef.current;
-            panRef.current.x = drag.px - (dx * Math.cos(yaw) - dy * Math.sin(yaw)) * world;
-            panRef.current.z = drag.pz - (-dx * Math.sin(yaw) - dy * Math.cos(yaw)) * world;
+            // grab-the-city: the ground follows the finger — swipe up,
+            // and the city goes up with it
+            panRef.current.x = drag.px + (dx * Math.cos(yaw) - dy * Math.sin(yaw)) * world;
+            panRef.current.z = drag.pz + (-dx * Math.sin(yaw) - dy * Math.cos(yaw)) * world;
           } else {
             yawRef.current = drag.yaw - dx * 0.008;
             yawTargetRef.current = yawRef.current;
