@@ -1279,6 +1279,9 @@ label.panel-export {
 }
 .depot-item {
   display: grid;
+  /* a fixed shelf for the goods: wide ships and tall cats alike sit
+     centred, so every name lines up with its neighbours' */
+  grid-template-rows: 38px auto auto;
   gap: 6px;
   padding: 12px 6px 10px;
   justify-items: center;
@@ -1305,13 +1308,24 @@ label.panel-export {
 }
 .depot-item.owned span { color: var(--v6); }
 
+/* the depot splits into three posts: heading on top, shelves scrolling
+   in the middle, counter holding the floor. No sticky involved — iOS
+   rubber-banding kept leaving the sticky counter mid-air. */
+.shop-panel { overflow: hidden; }
+.depot-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 2.6vh, 26px);
+}
+.depot-scroll .depot-items { overflow: visible; flex: none; }
+
 /* the counter: one sentence, one verb, always at hand. It bleeds through
    the panel's padding to sit ON the floor — an opaque slab, not a raft
    with the shelves showing through underneath. */
 .depot-counter {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1957,7 +1971,7 @@ label.panel-export {
 
 /* every tile shows its goods before you pay — the icon sits on the shelf,
    not floating in a corner */
-.depot-item .depot-thumb { position: static; transform: none; opacity: 1; }
+.depot-item .depot-thumb { position: static; transform: none; opacity: 1; align-self: center; }
 .depot-thumb {
   position: absolute;
   right: 12px;

@@ -2434,6 +2434,8 @@ export default function Home() {
             ×
           </button>
         </div>
+        {/* the shelves scroll indoors; heading and counter keep their posts */}
+        <div className="depot-scroll">
         <div className="depot-balance">
           <b>{balance}</b>
           <span>
@@ -2561,6 +2563,7 @@ export default function Home() {
               </button>
             );
           })}
+        </div>
         </div>
         {(() => {
           /* the counter: the picked tile's sentence, and its one verb */
