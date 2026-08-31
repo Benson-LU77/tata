@@ -58,27 +58,27 @@ const GROUND = "#0d0f13";
 
 /* ---------- compose on a 40×40 grid ---------------------------------- */
 
-const G = 40;
+const G = 48;
 const grid = Array.from({ length: G }, () => Array(G).fill(SKY));
 
 /* three dim stars — company, not a constellation */
-for (const [x, y] of [[6, 2], [33, 3], [20, 1]]) grid[y][x] = STAR_DIM;
+for (const [x, y] of [[7, 4], [38, 6], [24, 2], [14, 8]]) grid[y][x] = STAR_DIM;
 
 /* towers — silhouettes behind the figure, feet on the ground row */
 function tower(x0, w, top, tone, windows) {
-  for (let y = top; y < 36; y += 1) {
+  for (let y = top; y < 44; y += 1) {
     for (let x = x0; x < x0 + w; x += 1) grid[y][x] = tone;
   }
   for (const [wx, wy] of windows) grid[top + wy][x0 + wx] = WINDOW_LIT;
 }
-// the head fills the middle — towers keep to the margins it leaves
-tower(0, 4, 8, TOWER_LIGHT, [[1, 3], [2, 9], [1, 15], [2, 21]]);
-tower(2, 3, 16, TOWER_DARK, [[1, 4], [1, 12]]);
-tower(33, 4, 6, TOWER_MID, [[1, 2], [2, 10], [1, 17], [2, 24]]);
-tower(36, 4, 12, TOWER_DARK, [[1, 5], [2, 13], [1, 19]]);
+// the bust keeps to the middle 5/6 — towers hold both margins
+tower(0, 4, 12, TOWER_LIGHT, [[1, 4], [2, 11], [1, 18], [2, 26]]);
+tower(2, 3, 22, TOWER_DARK, [[1, 5], [1, 14]]);
+tower(44, 4, 10, TOWER_MID, [[1, 3], [2, 12], [1, 20], [2, 28]]);
+tower(41, 3, 24, TOWER_DARK, [[1, 6], [1, 15]]);
 
 /* ground — a thin street under everything */
-for (let y = 36; y < G; y += 1) for (let x = 0; x < G; x += 1) grid[y][x] = GROUND;
+for (let y = 44; y < G; y += 1) for (let x = 0; x < G; x += 1) grid[y][x] = GROUND;
 
 /* the portrait — 20×19 at ×2 = 40×38: the bust bleeds to the bottom
    edge and the shoulders run off into both lower corners */
