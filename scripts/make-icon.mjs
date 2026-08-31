@@ -30,7 +30,9 @@ const FIGURE = [
   ".offffffffffffo.",
   ".offffffffffffo.",
   "..offffffffffo..",
-  "...oooooooooo...",
+  ".occcccccccccco.",
+  "occcccccccccccco",
+  "oooooooooooooooo",
 ];
 
 /* the Mirror's amber reading of the sprite charset */
@@ -76,10 +78,11 @@ tower(36, 4, 12, TOWER_DARK, [[1, 5], [2, 13], [1, 19]]);
 /* ground — a thin street under everything */
 for (let y = 36; y < G; y += 1) for (let x = 0; x < G; x += 1) grid[y][x] = GROUND;
 
-/* the portrait — 16×15 at ×2 = 32×30, chin above the street */
+/* the portrait — 16×17 at ×2: head, and just enough shoulder to
+   hang a coat on; the bust stands on the street */
 const SCALE = 2;
 const FX = Math.floor((G - 16 * SCALE) / 2);
-const FY = 36 - 15 * SCALE;
+const FY = 36 - 17 * SCALE;
 FIGURE.forEach((row, sy) => {
   [...row].forEach((ch, sx) => {
     if (ch === ".") return;
