@@ -16,21 +16,20 @@ import { writeFileSync } from "node:fs";
 /* ---------- the figure: you_S_i wearing hat.tophat, from parts.ts ---- */
 
 const FIGURE = [
-  ".....oooooooooo.....",
-  "....occcccccccco....",
-  "....occcccccccco....",
-  "....occcccccccco....",
-  "...oooooooooooooo...",
-  "..occcccccccccccco..",
-  "..oooooooooooooooo..",
-  "...offffffffffffo...",
-  "...offffffffffffo...",
-  "...offeeffffeeffo...",
-  "...offeeffffeeffo...",
-  "...offffffffffffo...",
-  "...offffffffffffo...",
-  "....offffffffffo....",
+  "....oooooooooooo....",
   "...occcccccccccco...",
+  "...occcccccccccco...",
+  "...occcccccccccco...",
+  "..oooooooooooooooo..",
+  ".occcccccccccccccco.",
+  ".oooooooooooooooooo.",
+  "..offffffffffffffo..",
+  "..offffffffffffffo..",
+  "..offeeffffffeeffo..",
+  "..offeeffffffeeffo..",
+  "..offffffffffffffo..",
+  "..offffffffffffffo..",
+  "...offffffffffffo...",
   "..occcccccccccccco..",
   ".occcccccccccccccco.",
   "occcccccccccccccccco",
@@ -84,14 +83,18 @@ for (let y = 44; y < G; y += 1) for (let x = 0; x < G; x += 1) grid[y][x] = GROU
    edge and the shoulders run off into both lower corners */
 const SCALE = 2;
 const FX = Math.floor((G - 20 * SCALE) / 2);
-const FY = G - 19 * SCALE;
+// three cells lower than flush: the coat crops at the frame edge,
+// so the shoulders show a hint of themselves, not a landmass
+const FY = G - 18 * SCALE + 3;
 FIGURE.forEach((row, sy) => {
   [...row].forEach((ch, sx) => {
     if (ch === ".") return;
     const color = FIGURE_COLORS[ch];
     for (let dy = 0; dy < SCALE; dy += 1) {
+      const gy = FY + sy * SCALE + dy;
+      if (gy >= G) continue; // the crop happens here
       for (let dx = 0; dx < SCALE; dx += 1) {
-        grid[FY + sy * SCALE + dy][FX + sx * SCALE + dx] = color;
+        grid[gy][FX + sx * SCALE + dx] = color;
       }
     }
   });
