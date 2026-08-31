@@ -137,9 +137,10 @@ export async function loadCityMetrics(
       try {
         const names = (await client.list()).filter(
           // templates are tools; exported letters are the city writing to
-          // itself — neither is a page you wrote, so neither becomes a
-          // building (letters would also ratchet earnedFloor for good)
-          (n) => !/^(Templates|Letters)\//i.test(n),
+          // itself; replaced/ holds the copies an import displaced. None
+          // is a page you wrote tonight, so none becomes a building —
+          // counting them would also ratchet earnedFloor for good
+          (n) => !/^(Templates|Letters|replaced)\//i.test(n),
         );
         const metas = await pool(names, async (name): Promise<NoteMetric> => {
           const doc = await client.readDoc(name);

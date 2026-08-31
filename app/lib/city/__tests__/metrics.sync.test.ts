@@ -79,6 +79,23 @@ describe("city sync guards", () => {
     expect(fresh?.length).toBe(1);
   });
 
+  it("service folders never become buildings", async () => {
+    // replaced/ holds copies an import displaced; Templates and Letters
+    // are tools. dateOf() would happily parse the date out of
+    // "replaced/2026-08-25.md" and raise a phantom tower for it.
+    const fresh = await syncOnce([
+      ...(await cityCache.all()).map((m) => m.file),
+      "replaced/2026-08-25.md",
+      "Templates/daily.md",
+      "Letters/august.md",
+    ]);
+    const files = (fresh ?? []).map((m) => m.file);
+    expect(files.some((f) => f.startsWith("replaced/"))).toBe(false);
+    expect(files.some((f) => f.startsWith("Templates/"))).toBe(false);
+    expect(files.some((f) => f.startsWith("Letters/"))).toBe(false);
+    expect(files.length).toBe(10); // the real pages all survived
+  });
+
   it("overlapping syncs collapse to one background read", async () => {
     let listCalls = 0;
     const slow = {

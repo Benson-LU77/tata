@@ -837,17 +837,21 @@ export function NotesPanel({
             </button>
           </div>
           {(() => {
+            // shelved by month, newest on top; pages with no date in
+            // their name gather on the loose-pages shelf at the bottom
             const groups = new Map<string, string[]>();
             for (const f of pages ?? []) {
               const m2 = f.match(/^(\d{4}-\d{2})/);
-              const key2 = m2 ? m2[1] : "…";
+              const key2 = m2 ? m2[1] : "";
               groups.set(key2, [...(groups.get(key2) ?? []), f]);
             }
             return [...groups.entries()]
-              .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+              .sort((a, b) =>
+                a[0] === "" ? 1 : b[0] === "" ? -1 : a[0] < b[0] ? 1 : -1,
+              )
               .map(([month, files]) => (
-                <div key={month} className="archive-month">
-                  <em>{month}</em>
+                <div key={month || "loose"} className="archive-month">
+                  <em>{month || t("notes.archive.loose")}</em>
                   {files
                     .sort((a, b) => (a < b ? 1 : -1))
                     .map((f) => (
