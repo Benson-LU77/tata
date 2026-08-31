@@ -1154,7 +1154,7 @@ label.panel-export {
      reserves dead space on both sides and pushes the words away. Keep the
      cell, let it overlap its neighbours instead of shouldering them. */
   .brand-you { margin: -2px -6px -2px -6px; }
-  .brand { gap: 0; margin-left: 6px; } /* the words keep the figure company */
+  .brand { gap: 7px; margin-left: 6px; } /* company, not a crowd */
   /* a tap leaves :hover stuck on a touch screen — the frame would sit
      around the figure long after the finger left */
   .brand-you:hover { border-color: transparent; }
