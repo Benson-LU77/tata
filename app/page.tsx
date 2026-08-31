@@ -1409,8 +1409,15 @@ export default function Home() {
   const onGroundTap = useCallback(
     (x: number, z: number) => {
       if (encounterKey) {
-        // the city holds still while you talk — a stray thumb must not
-        // turn the page or summon the notebook. The bubble is the page.
+        // still walking over? a tap on open ground calls the visit off —
+        // changing your mind mid-street is allowed
+        if (encStageRef.current === null) {
+          clearEncounterTimers();
+          hum().click();
+          setEncounterKey(null);
+        }
+        // once the talk begins the city holds still — a stray thumb must
+        // not turn the page or summon the notebook. The bubble is the page.
         return;
       }
       const CELL = 3;
@@ -1460,7 +1467,7 @@ export default function Home() {
       hum().click();
       openWrite(file);
     },
-    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, moveMode, touchPick, t],
+    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, clearEncounterTimers, moveMode, touchPick, t],
   );
 
 
@@ -2790,6 +2797,9 @@ export default function Home() {
               }}
             />
           </label>
+          <a className="panel-export" href="mailto:hello@tata.page?subject=Tata">
+            {t("settings.feedback")}
+          </a>
         </div>
         <div className="panel-shortcuts">
           <span><b>← → ↑ ↓</b> {t("shortcuts.pan")}</span>

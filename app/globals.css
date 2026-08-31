@@ -631,6 +631,8 @@ button:focus-visible, input:focus-visible {
   font-size: 12px;
 }
 .panel-export:hover { color: var(--p3); }
+/* the feedback row is a link wearing the button's coat */
+a.panel-export { display: block; text-align: center; text-decoration: none; }
 label.panel-export {
   /* this label lives among the settings rows, which are flex containers —
      and in a flex box text-align centres nothing: the text becomes an

@@ -966,23 +966,57 @@ export function City3D({
             phase: 0,
           };
         } else if (enc.phase === "leave") {
+          // goodbye is one short stroll, not a march back through time:
+          // ease from the meeting spot to wherever the schedule is NOW,
+          // in a fixed beat, however long the conversation ran
+          if (enc.leftAt === null) {
+            enc.leftAt = t;
+            enc.leaveFrom = { ...enc.you };
+          }
+          const k = Math.min(1, (t - enc.leftAt) / 1.4);
+          const e2 = k * k * (3 - 2 * k);
           const home = poses[yIdx];
-          const mv = step(enc.you, { x: home.x, z: home.z }, 2.6);
-          enc.you = { x: mv.x, z: mv.z };
-          poses[yIdx] = { ...home, x: mv.x, z: mv.z, facing: mv.facing, moving: !mv.done, phase: t * 6.5 };
-          if (mv.done && enc.blend <= 0.01) encRef.current = null;
+          const from = enc.leaveFrom ?? enc.you;
+          const lx = from.x + (home.x - from.x) * e2;
+          const lz = from.z + (home.z - from.z) * e2;
+          enc.you = { x: lx, z: lz };
+          poses[yIdx] = {
+            ...home,
+            x: lx,
+            z: lz,
+            facing: k > 0.96 ? home.facing : Math.atan2(home.x - lx, home.z - lz),
+            moving: k < 1,
+            phase: t * 6.5,
+          };
+          if (k >= 1 && enc.blend <= 0.01) encRef.current = null;
         }
       }
       if (tIdx >= 0 && encRef.current) {
-        // the interlocutor stops and gives you their attention
-        poses[tIdx] = {
-          x: enc.target.x,
-          y: poses[tIdx].y,
-          z: enc.target.z,
-          facing: Math.atan2((enc.you.x ?? 0) - enc.target.x, (enc.you.z ?? 0) - enc.target.z),
-          moving: false,
-          phase: 0,
-        };
+        if (enc.phase === "leave" && enc.leftAt !== null) {
+          // they stroll back to their round in the same beat you do —
+          // ending a chat must never teleport your interlocutor
+          const k = Math.min(1, (t - enc.leftAt) / 1.4);
+          const e2 = k * k * (3 - 2 * k);
+          const sched = poses[tIdx];
+          poses[tIdx] = {
+            ...sched,
+            x: enc.target.x + (sched.x - enc.target.x) * e2,
+            z: enc.target.z + (sched.z - enc.target.z) * e2,
+            facing: k > 0.96 ? sched.facing : Math.atan2(sched.x - enc.target.x, sched.z - enc.target.z),
+            moving: k < 1,
+            phase: t * 6.5,
+          };
+        } else {
+          // the interlocutor stops and gives you their attention
+          poses[tIdx] = {
+            x: enc.target.x,
+            y: poses[tIdx].y,
+            z: enc.target.z,
+            facing: Math.atan2((enc.you.x ?? 0) - enc.target.x, (enc.you.z ?? 0) - enc.target.z),
+            moving: false,
+            phase: 0,
+          };
+        }
       }
     }
 
@@ -1375,6 +1409,9 @@ export function City3D({
     blend: number;
     notified: boolean;
     lastT: number;
+    /* goodbye bookkeeping: when the stroll apart began, and from where */
+    leftAt: number | null;
+    leaveFrom: { x: number; z: number } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -1403,6 +1440,8 @@ export function City3D({
         blend: encRef.current?.blend ?? 0,
         notified: false,
         lastT: now,
+        leftAt: null,
+        leaveFrom: null,
       };
     } else if (encRef.current && encRef.current.phase !== "leave") {
       encRef.current.phase = "leave";
