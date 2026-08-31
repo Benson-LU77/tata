@@ -16,20 +16,21 @@ import { writeFileSync } from "node:fs";
 /* ---------- the figure: you_S_i wearing hat.tophat, from parts.ts ---- */
 
 const FIGURE = [
-  "....oooooooooooo....",
-  "...occcccccccccco...",
-  "...occcccccccccco...",
-  "...occcccccccccco...",
+  ".....oooooooooo.....",
+  "....occcccccccco....",
+  "....occcccccccco....",
+  "....occcccccccco....",
+  "...oooooooooooooo...",
+  "..occcccccccccccco..",
   "..oooooooooooooooo..",
-  ".occcccccccccccccco.",
-  ".oooooooooooooooooo.",
-  "..offffffffffffffo..",
-  "..offffffffffffffo..",
-  "..offeeffffffeeffo..",
-  "..offeeffffffeeffo..",
-  "..offffffffffffffo..",
-  "..offffffffffffffo..",
   "...offffffffffffo...",
+  "...offffffffffffo...",
+  "...offeeffffeeffo...",
+  "...offeeffffeeffo...",
+  "...offffffffffffo...",
+  "...offffffffffffo...",
+  "....offffffffffo....",
+  "...occcccccccccco...",
   "..occcccccccccccco..",
   ".occcccccccccccccco.",
   "occcccccccccccccccco",
@@ -57,27 +58,27 @@ const GROUND = "#0d0f13";
 
 /* ---------- compose on a 40×40 grid ---------------------------------- */
 
-const G = 48;
+const G = 44;
 const grid = Array.from({ length: G }, () => Array(G).fill(SKY));
 
 /* three dim stars — company, not a constellation */
-for (const [x, y] of [[7, 4], [38, 6], [24, 2], [14, 8]]) grid[y][x] = STAR_DIM;
+for (const [x, y] of [[6, 3], [36, 5], [22, 2], [12, 7]]) grid[y][x] = STAR_DIM;
 
 /* towers — silhouettes behind the figure, feet on the ground row */
 function tower(x0, w, top, tone, windows) {
-  for (let y = top; y < 44; y += 1) {
+  for (let y = top; y < 40; y += 1) {
     for (let x = x0; x < x0 + w; x += 1) grid[y][x] = tone;
   }
   for (const [wx, wy] of windows) grid[top + wy][x0 + wx] = WINDOW_LIT;
 }
-// the bust keeps to the middle 5/6 — towers hold both margins
-tower(0, 4, 12, TOWER_LIGHT, [[1, 4], [2, 11], [1, 18], [2, 26]]);
-tower(2, 3, 22, TOWER_DARK, [[1, 5], [1, 14]]);
-tower(44, 4, 10, TOWER_MID, [[1, 3], [2, 12], [1, 20], [2, 28]]);
-tower(41, 3, 24, TOWER_DARK, [[1, 6], [1, 15]]);
+// the bust takes 10/11 of the width — towers peek past the hat
+tower(0, 4, 10, TOWER_LIGHT, [[1, 4], [2, 11], [1, 18], [2, 25]]);
+tower(2, 3, 20, TOWER_DARK, [[1, 5], [1, 13]]);
+tower(40, 4, 8, TOWER_MID, [[1, 3], [2, 12], [1, 20], [2, 27]]);
+tower(38, 3, 22, TOWER_DARK, [[1, 6], [1, 14]]);
 
 /* ground — a thin street under everything */
-for (let y = 44; y < G; y += 1) for (let x = 0; x < G; x += 1) grid[y][x] = GROUND;
+for (let y = 40; y < G; y += 1) for (let x = 0; x < G; x += 1) grid[y][x] = GROUND;
 
 /* the portrait — 20×19 at ×2 = 40×38: the bust bleeds to the bottom
    edge and the shoulders run off into both lower corners */
@@ -85,7 +86,7 @@ const SCALE = 2;
 const FX = Math.floor((G - 20 * SCALE) / 2);
 // three cells lower than flush: the coat crops at the frame edge,
 // so the shoulders show a hint of themselves, not a landmass
-const FY = G - 18 * SCALE + 3;
+const FY = G - 19 * SCALE + 3;
 FIGURE.forEach((row, sy) => {
   [...row].forEach((ch, sx) => {
     if (ch === ".") return;
