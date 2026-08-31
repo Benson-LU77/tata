@@ -631,8 +631,19 @@ button:focus-visible, input:focus-visible {
   font-size: 12px;
 }
 .panel-export:hover { color: var(--p3); }
-/* the feedback row is a link wearing the button's coat */
-a.panel-export { display: block; text-align: center; text-decoration: none; }
+/* feedback: a small desk that unfolds under its row */
+.feedback-box { display: grid; gap: 8px; }
+.feedback-box textarea {
+  min-width: 0;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, .02);
+  color: var(--v6);
+  font: 400 12.5px/1.6 var(--ui);
+}
+.feedback-box textarea:focus { outline: none; border-color: var(--v4); }
+.feedback-send:disabled { opacity: .45; cursor: default; }
 label.panel-export {
   /* this label lives among the settings rows, which are flex containers —
      and in a flex box text-align centres nothing: the text becomes an

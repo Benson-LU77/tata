@@ -99,6 +99,9 @@ export default function Home() {
   const [shopOpen, setShopOpen] = useState(false);
   /* the depot counter: one tile is picked, its line and its verb wait below */
   const [depotPick, setDepotPick] = useState<string | null>(null);
+  /* feedback: written here, carried by the visitor's own mail */
+  const [fbOpen, setFbOpen] = useState(false);
+  const [fbText, setFbText] = useState("");
   const [game, setGame] = useState<GameState>(EMPTY_STATE);
   const [searchHits, setSearchHits] = useState<Set<string> | null>(null);
   const [monthIx, setMonthIx] = useState(-1);
@@ -1831,7 +1834,13 @@ export default function Home() {
           <div className="welcome-card" role="dialog" aria-label="Tata">
             <p>{t("welcome.l1")}</p>
             <p>{t("welcome.l2")}</p>
-            <p>{t(nativeAvailable() ? "welcome.l3.native" : "welcome.l3")}</p>
+            {(() => {
+              if (nativeAvailable()) return <p>{t("welcome.l3.native")}</p>;
+              // a phone browser cannot reach a desktop Obsidian — that
+              // promise stays where it can be kept
+              if (window.matchMedia("(max-width: 720px)").matches) return null;
+              return <p>{t("welcome.l3")}</p>;
+            })()}
             <div className="welcome-actions">
               <button
                 type="button"
@@ -2797,9 +2806,40 @@ export default function Home() {
               }}
             />
           </label>
-          <a className="panel-export" href="mailto:hello@tata.page?subject=Tata">
+          <button
+            type="button"
+            className="panel-export"
+            aria-expanded={fbOpen}
+            onClick={() => setFbOpen((v) => !v)}
+          >
             {t("settings.feedback")}
-          </a>
+          </button>
+          {fbOpen && (
+            <div className="feedback-box">
+              <textarea
+                value={fbText}
+                onChange={(e) => setFbText(e.target.value)}
+                rows={4}
+                maxLength={2000}
+                placeholder={t("feedback.placeholder")}
+                spellCheck={false}
+              />
+              <button
+                type="button"
+                className="panel-export feedback-send"
+                disabled={!fbText.trim()}
+                onClick={() => {
+                  // no server of ours in between: the words ride the
+                  // visitor's own mail, addressed to the city hall
+                  window.location.href = `mailto:hello@tata.page?subject=${encodeURIComponent(
+                    "Tata",
+                  )}&body=${encodeURIComponent(fbText.trim())}`;
+                }}
+              >
+                {t("feedback.send")}
+              </button>
+            </div>
+          )}
         </div>
         <div className="panel-shortcuts">
           <span><b>← → ↑ ↓</b> {t("shortcuts.pan")}</span>
