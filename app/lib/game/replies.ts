@@ -6,7 +6,8 @@
  * and their closer answers your reply. Warmth unlocks with the bond:
  * things you would only say to a friend wait until you have one.
  *
- * The quiet exit is always on the table. Saying nothing is an answer.
+ * Leaving needs no button: tapping away has always ended the meeting,
+ * and the resident never minds.
  */
 
 import type { Tier, Topic } from "./bonds";
@@ -256,13 +257,11 @@ export const REPLIES: ReplyDef[] = [
   },
 ];
 
-/** the answer that isn't words — always offered, always ends the meeting */
-export const QUIET_EXIT = { en: "…(nod)", zh: "……(點頭)" };
-
 /**
  * Two replies that answer what was just said, warmth-gated by the bond.
  * Topic-matched first; universal lines fill any gap so there is never a
- * meeting without an answer. Deterministic given `roll`.
+ * meeting without an answer. Deterministic given `roll`. `exclude` keeps
+ * a second round from repeating what round one already said.
  */
 /**
  * fmix32 — a real avalanche hash. A plain multiply-and-take-the-fraction
@@ -276,8 +275,13 @@ function scramble(x: number, salt: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-export function repliesFor(topic: Topic | undefined, tier: Tier, roll: number): ReplyDef[] {
-  const earned = (r: ReplyDef) => (r.tier ?? 0) <= tier;
+export function repliesFor(
+  topic: Topic | undefined,
+  tier: Tier,
+  roll: number,
+  exclude: ReplyDef[] = [],
+): ReplyDef[] {
+  const earned = (r: ReplyDef) => (r.tier ?? 0) <= tier && !exclude.includes(r);
   const onTopic = REPLIES.filter(
     (r) => earned(r) && topic !== undefined && r.topics?.includes(topic),
   );

@@ -5,7 +5,7 @@
  * the same row: translation is rewriting, and it happens here, once.
  */
 
-import type { LineDef } from "./bonds";
+import type { LineCtx, LineDef } from "./bonds";
 
 export const FIRST_MEET_LINES: LineDef[] = [
   { topic: "night", en: "Oh — hello. I don't think we've met.", zh: "喔——你好。我們好像沒見過。" },
@@ -620,6 +620,47 @@ export const VOICE_LINES: LineDef[] = [
   { weight: 4, topic: "them", when: (c) => c.profession === "neighbour", en: "Ate anything tonight? Words don't count.", zh: "今晚吃過東西了嗎?字不算。" },
   { weight: 4, topic: "city", when: (c) => c.profession === "neighbour", en: "My balcony gets your building's shadow now. I don't mind.", zh: "我陽台現在會被你的樓遮到影子了。我不介意。" },
   { weight: 4, when: (c) => c.profession === "neighbour", tier: 3, topic: "them", en: "Knock anytime. The door's not real, but the welcome is.", zh: "隨時來敲門。門不是真的,歡迎是真的。" },
+]
+
+/**
+ * They remember what you two talked about — the next meeting starts
+ * from there. The line's own topic matches the memory, so the replies
+ * you are offered continue the same thread.
+ */
+const cb = (topic: NonNullable<LineDef["topic"]>) => (c: LineCtx) =>
+  c.lastTopic === topic && c.daysSinceGreet >= 1;
+
+export const CALLBACK_LINES: LineDef[] = [
+  // night
+  { tier: 1, topic: "night", weight: 6, when: cb("night"),
+    en: "This hour again. You and the night keep each other's appointments.", zh: "又是這個時辰。你跟夜互相守約。" },
+  { tier: 2, topic: "night", weight: 6, when: cb("night"),
+    en: "Last time we talked about the night. It's been listening since.", zh: "上次我們聊了夜。它從那之後一直在聽。" },
+  // city
+  { tier: 1, topic: "city", weight: 6, when: cb("city"),
+    en: "You asked about the city last time. It grew a little, to show off.", zh: "上次你問起這座城。它又長了一點,算是給你面子。" },
+  { tier: 2, topic: "city", weight: 6, when: cb("city"),
+    en: "Still thinking about what you said about the streets. They behaved today.", zh: "我還在想你上次說街道的事。它們今天很乖。" },
+  // writing
+  { tier: 1, topic: "writing", weight: 6, when: cb("writing"),
+    en: "Last time we talked about your pages. I checked — the window stayed lit.", zh: "上次聊到你寫的東西。我後來看了,那扇窗一直亮著。" },
+  { tier: 2, topic: "writing", weight: 6, when: cb("writing"),
+    en: "You said writing was hard. I've been rooting for you since. Quietly.", zh: "你上次說寫字很難。我從那天起就在幫你加油,小聲的。" },
+  // weather
+  { tier: 1, topic: "weather", weight: 6, when: cb("weather"),
+    en: "We did weather last time. It's being more polite today.", zh: "上次聊過天氣。它今天比較給面子。" },
+  { tier: 2, topic: "weather", weight: 6, when: cb("weather"),
+    en: "Since we talked about the sky, I look up more. Can't undo it now.", zh: "上次聊過天空之後,我常抬頭。現在改不掉了。" },
+  // you
+  { tier: 1, topic: "you", weight: 6, when: cb("you"),
+    en: "I kept thinking about what you said last time. Occupational hazard.", zh: "你上次說的話,我後來還在想。職業病。" },
+  { tier: 2, topic: "you", weight: 6, when: cb("you"),
+    en: "Last time you asked if being noticed was good. I stand by my answer.", zh: "上次你問被注意到算不算好事。我的答案不變。" },
+  // them
+  { tier: 1, topic: "them", weight: 6, when: cb("them"),
+    en: "You heard my story and still came back. Rarer than you think.", zh: "上次聽了我的事,你居然還記得回來。這比你想的稀有。" },
+  { tier: 2, topic: "them", weight: 6, when: cb("them"),
+    en: "I told you something about myself last time. Felt lighter after.", zh: "上次跟你說了我自己的事。說完之後輕鬆多了。" },
 ]
 
 /** what you can say, and how they answer THAT — not a coin toss.

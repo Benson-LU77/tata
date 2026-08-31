@@ -1465,7 +1465,9 @@ label.panel-export {
   height: 156px;
   image-rendering: pixelated;
   border: 1px solid var(--line);
-  background: rgba(6, 7, 10, .8);
+  /* a mirror is lit — on near-black the hood, the satchel, every dark
+     part vanished and the wardrobe looked like it sold one outfit */
+  background: linear-gradient(180deg, #4a4f59, #3a3e47);
   flex: none;
 }
 
@@ -2116,7 +2118,8 @@ label.panel-export {
 .id-photo {
   border: 1px dashed var(--v3);
   padding: 8px 12px;
-  background: rgba(224, 168, 79, .04);
+  /* same light as the mirror — a photo booth, not a cellar */
+  background: linear-gradient(180deg, rgba(74, 79, 89, .85), rgba(58, 62, 71, .85));
 }
 .id-photo .depot-thumb { position: static; transform: none; }
 .id-fields { display: grid; gap: 7px; }

@@ -115,4 +115,18 @@ describe("replies", () => {
       }
     }
   });
+
+  it("a second round never repeats the first, and always has words", () => {
+    for (const topic of TOPICS) {
+      for (let tier = 0 as Tier; tier <= 4; tier = (tier + 1) as Tier) {
+        for (const roll of ROLLS) {
+          const first = repliesFor(topic, tier, roll);
+          const second = repliesFor(topic, tier, 1 - roll, first);
+          // the follow-up round must never leave the meeting speechless
+          expect(second.length).toBeGreaterThan(0);
+          for (const r of second) expect(first).not.toContain(r);
+        }
+      }
+    }
+  });
 });

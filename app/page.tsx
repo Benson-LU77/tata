@@ -19,7 +19,7 @@ import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, stre
 import { dateAtCell, floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
-import { greet, tierOf, nameOf, lineFor, tierName } from "./lib/game/bonds";
+import { greet, remember, tierOf, nameOf, lineFor, tierName, type Tier, type Topic } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
 import { creaturesFor } from "./lib/city/residents";
 import { hash32 } from "./lib/city/layout";
@@ -34,7 +34,7 @@ import {
   resolveCommissions,
 } from "./lib/game/commissions";
 import { PET_ACTIONS, QUEST_LINES } from "./lib/game/bonds-lines";
-import { repliesFor, closerFor, QUIET_EXIT } from "./lib/game/replies";
+import { repliesFor, closerFor, type ReplyDef } from "./lib/game/replies";
 import { nativeAvailable } from "./lib/bridge/native";
 import { allShadows } from "./lib/bridge/shadow";
 import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
@@ -125,6 +125,13 @@ export default function Home() {
   const encTimersRef = useRef<number[]>([]);
   const encStageRef = useRef<"their" | "reply" | "closer" | null>(null);
   const encCloserRef = useRef<string | null>(null);
+  /* the second round: what tonight is about, how warm it may get,
+     which replies are spent, and whose meeting this is */
+  const encTopicRef = useRef<Topic | undefined>(undefined);
+  const encTierRef = useRef<Tier>(0);
+  const encRoundRef = useRef(1);
+  const encUsedRef = useRef<ReplyDef[]>([]);
+  const encKeyRef = useRef<string | null>(null);
   const encNameRef = useRef<string>("");
   /* today's favour, read at meeting time — a ref because the quest is
      computed further down the file and the greeting must never hold a
@@ -578,6 +585,28 @@ export default function Home() {
     encTimersRef.current = [];
   }, []);
 
+  /** turn a set of replies into bubble choices — round one and two alike */
+  const replyChoices = useCallback(
+    (replies: ReplyDef[]) =>
+      replies.map((r) => ({
+        label: lang === "zh" ? r.reply.zh : r.reply.en,
+        pick: () => {
+          encStageRef.current = "reply";
+          encUsedRef.current.push(r);
+          // the closer answers THIS reply, not the void
+          encCloserRef.current = closerFor(r, Math.random(), lang);
+          hum().click();
+          setBubble({
+            key: "you:0",
+            name: t("bubble.you"),
+            text: lang === "zh" ? r.reply.zh : r.reply.en,
+            until: Date.now() + 30000,
+          });
+        },
+      })),
+    [hum, lang, t],
+  );
+
   /** a click during the meeting turns the conversation one page */
   const lastAdvanceRef = useRef(0);
   const advanceEncounter = useCallback(() => {
@@ -589,24 +618,42 @@ export default function Home() {
       return;
     }
     if (encStageRef.current === "reply" && encCloserRef.current) {
-      encStageRef.current = "closer";
       hum().click();
       // read the ref NOW — the state updater runs later, after we clear it
       const closerText = encCloserRef.current ?? "";
       encCloserRef.current = null;
-      setBubble((prev) => ({
-        key: prev?.key ?? "npc",
-        name: encNameRef.current,
-        text: closerText,
-        until: Date.now() + 30000,
-      }));
+      // the conversation has one more turn in it: their closer can be
+      // answered once, with words neither of you has used tonight
+      const followups =
+        encRoundRef.current < 2
+          ? repliesFor(encTopicRef.current, encTierRef.current, Math.random(), encUsedRef.current)
+          : [];
+      if (followups.length > 0) {
+        encRoundRef.current += 1;
+        encStageRef.current = "their";
+        setBubble({
+          key: encKeyRef.current ?? "npc",
+          name: encNameRef.current,
+          text: closerText,
+          until: Date.now() + 30000,
+          choices: replyChoices(followups),
+        });
+      } else {
+        encStageRef.current = "closer";
+        setBubble({
+          key: encKeyRef.current ?? "npc",
+          name: encNameRef.current,
+          text: closerText,
+          until: Date.now() + 30000,
+        });
+      }
     } else {
       clearEncounterTimers();
       encStageRef.current = null;
       setBubble(null);
       setEncounterKey(null);
     }
-  }, [clearEncounterTimers, hum]);
+  }, [clearEncounterTimers, hum, replyChoices]);
 
   const onCreatureTap = useCallback(
     (hit: { key: string; kind: string; seed: number; x: number; y: number }) => {
@@ -640,11 +687,6 @@ export default function Home() {
       const nextBonds = greet(game.bonds, hit.key, today);
       const tierBefore = tierOf(had);
       const tierAfter = tierOf(nextBonds[hit.key]);
-      if (nextBonds !== game.bonds) {
-        const next: GameState = { ...game, bonds: nextBonds, updatedAt: now };
-        setGame(next);
-        scheduleBondSave(next);
-      }
       const name = nameOf(kind, hit.seed);
       const sinceGreet = had
         ? Math.round((now - new Date(had.last + "T00:00:00").getTime()) / 86400000)
@@ -670,13 +712,26 @@ export default function Home() {
           totalNotes: metrics.length,
           daysSinceGreet: Math.max(0, sinceGreet),
           name: game.name || undefined,
+          lastTopic: had?.t,
         },
         Math.random(),
         lang,
       );
+      // they will remember what tonight was about
+      const kept = spoken.topic ? remember(nextBonds, hit.key, spoken.topic) : nextBonds;
+      if (kept !== game.bonds) {
+        const next: GameState = { ...game, bonds: kept, updatedAt: now };
+        setGame(next);
+        scheduleBondSave(next);
+      }
       const line = spoken.text;
       const shownName = had ? name : t("bubble.someone");
       encNameRef.current = shownName;
+      encTopicRef.current = spoken.topic;
+      encTierRef.current = tierAfter;
+      encRoundRef.current = 1;
+      encUsedRef.current = [];
+      encKeyRef.current = hit.key;
       // the exchange is a fork now: you choose what to say or do
       let choices: { label: string; pick: () => void }[];
       if (kind === "cat" || kind === "dog") {
@@ -697,34 +752,9 @@ export default function Home() {
         }));
       } else {
         // the replies answer the topic that was just raised, and only the
-        // warmth this friendship has earned is on the table
-        choices = repliesFor(spoken.topic, tierAfter, Math.random()).map((r) => ({
-          label: lang === "zh" ? r.reply.zh : r.reply.en,
-          pick: () => {
-            encStageRef.current = "reply";
-            // the closer answers THIS reply, not the void
-            encCloserRef.current = closerFor(r, Math.random(), lang);
-            hum().click();
-            setBubble({
-              key: "you:0",
-              name: t("bubble.you"),
-              text: lang === "zh" ? r.reply.zh : r.reply.en,
-              until: Date.now() + 30000,
-            });
-          },
-        }));
-        // saying nothing is an answer too — it always ends the meeting well
-        choices.push({
-          label: lang === "zh" ? QUIET_EXIT.zh : QUIET_EXIT.en,
-          pick: () => {
-            clearEncounterTimers();
-            encStageRef.current = null;
-            encCloserRef.current = null;
-            hum().click();
-            setBubble(null);
-            setEncounterKey(null);
-          },
-        });
+        // warmth this friendship has earned is on the table (the nod is
+        // gone: tapping away has always been the graceful exit)
+        choices = replyChoices(repliesFor(spoken.topic, tierAfter, Math.random()));
       }
       setBubble({ key: hit.key, name: shownName, text: line, until: now + 30000, choices });
       setEmote({
@@ -744,7 +774,7 @@ export default function Home() {
       encStageRef.current = "their";
       encTimersRef.current.push(window.setTimeout(() => setEncounterKey(null), 45000));
     },
-    [game, hum, scheduleBondSave, lang, metrics, effectiveWeather, clearEncounterTimers, t],
+    [game, hum, scheduleBondSave, lang, metrics, effectiveWeather, replyChoices, t],
   );
 
   /* bubbles and emotes fade on their own clock */

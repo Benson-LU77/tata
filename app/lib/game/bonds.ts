@@ -10,7 +10,7 @@
  */
 
 import type { CreatureKind } from "../city/residents";
-import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES, VOICE_LINES } from "./bonds-lines";
+import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES } from "./bonds-lines";
 
 export type Bond = {
   /** days greeted (one per calendar day at most) */
@@ -19,6 +19,8 @@ export type Bond = {
   met: string;
   /** last greeted day — gates the once-per-day increment */
   last: string;
+  /** what you two talked about last time — they bring it up again */
+  t?: Topic;
 };
 
 export type Bonds = Record<string, Bond>;
@@ -50,9 +52,16 @@ export function greet(bonds: Bonds, key: string, today: string): Bonds {
   const prev = bonds[key];
   if (prev && prev.last === today) return bonds;
   const next: Bond = prev
-    ? { n: prev.n + 1, met: prev.met, last: today }
+    ? { n: prev.n + 1, met: prev.met, last: today, ...(prev.t !== undefined && { t: prev.t }) }
     : { n: 1, met: today, last: today };
   return { ...bonds, [key]: next };
+}
+
+/** note what tonight's talk was about — next meeting starts from here */
+export function remember(bonds: Bonds, key: string, topic: Topic): Bonds {
+  const prev = bonds[key];
+  if (!prev || prev.t === topic) return bonds;
+  return { ...bonds, [key]: { ...prev, t: topic } };
 }
 
 export function mergeBonds(a: Bonds | undefined, b: Bonds | undefined): Bonds {
@@ -63,12 +72,16 @@ export function mergeBonds(a: Bonds | undefined, b: Bonds | undefined): Bonds {
       out[key] = bb;
       continue;
     }
-    out[key] = {
+    const merged: Bond = {
       // max, not sum — the same day greeted on two devices is one day
       n: Math.max(aa.n, bb.n),
       met: aa.met && bb.met ? (aa.met < bb.met ? aa.met : bb.met) : aa.met || bb.met,
       last: aa.last > bb.last ? aa.last : bb.last,
     };
+    // the memory follows the most recent conversation; no memory, no key
+    const t = (aa.last >= bb.last ? aa.t : bb.t) ?? aa.t ?? bb.t;
+    if (t !== undefined) merged.t = t;
+    out[key] = merged;
   }
   return out;
 }
@@ -122,6 +135,8 @@ export type LineCtx = {
   name?: string;
   /** the resident's trade — colours their small talk */
   profession?: string;
+  /** what THIS resident talked about with you last time */
+  lastTopic?: Topic;
 };
 
 /**
@@ -169,7 +184,7 @@ export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): S
         ? DOG_LINE_DEFS
         : ctx.firstMeet
           ? FIRST_MEET_LINES
-          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES, ...VOICE_LINES];
+          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES, ...VOICE_LINES, ...CALLBACK_LINES];
   const eligible = table.filter(
     (l) => (l.tier ?? 0) <= ctx.tier && (!l.when || l.when(ctx)),
   );
