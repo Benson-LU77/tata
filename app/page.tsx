@@ -1439,6 +1439,12 @@ export default function Home() {
 
   const onGroundTap = useCallback(
     (x: number, z: number) => {
+      // a notice on display goes away at a touch of the street —
+      // and that touch does nothing else
+      if (!encounterKey && bubble && !bubble.choices) {
+        setBubble(null);
+        return;
+      }
       if (encounterKey) {
         // still walking over? a tap on open ground calls the visit off —
         // changing your mind mid-street is allowed
@@ -1500,7 +1506,7 @@ export default function Home() {
       hum().click();
       openWrite(file);
     },
-    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, clearEncounterTimers, advanceEncounter, moveMode, touchPick, t],
+    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, clearEncounterTimers, advanceEncounter, bubble, moveMode, touchPick, t],
   );
 
 
@@ -1704,6 +1710,11 @@ export default function Home() {
             onOpen={(file) => {
               // a tower is background too, while someone is talking to you
               if (encounterKey) return;
+              // and while a notice is up, the first tap only puts it away
+              if (bubble && !bubble.choices) {
+                setBubble(null);
+                return;
+              }
               if (window.matchMedia("(pointer: coarse)").matches && touchPick !== file) {
                 setTouchPick(file);
                 return;
