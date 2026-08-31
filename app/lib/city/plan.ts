@@ -136,16 +136,25 @@ export function planCity(
       // earned archetypes: the shape remembers the circumstances.
       // A verdict freezes the first time a lot is seen (archPins) — fixing
       // a typo in an old page must never turn its home into a bridge.
+      //
+      // The backfill signature: the app names same-day pages with a suffix
+      // ("2026-08-25 Today.md", "… 17.43.md"); only a bare date file was
+      // born after its day. mtime alone lied — one bulk edit of old pages
+      // turned a whole city into a bridge forest.
+      const bare = /(^|\/)\d{4}-\d{2}-\d{2}\.md$/.test(note.file);
       let arch: number | undefined;
       const pinned = archPins?.[note.file];
-      if (pinned !== undefined) {
+      if (pinned === ARCH_BRIDGE && !bare) {
+        // amnesty for stale verdicts from the mtime era
+        arch = undefined;
+      } else if (pinned !== undefined) {
         arch = pinned === 0 ? undefined : pinned;
       } else {
         const noteDay = new Date(date + "T00:00:00Z").getTime();
         const mtimeDay = Math.floor(note.mtime / DAY_MS) * DAY_MS;
         const hour = new Date(note.mtime).getHours();
         if (i === 0 && (dayGap.get(date) ?? 0) >= 7) arch = ARCH_LIGHTHOUSE;
-        else if (mtimeDay - noteDay > 2 * DAY_MS) arch = ARCH_BRIDGE;
+        else if (bare && mtimeDay - noteDay > 2 * DAY_MS) arch = ARCH_BRIDGE;
         else if (hour >= 2 && hour < 4) arch = ARCH_CHAPEL;
       }
 

@@ -3283,7 +3283,7 @@ label.panel-export {
   }
 
   /* the archive rises from the street, dressed exactly like the depot:
-     handle bar, quiet title, round-bordered X */
+     handle bar, quiet title, square-framed X */
   .archive-stand {
     position: fixed;
     left: 0;
@@ -3328,7 +3328,7 @@ label.panel-export {
     padding: 0;
     color: var(--v5);
     border: 1px solid var(--line);
-    border-radius: 50%;
+    border-radius: 0;
     background: transparent;
     font-size: 18px;
     cursor: pointer;

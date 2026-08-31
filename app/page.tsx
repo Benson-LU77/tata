@@ -1099,11 +1099,30 @@ export default function Home() {
       (c) => c.kind === "person",
     );
     if (persons.length === 0) return null;
-    const giver = persons[hash32(today + ":giver") % persons.length];
+    // rendezvous pick: `hash % persons.length` re-drew the giver whenever
+    // the city grew mid-day — write a page, and the question mark jumped
+    // to another resident. Highest per-person score is stable.
+    const giver = persons.reduce((best, p) =>
+      hash32(today + ":giver:" + p.key) > hash32(today + ":giver:" + best.key) ? p : best,
+    );
     return { key: giver.key, seed: giver.seed, orderId: order.id, done: order.done };
   }, [metrics, today, cityPlan, extras]);
   useEffect(() => {
     questRef.current = quest;
+  }, [quest]);
+  /* the favour's receipt: the moment tonight's asked-for order lands,
+     say so once — otherwise the tip arrives in silence */
+  const [questToast, setQuestToast] = useState(false);
+  const questDoneSeenRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const done = Boolean(quest?.done);
+    const was = questDoneSeenRef.current;
+    questDoneSeenRef.current = done;
+    if (was === false && done) {
+      setQuestToast(true);
+      const id = window.setTimeout(() => setQuestToast(false), 6000);
+      return () => window.clearTimeout(id);
+    }
   }, [quest]);
   const decor = useMemo(() => {
     const on = (id: string) => game.owned.includes(id) && !(game.stashed ?? []).includes(id);
@@ -1709,6 +1728,11 @@ export default function Home() {
         {levelToast && (
           <div className="levelup-toast" role="status">
             {t("levelup.line")}
+          </div>
+        )}
+        {questToast && !levelToast && (
+          <div className="levelup-toast" role="status">
+            {t("quest.delivered")}
           </div>
         )}
         {worksToast && (
