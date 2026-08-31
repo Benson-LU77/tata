@@ -871,8 +871,12 @@ export function City3D({
     const param = h.spriteParam;
     const camYaw = settledYawRef.current;
 
-    // pass 1: everyone's pose, then social adjustments
-    const poses = h.creatures.map((c) => poseAt(c, pl, t));
+    // pass 1: everyone's pose, then social adjustments. Each creature can
+    // carry a personal time-shift: after a conversation their schedule is
+    // re-anchored to the meeting spot, so they walk ON from where they
+    // stood instead of hurrying back to where time says they should be.
+    const shifts = shiftRef.current;
+    const poses = h.creatures.map((c) => poseAt(c, pl, t + (shifts.get(c.key) ?? 0)));
     const chat = new Array(h.creatures.length).fill(false);
 
     // people who pause near each other stop and chat, facing one another
@@ -906,7 +910,7 @@ export function City3D({
         if (c.kind !== "dog" || catIdx.length === 0) return;
         const target = h.creatures[catIdx[c.seed % catIdx.length]];
         // run the cat's own ring, 1.1 s behind — an honest pursuit
-        poses[i] = { ...poseAt(target, pl, t - 1.1), phase: t * 11 };
+        poses[i] = { ...poseAt(target, pl, t - 1.1 + (shifts.get(target.key) ?? 0)), phase: t * 11 };
       });
     }
 
@@ -966,12 +970,32 @@ export function City3D({
             phase: 0,
           };
         } else if (enc.phase === "leave") {
-          // goodbye is one short stroll, not a march back through time:
-          // ease from the meeting spot to wherever the schedule is NOW,
-          // in a fixed beat, however long the conversation ran
+          // goodbye re-anchors both schedules to the meeting spot: find
+          // the point on each walker's ring nearest to where they stand,
+          // and shift their personal clock so the ring passes through it
+          // NOW. They walk on from here — nobody hurries back in time.
           if (enc.leftAt === null) {
             enc.leftAt = t;
             enc.leaveFrom = { ...enc.you };
+            const anchor = (idx: number, want: { x: number; z: number }) => {
+              const c = h.creatures[idx];
+              if (!c) return;
+              const cur = shifts.get(c.key) ?? 0;
+              let bestS = cur;
+              let bestD = Infinity;
+              for (let s = 0; s < 130; s += 0.25) {
+                const p = poseAt(c, pl, t + cur + s);
+                const d = (p.x - want.x) ** 2 + (p.z - want.z) ** 2;
+                if (d < bestD) {
+                  bestD = d;
+                  bestS = cur + s;
+                }
+              }
+              shifts.set(c.key, bestS);
+              poses[idx] = poseAt(c, pl, t + bestS); // this frame too
+            };
+            anchor(yIdx, enc.you);
+            if (tIdx >= 0) anchor(tIdx, enc.target);
           }
           const k = Math.min(1, (t - enc.leftAt) / 1.4);
           const e2 = k * k * (3 - 2 * k);
@@ -1413,6 +1437,8 @@ export function City3D({
     leftAt: number | null;
     leaveFrom: { x: number; z: number } | null;
   } | null>(null);
+  /* per-creature schedule shifts — the "walk on from here" memory */
+  const shiftRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     const h = hRef.current;
@@ -1425,9 +1451,10 @@ export function City3D({
       const target = h.creatures.find((c) => c.key === encounterKey);
       const you = h.creatures.find((c) => c.kind === "you");
       if (!target || !you) return;
-      const tp = poseAt(target, stateRef.current.plan, now);
+      // both walkers may carry a schedule shift from earlier meetings
+      const tp = poseAt(target, stateRef.current.plan, now + (shiftRef.current.get(target.key) ?? 0));
       const start = encRef.current?.you ?? (() => {
-        const yp = poseAt(you, stateRef.current.plan, now);
+        const yp = poseAt(you, stateRef.current.plan, now + (shiftRef.current.get(you.key) ?? 0));
         return { x: yp.x, z: yp.z };
       })();
       encRef.current = {
@@ -2430,6 +2457,11 @@ export function City3D({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      // iOS cancels pointers freely (system gestures, palm touches). An
+      // uncleared cancel left stale entries in pointersRef, kept the
+      // gesture flag latched, and every later tap was silently eaten —
+      // "the buildings stopped responding".
+      onPointerCancel={onPointerLeave}
       onPointerLeave={onPointerLeave}
       onWheel={onWheel}
       aria-label={ariaLabel ?? "Your city of notes"}

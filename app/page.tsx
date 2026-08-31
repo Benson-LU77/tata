@@ -708,7 +708,11 @@ export default function Home() {
       const addressed = questText
         ? (game.name ? `${game.name}\uff0c` : "") + (lang === "zh" ? questText.zh : questText.en)
         : null;
-      const spoken = addressed ? { text: addressed, topic: undefined } : lineFor(
+      // the favour speaks as its own subject: the ask offers quest replies,
+      // the thanks lands as being-noticed warmth
+      const spoken = addressed
+        ? { text: addressed, topic: (quest && quest.done ? "you" : "quest") as Topic }
+        : lineFor(
         {
           kind,
           tier: tierAfter,
@@ -726,8 +730,12 @@ export default function Home() {
         Math.random(),
         lang,
       );
-      // they will remember what tonight was about
-      const kept = spoken.topic ? remember(nextBonds, hit.key, spoken.topic) : nextBonds;
+      // they will remember what tonight was about — but a favour is an
+      // errand, not a subject worth bringing up tomorrow
+      const kept =
+        spoken.topic && spoken.topic !== "quest"
+          ? remember(nextBonds, hit.key, spoken.topic)
+          : nextBonds;
       if (kept !== game.bonds) {
         const next: GameState = { ...game, bonds: kept, updatedAt: now };
         setGame(next);
@@ -1419,9 +1427,11 @@ export default function Home() {
           clearEncounterTimers();
           hum().click();
           setEncounterKey(null);
+        } else {
+          // mid-talk, the ground turns the page (it can never open the
+          // notebook here — the notebook stays behind the conversation)
+          advanceEncounter();
         }
-        // once the talk begins the city holds still — a stray thumb must
-        // not turn the page or summon the notebook. The bubble is the page.
         return;
       }
       const CELL = 3;
@@ -1471,7 +1481,7 @@ export default function Home() {
       hum().click();
       openWrite(file);
     },
-    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, clearEncounterTimers, moveMode, touchPick, t],
+    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, clearEncounterTimers, advanceEncounter, moveMode, touchPick, t],
   );
 
 
@@ -1786,24 +1796,6 @@ export default function Home() {
             }}
           >
             <strong>{bubble.name}</strong>
-            {!bubble.choices && (
-              /* nothing to answer here, so the only way out was to wait —
-                 give it the same corner X the notebook has */
-              <button
-                type="button"
-                className="bubble-close"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearEncounterTimers();
-                  encStageRef.current = null;
-                  setBubble(null);
-                  setEncounterKey(null);
-                }}
-                aria-label={t("common.close")}
-              >
-                ×
-              </button>
-            )}
             <span>{bubble.text}</span>
             {bubble.choices && (
               <div className="bubble-choices">
@@ -2437,7 +2429,6 @@ export default function Home() {
             </div>
           </>
         )}
-        <p className="depot-note">{t("registry.footer")}</p>
       </aside>
 
       <MirrorPanel

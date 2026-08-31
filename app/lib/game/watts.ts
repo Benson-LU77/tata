@@ -5,7 +5,7 @@
  * watts are log-compressed with a daily cap — padding earns nothing.
  */
 
-import type { NoteMetric } from "../city/layout";
+import { hash32, type NoteMetric } from "../city/layout";
 
 // rebalanced when work orders became historical (kept roughly neutral
 // for existing vaults: 300-word night ≈ 110 W before and after)
@@ -144,11 +144,24 @@ export function workOrders(metrics: NoteMetric[], date: string): WorkOrder[] {
  * Bonus over ALL history — earned can only ever grow, so the city never
  * shrinks overnight, and the same vault re-derives the same balance.
  */
+/** a favour done for a neighbour who ASKED pays a little kindness on
+ *  top of the order itself — same daily draw the quest giver uses */
+export const FAVOUR_TIP = 6;
+
+export function favourOrderId(metrics: NoteMetric[], date: string): string | null {
+  const orders = workOrders(metrics, date);
+  if (orders.length === 0) return null;
+  return orders[hash32(date + ":favour") % orders.length].id;
+}
+
 export function orderBonus(metrics: NoteMetric[]): number {
   const dates = [...new Set(metrics.map((m) => m.date))];
   let total = 0;
   for (const date of dates) {
-    for (const o of workOrders(metrics, date)) if (o.done) total += o.bonus;
+    const orders = workOrders(metrics, date);
+    for (const o of orders) if (o.done) total += o.bonus;
+    const fav = orders[hash32(date + ":favour") % orders.length];
+    if (fav?.done) total += FAVOUR_TIP;
   }
   return total;
 }

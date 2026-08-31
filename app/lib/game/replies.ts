@@ -225,6 +225,32 @@ export const REPLIES: ReplyDef[] = [
     ],
   },
 
+  /* ---------------- quest — someone asked a favour -------------- */
+  {
+    topics: ["quest"],
+    reply: { en: "Leave it to me.", zh: "交給我。" },
+    closers: [
+      { en: "Knew I asked the right person.", zh: "就知道找你沒錯。" },
+      { en: "Then I can stop worrying about it.", zh: "那我就放心了。" },
+    ],
+  },
+  {
+    topics: ["quest"],
+    reply: { en: "Tonight, then.", zh: "今晚就寫。" },
+    closers: [
+      { en: "I'll look for your window.", zh: "我會看你的窗亮不亮。" },
+      { en: "No rush. Ink is more patient than I am.", zh: "不急。墨水比我有耐心。" },
+    ],
+  },
+  {
+    topics: ["quest"],
+    reply: { en: "What's in it for me?", zh: "有什麼好處?" },
+    closers: [
+      { en: "My gratitude. It weighs a few Watts.", zh: "我的感謝。大概有幾瓦特重。" },
+      { en: "You'll see. This city keeps accounts.", zh: "你會知道的。這座城記帳很清楚。" },
+    ],
+  },
+
   /* ---------------- universal — answer anything ---------------- */
   {
     reply: { en: "Good night for it.", zh: "今晚不錯。" },

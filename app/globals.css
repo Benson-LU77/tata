@@ -3066,7 +3066,19 @@ label.panel-export {
   letter-spacing: .18em;
   color: rgba(255, 255, 255, .8);
 }
-.archive-head .archive-close { position: static; }
+/* on the dark stand the close wears the standard square frame,
+   same as every sheet heading in the city */
+.archive-head .archive-close {
+  position: static;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--v5);
+  font: 400 18px/1 var(--mono, monospace);
+}
+.archive-head .archive-close:hover { background: rgba(255, 255, 255, .06); }
 .archive-stand .archive-month {
   padding: 10px 14px 2px;
   display: grid;

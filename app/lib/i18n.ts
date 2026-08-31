@@ -82,7 +82,6 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "registry.notbuilt": "not yet built",
     "registry.standing": "standing: ",
     "registry.unknown": "?????",
-    "registry.footer": "The city remembers how each page was written.",
 
     /* depot */
     "depot.balance.watts": "watts",
@@ -250,7 +249,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "compass.aria": "Compass",
     "bubble.someone": "someone",
     "bubble.you": "you",
-    "settings.export": "Export all pages (.zip)",
+    "settings.export": "Export notes (.zip)",
     "settings.import": "Import pages (.zip)",
     "settings.feedback": "Feedback",
     "feedback.placeholder": "Say what should change. It lands in the keeper's mailbox.",
@@ -426,7 +425,6 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "registry.notbuilt": "尚未建成",
     "registry.standing": "已駐紮：",
     "registry.unknown": "?????",
-    "registry.footer": "這座城市記得每一頁是怎麼寫下的。",
 
     /* depot */
     "depot.balance.watts": "瓦特",
@@ -602,7 +600,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "compass.aria": "羅盤",
     "bubble.someone": "某人",
     "bubble.you": "你",
-    "settings.export": "匯出所有頁面 (.zip)",
+    "settings.export": "匯出筆記 (.zip)",
     "settings.import": "匯入頁面 (.zip)",
     "settings.feedback": "意見回饋",
     "feedback.placeholder": "想改什麼,直接寫。會寄到管理人的信箱。",

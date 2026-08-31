@@ -149,7 +149,7 @@ export type LineCtx = {
  *   you     · you personally — your colour, your name, being noticed
  *   them    · themselves: their trade, their memory, their life
  */
-export type Topic = "night" | "city" | "writing" | "weather" | "you" | "them";
+export type Topic = "night" | "city" | "writing" | "weather" | "you" | "them" | "quest";
 
 export type LineDef = {
   /** minimum tier (default 1); firstMeet lines use tier 0 */
