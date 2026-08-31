@@ -32,23 +32,23 @@ export type Citizen = {
   hair: string;
   hat: string;
   acc: string;
-  tone: number; // 2..5 — coat grey
+  tone: number; // 3..6 — coat grey (the night ate anything darker)
 };
 
 /** twelve citizens; a resident's look IS their profession, for life */
 export const CITIZENS: Citizen[] = [
-  { profession: "stationmaster", base: "pants", hair: "hair.short", hat: "hat.cap", acc: "acc.none", tone: 3 },
-  { profession: "gardener", base: "dress", hair: "hair.bun", hat: "hat.strawhat", acc: "acc.apron", tone: 4 },
-  { profession: "courier", base: "pants", hair: "hair.short", hat: "hat.none", acc: "acc.satchel", tone: 5 },
-  { profession: "astronomer", base: "pants", hair: "hair.long", hat: "hat.hood", acc: "acc.none", tone: 2 },
-  { profession: "baker", base: "dress", hair: "hair.short", hat: "hat.toque", acc: "acc.none", tone: 4 },
-  { profession: "shipwright", base: "pants", hair: "hair.ponytail", hat: "hat.goggles", acc: "acc.none", tone: 3 },
-  { profession: "lampkeeper", base: "dress", hair: "hair.long", hat: "hat.none", acc: "acc.scarf", tone: 2 },
-  { profession: "poet", base: "pants", hair: "hair.fringe", hat: "hat.none", acc: "acc.none", tone: 2 },
-  { profession: "tailor", base: "dress", hair: "hair.twintails", hat: "hat.none", acc: "acc.none", tone: 5 },
-  { profession: "archivist", base: "pants", hair: "hair.bob", hat: "hat.none", acc: "acc.none", tone: 4 },
-  { profession: "stargazer", base: "dress", hair: "hair.ponytail", hat: "hat.none", acc: "acc.none", tone: 3 },
-  { profession: "neighbour", base: "pants", hair: "hair.bun", hat: "hat.beanie", acc: "acc.none", tone: 5 },
+  { profession: "stationmaster", base: "pants", hair: "hair.short", hat: "hat.cap", acc: "acc.none", tone: 4 },
+  { profession: "gardener", base: "dress", hair: "hair.bun", hat: "hat.strawhat", acc: "acc.apron", tone: 5 },
+  { profession: "courier", base: "pants", hair: "hair.short", hat: "hat.none", acc: "acc.satchel", tone: 6 },
+  { profession: "astronomer", base: "pants", hair: "hair.long", hat: "hat.hood", acc: "acc.none", tone: 3 },
+  { profession: "baker", base: "dress", hair: "hair.short", hat: "hat.toque", acc: "acc.none", tone: 5 },
+  { profession: "shipwright", base: "pants", hair: "hair.ponytail", hat: "hat.goggles", acc: "acc.none", tone: 4 },
+  { profession: "lampkeeper", base: "dress", hair: "hair.long", hat: "hat.none", acc: "acc.scarf", tone: 3 },
+  { profession: "poet", base: "pants", hair: "hair.fringe", hat: "hat.none", acc: "acc.none", tone: 3 },
+  { profession: "tailor", base: "dress", hair: "hair.twintails", hat: "hat.none", acc: "acc.none", tone: 6 },
+  { profession: "archivist", base: "pants", hair: "hair.bob", hat: "hat.none", acc: "acc.none", tone: 5 },
+  { profession: "stargazer", base: "dress", hair: "hair.ponytail", hat: "hat.none", acc: "acc.none", tone: 4 },
+  { profession: "neighbour", base: "pants", hair: "hair.bun", hat: "hat.beanie", acc: "acc.none", tone: 6 },
 ];
 
 export function professionOf(seed: number): string {
