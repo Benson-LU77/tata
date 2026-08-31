@@ -86,7 +86,7 @@ const SCALE = 2;
 const FX = Math.floor((G - 20 * SCALE) / 2);
 // three cells lower than flush: the coat crops at the frame edge,
 // so the shoulders show a hint of themselves, not a landmass
-const FY = G - 19 * SCALE + 3;
+const FY = G - 19 * SCALE + 5;
 FIGURE.forEach((row, sy) => {
   [...row].forEach((ch, sx) => {
     if (ch === ".") return;
