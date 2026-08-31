@@ -1404,7 +1404,8 @@ export default function Home() {
   const onGroundTap = useCallback(
     (x: number, z: number) => {
       if (encounterKey) {
-        advanceEncounter();
+        // the city holds still while you talk — a stray thumb must not
+        // turn the page or summon the notebook. The bubble is the page.
         return;
       }
       const CELL = 3;
@@ -1445,7 +1446,7 @@ export default function Home() {
         openWrite(date === today ? `${date} Today.md` : `${date}.md`);
       }
     },
-    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, advanceEncounter, moveMode, t],
+    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, moveMode, t],
   );
 
 
@@ -1647,6 +1648,8 @@ export default function Home() {
             ariaLabel={t("city.aria")}
             onHover={(file, x, y) => setHover(file ? { file, x, y } : null)}
             onOpen={(file) => {
+              // a tower is background too, while someone is talking to you
+              if (encounterKey) return;
               if (window.matchMedia("(pointer: coarse)").matches && touchPick !== file) {
                 setTouchPick(file);
                 return;
@@ -1751,7 +1754,10 @@ export default function Home() {
             className="city-bubble city-bubble--docked"
             aria-live="polite"
             onClick={() => {
-              if (!bubble.choices && !encounterKey) setBubble(null);
+              // during a meeting the bubble itself turns the page;
+              // outside one, a tap simply puts the notice away
+              if (encounterKey) advanceEncounter();
+              else if (!bubble.choices) setBubble(null);
             }}
           >
             <strong>{bubble.name}</strong>

@@ -695,6 +695,9 @@ export function City3D({
   const rafRef = useRef<number | null>(null);
   const lastDrawRef = useRef(0);
   const dragRef = useRef<{ x: number; y: number; yaw: number; moved: boolean; pan: boolean; px: number; pz: number } | null>(null);
+  /* a second finger ever touched down — the fingers that lift afterwards
+     are ending a rotate/zoom, and none of them may land as a tap */
+  const gestureRef = useRef(false);
   const pointersRef = useRef(new Map<number, { x: number; y: number }>());
   const pinchRef = useRef<{
     dist: number;
@@ -2126,6 +2129,7 @@ export function City3D({
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointersRef.current.size === 2) {
       // second finger: switch from drag to pinch-zoom
+      gestureRef.current = true;
       const [a, b] = [...pointersRef.current.values()];
       pinchRef.current = {
         dist: Math.hypot(a.x - b.x, a.y - b.y),
@@ -2271,6 +2275,14 @@ export function City3D({
         pinchRef.current = null;
         scheduleViewSnap();
       }
+      if (gestureRef.current) {
+        // this finger is ending a two-finger gesture, not making a point.
+        // It used to fall through and "tap" whatever lot it lifted from —
+        // rotating the city kept summoning the notebook.
+        if (pointersRef.current.size === 0) gestureRef.current = false;
+        dragRef.current = null;
+        return;
+      }
       const drag = dragRef.current;
       dragRef.current = null;
       if (drag && drag.moved) {
@@ -2365,6 +2377,7 @@ export function City3D({
     pointersRef.current.clear();
     pinchRef.current = null;
     dragRef.current = null;
+    gestureRef.current = false; // no stale gesture may eat the next tap
     if (hoverRef.current !== null) {
       hoverRef.current = null;
       onHover(null, 0, 0);
