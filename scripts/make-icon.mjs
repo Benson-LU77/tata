@@ -16,31 +16,29 @@ import { writeFileSync } from "node:fs";
 /* ---------- the figure: you_S_i wearing hat.tophat, from parts.ts ---- */
 
 const FIGURE = [
-  ".00000..",
-  ".0ccc0..",
-  "0ccccc0.",
-  "..0000..",
-  ".066660.",
-  "06166160",
-  "06666660",
-  ".066660.",
-  ".00cc00.",
-  "05ccct50",
-  "05ccct50",
-  ".0ccct0.",
-  ".00.00..",
+  "...oooooooooo...",
+  "..occcccccccco..",
+  "..occcccccccco..",
+  "..occcccccccco..",
+  ".oooooooooooooo.",
+  "occcccccccccccco",
+  "oooooooooooooooo",
+  ".offffffffffffo.",
+  ".offffffffffffo.",
+  ".offeeffffeeffo.",
+  ".offeeffffeeffo.",
+  ".offffffffffffo.",
+  ".offffffffffffo.",
+  "..offffffffffo..",
+  "...oooooooooo...",
 ];
 
 /* the Mirror's amber reading of the sprite charset */
 const FIGURE_COLORS = {
-  // warm-dark outline: pure night-black would dissolve the silhouette
-  // into the sky; the eyes get the true black instead
-  0: "#231a10",
-  1: "#06070a",
-  5: "#be9050",
-  6: "#e0a84f",
-  c: "#b8894a",
-  t: "#e0a84f",
+  o: "#231a10", // warm-dark outline — night-black would dissolve it
+  c: "#b8894a", // the hat
+  f: "#e0a84f", // the face, plain amber
+  e: "#06070a", // the eyes keep true black
 };
 
 /* ---------- palette for the rest of the night ------------------------ */
@@ -59,13 +57,8 @@ const GROUND = "#0d0f13";
 const G = 40;
 const grid = Array.from({ length: G }, () => Array(G).fill(SKY));
 
-/* stars — fixed constellation, sparse, upper sky only */
-for (const [x, y, bright] of [
-  [4, 3, 1], [11, 6, 0], [19, 2, 0], [27, 5, 1], [34, 3, 0],
-  [7, 9, 0], [31, 9, 0], [15, 4, 0], [37, 7, 0], [2, 7, 0],
-]) {
-  grid[y][x] = bright ? STAR_BRIGHT : STAR_DIM;
-}
+/* three dim stars — company, not a constellation */
+for (const [x, y] of [[6, 2], [33, 3], [20, 1]]) grid[y][x] = STAR_DIM;
 
 /* towers — silhouettes behind the figure, feet on the ground row */
 function tower(x0, w, top, tone, windows) {
@@ -74,21 +67,19 @@ function tower(x0, w, top, tone, windows) {
   }
   for (const [wx, wy] of windows) grid[top + wy][x0 + wx] = WINDOW_LIT;
 }
-tower(1, 4, 14, TOWER_DARK, [[1, 2], [2, 6], [1, 10]]);
-tower(5, 3, 20, TOWER_MID, [[1, 3], [1, 8]]);
-tower(8, 4, 9, TOWER_LIGHT, [[1, 3], [2, 7], [1, 12], [2, 16]]);
-tower(28, 4, 11, TOWER_MID, [[1, 2], [2, 8], [1, 14]]);
-tower(32, 3, 17, TOWER_DARK, [[1, 4], [1, 11]]);
-tower(35, 4, 13, TOWER_LIGHT, [[1, 3], [2, 9], [1, 16]]);
+// the head fills the middle — towers keep to the margins it leaves
+tower(0, 4, 8, TOWER_LIGHT, [[1, 3], [2, 9], [1, 15], [2, 21]]);
+tower(2, 3, 16, TOWER_DARK, [[1, 4], [1, 12]]);
+tower(33, 4, 6, TOWER_MID, [[1, 2], [2, 10], [1, 17], [2, 24]]);
+tower(36, 4, 12, TOWER_DARK, [[1, 5], [2, 13], [1, 19]]);
 
 /* ground — a thin street under everything */
 for (let y = 36; y < G; y += 1) for (let x = 0; x < G; x += 1) grid[y][x] = GROUND;
 
-/* the figure — 8×13 sprite at ×3 = 24×39... too tall; ×2 = 16×26,
-   feet on the street, centred */
+/* the portrait — 16×15 at ×2 = 32×30, chin above the street */
 const SCALE = 2;
-const FX = Math.floor((G - 8 * SCALE) / 2);
-const FY = 37 - 13 * SCALE; // feet at row 36 (one row into the street)
+const FX = Math.floor((G - 16 * SCALE) / 2);
+const FY = 36 - 15 * SCALE;
 FIGURE.forEach((row, sy) => {
   [...row].forEach((ch, sx) => {
     if (ch === ".") return;
