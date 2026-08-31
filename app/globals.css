@@ -456,7 +456,10 @@ button:focus-visible, input:focus-visible {
   right: 0;
   width: min(340px, 86vw);
   height: 100dvh;
-  padding: clamp(24px, 3.4vh, 34px) clamp(22px, 2vw, 30px);
+  /* named so the depot counter can bleed through them to the true edge */
+  --panel-pad-x: clamp(22px, 2vw, 30px);
+  --panel-pad-b: clamp(24px, 3.4vh, 34px);
+  padding: clamp(24px, 3.4vh, 34px) var(--panel-pad-x) var(--panel-pad-b);
   display: flex;
   flex-direction: column;
   gap: clamp(18px, 2.6vh, 26px);
@@ -1107,7 +1110,9 @@ label.panel-export {
     width: 100%;
     height: auto;
     max-height: min(72dvh, 560px);
-    padding: 20px 22px calc(18px + env(safe-area-inset-bottom));
+    --panel-pad-x: 22px;
+    --panel-pad-b: calc(18px + env(safe-area-inset-bottom));
+    padding: 20px var(--panel-pad-x) var(--panel-pad-b);
     border-left: 0;
     border-top: 1px solid var(--line);
     border-radius: 18px 18px 0 0;
@@ -1300,7 +1305,9 @@ label.panel-export {
 }
 .depot-item.owned span { color: var(--v6); }
 
-/* the counter: one sentence, one verb, always at hand */
+/* the counter: one sentence, one verb, always at hand. It bleeds through
+   the panel's padding to sit ON the floor — an opaque slab, not a raft
+   with the shelves showing through underneath. */
 .depot-counter {
   position: sticky;
   bottom: 0;
@@ -1308,9 +1315,10 @@ label.panel-export {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 0 2px;
+  margin: 0 calc(-1 * var(--panel-pad-x, 0px)) calc(-1 * var(--panel-pad-b, 0px));
+  padding: 12px var(--panel-pad-x, 0px) calc(var(--panel-pad-b, 0px) + 2px);
   border-top: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(10, 12, 16, .96), rgba(6, 7, 10, .98));
+  background: linear-gradient(180deg, #0c0e13, #07080b);
 }
 .depot-counter .counter-words {
   flex: 1;
