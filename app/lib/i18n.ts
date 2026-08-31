@@ -108,7 +108,6 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "depot.state.tonight": "tonight",
     "depot.state.owned": "in the city",
     "depot.unit.w": "W",
-    "depot.footer": "Everything here is earned. Amber is not for sale.",
 
     /* settings */
     "settings.chime": "Settle chime",
@@ -296,7 +295,6 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "mirror.slot.amber": "Amber",
     "mirror.tone.aria": "Amber tone",
     "mirror.wear": "Wear it",
-    "mirror.footer": "Silhouettes may cost Watts. Amber itself is never for sale.",
 
     /* mirror parts */
     "part.hat.none.name": "Bare head",
@@ -445,7 +443,6 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "depot.state.tonight": "今晚生效",
     "depot.state.owned": "已擁有",
     "depot.unit.w": "W",
-    "depot.footer": "這裡的一切都是靠自己掙來的。琥珀色不作販售。",
 
     /* settings */
     "settings.chime": "沉降提示音",
@@ -641,7 +638,6 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "mirror.slot.amber": "琥珀色",
     "mirror.tone.aria": "琥珀色調",
     "mirror.wear": "穿上它",
-    "mirror.footer": "服飾輪廓可能需要瓦特購買。琥珀色本身永不販售。",
 
     /* mirror parts */
     "part.hat.none.name": "無帽",

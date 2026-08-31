@@ -2661,7 +2661,6 @@ export default function Home() {
           }
           return null;
         })()}
-        <p className="depot-note">{t("depot.footer")}</p>
       </aside>
 
       <aside

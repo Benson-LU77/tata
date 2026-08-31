@@ -173,7 +173,6 @@ export function MirrorPanel({
           </button>
         </div>
       </div>
-      <p className="depot-note">{t("mirror.footer")}</p>
     </aside>
   );
 }
