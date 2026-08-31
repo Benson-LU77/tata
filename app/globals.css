@@ -3357,6 +3357,12 @@ label.panel-export {
   .signal { align-items: flex-start; }
   .signal i { margin-top: 3px; }
 
+  /* 9 — mobile overrides live BELOW their base rules (lesson, 4th time):
+     iOS zooms into sub-16px inputs and strands the page zoomed */
+  .feedback-box textarea { font-size: 16px; }
+  /* the demo-exit bar ducks below the corner block instead of covering it */
+  .demo-exit { top: calc(96px + env(safe-area-inset-top, 0px)); max-width: 92vw; width: max-content; }
+
   /* one sheet, one scroller. A nested scrolling list inside a sheet that
      already scrolls gives a phone two things to fight over, and the inner
      one is short enough to show a single card at a time. */
