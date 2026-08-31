@@ -631,6 +631,9 @@ button:focus-visible, input:focus-visible {
   font-size: 12px;
 }
 .panel-export:hover { color: var(--p3); }
+/* the privacy row is a link wearing the button's coat */
+a.panel-export { display: block; text-align: center; text-decoration: none; }
+
 /* feedback: a small desk that unfolds under its row */
 .feedback-box { display: grid; gap: 8px; }
 .feedback-box textarea {

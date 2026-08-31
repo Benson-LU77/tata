@@ -2840,6 +2840,15 @@ export default function Home() {
               </button>
             </div>
           )}
+          {/* guideline 5.1.1(i): the policy must be reachable from inside */}
+          <a
+            className="panel-export panel-privacy"
+            href="https://tata.page/privacy/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("settings.privacy")}
+          </a>
         </div>
         <div className="panel-shortcuts">
           <span><b>← → ↑ ↓</b> {t("shortcuts.pan")}</span>
