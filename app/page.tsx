@@ -1899,9 +1899,11 @@ export default function Home() {
             <p>{t("welcome.l1")}</p>
             <p>{t("welcome.l2")}</p>
             {(() => {
-              if (nativeAvailable()) return <p>{t("welcome.l3.native")}</p>;
-              // a phone browser cannot reach a desktop Obsidian — that
-              // promise stays where it can be kept
+              // the welcome is a ritual, not a manifest: where the words
+              // live is stated in Settings, under "your pages". Only the
+              // desktop keeps its Obsidian line — the one place it's true
+              // and actionable right now.
+              if (nativeAvailable()) return null;
               if (window.matchMedia("(max-width: 720px)").matches) return null;
               return <p>{t("welcome.l3")}</p>;
             })()}
@@ -2839,6 +2841,11 @@ export default function Home() {
             </span>
           </label>
           <p className="settings-sec">{t("settings.sec.pages")}</p>
+          {nativeAvailable() && (
+            // the fact, where a person looks for it: every page is a real
+            // file on this device, reachable without us
+            <p className="settings-where">{t("settings.where.native")}</p>
+          )}
           <button type="button" className="panel-export" onClick={() => void exportPages()}>
             {t("settings.export")}
           </button>

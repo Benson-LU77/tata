@@ -634,6 +634,13 @@ button:focus-visible, input:focus-visible {
 /* the privacy row is a link wearing the button's coat */
 a.panel-export { display: block; text-align: center; text-decoration: none; }
 
+/* where the words live — a fact, spoken quietly */
+.settings-where {
+  margin: 0;
+  font: 400 11px/1.6 var(--ui);
+  color: var(--v5);
+}
+
 /* settings shelves: a quiet label above each group */
 .settings-sec {
   margin: 10px 0 0;
