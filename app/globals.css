@@ -1523,6 +1523,15 @@ label.panel-export {
 
 /* ---------- the Mirror ---------- */
 
+/* what the wardrobe may spend — beside the title, before the prices */
+.mirror-watts {
+  margin-left: auto;
+  margin-right: 14px;
+  font: 400 10px/1 var(--pixel);
+  letter-spacing: .12em;
+  color: var(--amber);
+}
+
 .mirror-body {
   display: flex;
   gap: 16px;

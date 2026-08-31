@@ -97,6 +97,8 @@ export function MirrorPanel({
     <aside className="settings-panel mirror-panel" aria-label={t("mirror.title")} aria-hidden={!open} inert={!open}>
       <div className="panel-heading">
         <span>{t("mirror.title")}</span>
+        {/* the purse, in view while the wardrobe quotes its prices */}
+        <b className="mirror-watts">{watts} W</b>
         <button type="button" onClick={onClose} aria-label={t("common.close")}>
           ×
         </button>
