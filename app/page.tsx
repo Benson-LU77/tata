@@ -15,7 +15,7 @@ import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import { logDebug } from "./lib/debuglog";
 import type { VaultBridge } from "./lib/bridge/types";
 import { cityCache } from "./lib/drafts";
-import { bestStreakOf, earnedWatts, levelFromWatts, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
+import { bestStreakOf, earnedWatts, levelFromWatts, levelProgress, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
 import { dateAtCell, floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
@@ -667,11 +667,14 @@ export default function Home() {
         advanceEncounter();
         return;
       }
-      // start the walk — the greeting happens when you actually arrive
+      // start the walk — the greeting happens when you actually arrive.
+      // They wave back right away, so the tap visibly landed on a person
+      // and the pause reads as "walking over", not "app stopped working".
       clearEncounterTimers();
       encStageRef.current = null;
       setBubble(null);
       hum().click();
+      setEmote({ key: hit.key, icon: "emote_wave", until: Date.now() + 2200 });
       setEncounterKey(hit.key);
     },
     [clearEncounterTimers, hum, encounterKey, advanceEncounter],
@@ -1440,15 +1443,24 @@ export default function Home() {
       }
       if (!date || !today || date > today) return; // the future stays empty
       const existing = metrics.filter((m) => m.date === date);
-      if (existing.length > 0) {
-        openWrite(existing.sort((a2, b2) => b2.mtime - a2.mtime)[0].file);
-      } else {
-        // backfill: a page for a day that stayed dark — the bridge's true path
+      const file =
+        existing.length > 0
+          ? existing.sort((a2, b2) => b2.mtime - a2.mtime)[0].file
+          : date === today
+            ? `${date} Today.md`
+            : `${date}.md`; // backfill: a page for a day that stayed dark
+      // on touch, nothing bursts open from a graze — a chip names the
+      // page first, and only a second, meant tap unfolds the notebook
+      if (window.matchMedia("(pointer: coarse)").matches && touchPick !== file) {
         hum().click();
-        openWrite(date === today ? `${date} Today.md` : `${date}.md`);
+        setTouchPick(file);
+        return;
       }
+      setTouchPick(null);
+      hum().click();
+      openWrite(file);
     },
-    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, moveMode, t],
+    [cityPlan.blocks, metrics, today, openWrite, hum, encounterKey, moveMode, touchPick, t],
   );
 
 
@@ -2095,6 +2107,14 @@ export default function Home() {
                 <span>
                   LV {level} · {Math.floor(balance)} W · {t("id.known.pre")}{citizen.known}{t("id.known.post")}
                 </span>
+                {(() => {
+                  const lp = levelProgress(earned);
+                  return (
+                    <div className="lv-bar" aria-hidden="true" title={`${lp.into} / ${lp.need} W`}>
+                      <i style={{ width: `${Math.min(100, (lp.into / lp.need) * 100)}%` }} />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div className="id-foot">
@@ -2441,6 +2461,24 @@ export default function Home() {
           <span>
             {t("depot.balance.watts")} · {t("depot.balance.level")} {level} · {t("depot.balance.skyline")} {levelCap} {t("depot.balance.floors")}
           </span>
+          {(() => {
+            // the road to the next level, walked in earned light —
+            // spending never moves this bar backwards
+            const lp = levelProgress(earned);
+            return (
+              <div
+                className="lv-bar"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={lp.need}
+                aria-valuenow={lp.into}
+                aria-label={`${t("depot.balance.level")} ${lp.level + 1}: ${lp.into}/${lp.need} W`}
+                title={`${lp.into} / ${lp.need} W`}
+              >
+                <i style={{ width: `${Math.min(100, (lp.into / lp.need) * 100)}%` }} />
+              </div>
+            );
+          })()}
         </div>
         <div className="depot-orders" aria-label={t("orders.aria")}>
           {orders.map((o) => (

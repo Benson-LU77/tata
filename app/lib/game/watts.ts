@@ -64,6 +64,19 @@ export function levelFromWatts(watts: number): number {
   return level;
 }
 
+/** where you stand inside the current level: watts walked, watts to go */
+export function levelProgress(watts: number): { level: number; into: number; need: number } {
+  let level = 1;
+  let remaining = watts;
+  while (level < 99) {
+    const cost = levelCost(level);
+    if (remaining < cost) return { level, into: remaining, need: cost };
+    remaining -= cost;
+    level += 1;
+  }
+  return { level, into: 0, need: levelCost(99) };
+}
+
 /** the skyline height limit — levelling up lets the whole city grow */
 export function skylineCap(level: number): number {
   return 7 + level * 2;

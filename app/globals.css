@@ -1259,6 +1259,19 @@ label.panel-export {
 }
 
 .depot-balance { display: grid; gap: 6px; }
+/* the road to the next level — earned light fills it, spending can't drain it */
+.lv-bar {
+  height: 5px;
+  border: 1px solid var(--v3);
+  background: rgba(255, 255, 255, .03);
+}
+.lv-bar i {
+  display: block;
+  height: 100%;
+  background: var(--amber);
+  box-shadow: 0 0 6px rgba(232, 180, 100, .45);
+}
+.id-fields .lv-bar { margin-top: 3px; }
 .depot-balance b {
   font: 400 26px/1 var(--pixel);
   color: var(--v7);
