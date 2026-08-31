@@ -1116,6 +1116,56 @@ export default function Home() {
   useEffect(() => {
     questRef.current = quest;
   }, [quest]);
+  /* the demo's guide: the oldest neighbour meets the newcomer and walks
+     them through three stops — a conversation, never a manual. Tapping
+     the street away is a valid answer and simply ends the tour. */
+  const tourRef = useRef(false);
+  useEffect(() => {
+    if (!isDemoCity || tourRef.current || metrics.length === 0) return;
+    const key = "person:0";
+    const name = nameOf("person", hash32(key));
+    const say = (
+      text: string,
+      choices?: { label: string; pick: () => void }[],
+      until = 45000,
+    ) => setBubble({ key, name, text, until: Date.now() + until, choices });
+    const stop3 = () =>
+      say(t("tour.3"), [
+        {
+          label: t("tour.3.r"),
+          pick: () => {
+            hum().click();
+            say(t("tour.end"), undefined, 9000);
+          },
+        },
+      ]);
+    const stop2 = () =>
+      say(t("tour.2"), [
+        {
+          label: t("tour.2.r"),
+          pick: () => {
+            hum().click();
+            stop3();
+          },
+        },
+      ]);
+    const id = window.setTimeout(() => {
+      // marked NOW, not at scheduling: a dep change inside the wait
+      // would cancel the timer with the flag already burnt
+      tourRef.current = true;
+      say(t("tour.1"), [
+        {
+          label: t("tour.1.r"),
+          pick: () => {
+            hum().click();
+            stop2();
+          },
+        },
+      ]);
+    }, 1800);
+    return () => window.clearTimeout(id);
+  }, [isDemoCity, metrics, t, hum]);
+
   /* the favour's receipt: the moment tonight's asked-for order lands,
      say so once — otherwise the tip arrives in silence */
   const [questToast, setQuestToast] = useState(false);
@@ -1479,9 +1529,9 @@ export default function Home() {
 
   const onGroundTap = useCallback(
     (x: number, z: number) => {
-      // a notice on display goes away at a touch of the street —
-      // and that touch does nothing else
-      if (!encounterKey && bubble && !bubble.choices) {
+      // a notice — or the guide's tour — goes away at a touch of the
+      // street, and that touch does nothing else
+      if (!encounterKey && bubble) {
         setBubble(null);
         return;
       }
@@ -1750,8 +1800,9 @@ export default function Home() {
             onOpen={(file) => {
               // a tower is background too, while someone is talking to you
               if (encounterKey) return;
-              // and while a notice is up, the first tap only puts it away
-              if (bubble && !bubble.choices) {
+              // and while a notice or the tour is up, the first tap only
+              // puts it away
+              if (bubble) {
                 setBubble(null);
                 return;
               }
