@@ -634,6 +634,7 @@ export function City3D({
   onCreatureTap,
   onGroundTap,
   encounterKey,
+  encounterApproach,
   onEncounterMeet,
   look,
   emote,
@@ -672,6 +673,8 @@ export function City3D({
   onGroundTap?: (x: number, z: number) => void;
   /** resident to walk to and meet (encounter); null ends the meeting */
   encounterKey: string | null;
+  /** the OTHER walker crosses the street to you (the demo's guide) */
+  encounterApproach?: boolean;
   /** you arrived — the exchange may begin */
   onEncounterMeet: (hit: { key: string; kind: string; seed: number }) => void;
   /** your figure, composed into the atlas at runtime */
@@ -930,7 +933,32 @@ export function City3D({
         return { x: from.x + (dx / d) * s2, z: from.z + (dz / d) * s2, done: false, facing: Math.atan2(dx, dz) };
       };
       if (yIdx >= 0) {
-        if (enc.phase === "walk" && tIdx >= 0) {
+        if (enc.phase === "walk" && tIdx >= 0 && enc.approach) {
+          // the guide crosses the street to YOU — you stand and watch
+          const gap = 1.0;
+          const yp = poses[yIdx];
+          enc.you = { x: yp.x, z: yp.z };
+          const d0 = Math.hypot(enc.target.x - yp.x, enc.target.z - yp.z);
+          if (d0 <= gap + 0.05) {
+            enc.phase = "meet";
+            enc.meetAt = { ...enc.you };
+            if (!enc.notified) {
+              enc.notified = true;
+              const tc = h.creatures[tIdx];
+              onMeetRef.current({ key: tc.key, kind: tc.kind, seed: tc.seed });
+            }
+          } else {
+            const mv = step(enc.target, { x: yp.x, z: yp.z }, 2.2);
+            enc.target = { x: mv.x, z: mv.z };
+            poses[tIdx] = { x: mv.x, y: poses[tIdx].y, z: mv.z, facing: mv.facing, moving: true, phase: t * 6.5 };
+          }
+          poses[yIdx] = {
+            ...yp,
+            facing: Math.atan2(enc.target.x - yp.x, enc.target.z - yp.z),
+            moving: false,
+            phase: 0,
+          };
+        } else if (enc.phase === "walk" && tIdx >= 0) {
           // the stop point is decided once — recomputing it every frame
           // makes you orbit the target forever when you start close
           const gap = 1.0;
@@ -1436,9 +1464,13 @@ export function City3D({
     /* goodbye bookkeeping: when the stroll apart began, and from where */
     leftAt: number | null;
     leaveFrom: { x: number; z: number } | null;
+    /** they walk to you instead of you to them */
+    approach: boolean;
   } | null>(null);
   /* per-creature schedule shifts — the "walk on from here" memory */
   const shiftRef = useRef<Map<string, number>>(new Map());
+  const approachRef = useRef(false);
+  approachRef.current = Boolean(encounterApproach);
 
   useEffect(() => {
     const h = hRef.current;
@@ -1457,6 +1489,18 @@ export function City3D({
         const yp = poseAt(you, stateRef.current.plan, now + (shiftRef.current.get(you.key) ?? 0));
         return { x: yp.x, z: yp.z };
       })();
+      if (approachRef.current) {
+        // the visitor was already on their way: a guide scheduled three
+        // islands over must not spend twenty seconds beelining across
+        // water — they enter from just up the street instead
+        const adx = tp.x - start.x;
+        const adz = tp.z - start.z;
+        const ad = Math.hypot(adx, adz);
+        if (ad > 9) {
+          tp.x = start.x + (adx / ad) * 8;
+          tp.z = start.z + (adz / ad) * 8;
+        }
+      }
       encRef.current = {
         key: encounterKey,
         phase: "walk",
@@ -1469,6 +1513,7 @@ export function City3D({
         lastT: now,
         leftAt: null,
         leaveFrom: null,
+        approach: approachRef.current,
       };
     } else if (encRef.current && encRef.current.phase !== "leave") {
       encRef.current.phase = "leave";

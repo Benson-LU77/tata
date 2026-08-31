@@ -108,12 +108,18 @@ export function demoGameState(now: number): GameState {
   bonds["dog:0"] = { n: 4, met: d(8), last: d(2) };
   return {
     ...EMPTY_STATE,
-    owned: ["cats", "birds", "dog", "lamps", "trees", "fountain", "harbor", "sister", "comet"],
+    owned: ["cats", "birds", "dog", "lamps", "trees", "fountain", "harbor", "viaduct", "observatory", "sister", "comet"],
     look: { hat: "hat.tophat", hair: "hair.short", acc: "acc.none", tone: 2 },
     bonds,
-    commissions: [
-      { id: "library", block: 0, placedAt: now - 9 * DAY, completedAt: now - 6 * DAY, rewardClaimed: true },
-    ],
+    commissions: ["library", "greenhouse", "teahouse", "belltower", "skybridge", "planetarium"].map(
+      (id, i) => ({
+        id,
+        block: i % 2,
+        placedAt: now - (30 - i * 2) * DAY,
+        completedAt: now - (20 - i * 2) * DAY,
+        rewardClaimed: true,
+      }),
+    ),
     billboard: { text: "今晚也有人在寫。", date: d(0) },
     updatedAt: now,
   };

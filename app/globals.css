@@ -634,6 +634,56 @@ button:focus-visible, input:focus-visible {
 /* the privacy row is a link wearing the button's coat */
 a.panel-export { display: block; text-align: center; text-decoration: none; }
 
+/* the guide's show: the star pulses when pointed at; the compass takes
+   centre stage; the point being named leans forward into the light */
+.tour-glow {
+  animation: star-glow 1.1s ease-in-out infinite;
+}
+@keyframes star-glow {
+  /* the summon centres itself with translateX — the pulse must carry it */
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(224, 168, 79, .5)); transform: translateX(-50%) scale(1); }
+  50% { filter: drop-shadow(0 0 14px rgba(224, 168, 79, .95)); transform: translateX(-50%) scale(1.4); }
+}
+/* while the guide points at the star, the talking-state must not put
+   it to sleep — it is the one thing on stage */
+.talking .dpad-summon.tour-glow { opacity: 1 !important; pointer-events: auto !important; }
+/* the talking-state dims the compass to 12% — but the showcase IS the
+   conversation, so the touring compass stays fully lit */
+.talking .dpad--tour { opacity: 1 !important; pointer-events: none !important; }
+.dpad--tour {
+  position: fixed !important;
+  left: 50% !important;
+  top: 40% !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) scale(1.9);
+  z-index: 40;
+  pointer-events: none; /* the show is not interactive */
+  transition: transform .4s ease;
+}
+.dpad--tour .dpad-btn .depot-thumb { transition: transform .35s ease, filter .35s ease; }
+.dpad--tour .tour-hi .depot-thumb {
+  transform: scale(1.5);
+  filter: drop-shadow(0 0 10px rgba(224, 168, 79, .95));
+}
+
+/* the sealed letter that opens the whole city */
+.mail-drop {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  top: 50%;
+  background: transparent;
+  border: 0;
+  padding: 12px;
+  cursor: pointer;
+  animation: mail-bob 2.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 18px rgba(224, 168, 79, .22));
+}
+@keyframes mail-bob {
+  0%, 100% { transform: translate(-50%, -53%); }
+  50% { transform: translate(-50%, -47%); }
+}
+
 /* where the words live — a fact, spoken quietly */
 .settings-where {
   margin: 0;

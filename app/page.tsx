@@ -43,6 +43,22 @@ import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
 import type { Lang } from "./lib/i18n";
 
+/* the first thing a newcomer sees: a letter, waiting to be opened.
+   Index 5 of the palette is bent to amber for the wax seal. */
+const MAIL_ICON = [
+  "00000000000000",
+  "04666666666640",
+  "06466666666460",
+  "06646666664660",
+  "06664666646660",
+  "06666466466660",
+  "06666655666660",
+  "06666666666660",
+  "06666666666660",
+  "00000000000000",
+];
+const MAIL_PAL = ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#8b9099", "#e0a84f", "#c9ccd2", "#f2f3f5"];
+
 /** frozen archetype verdicts — module-level so render stays pure while the
  *  map quietly grows; persisted to localStorage after each plan */
 /* the compass draws in the city's own greys */
@@ -117,6 +133,15 @@ export default function Home() {
   const [monthListOpen, setMonthListOpen] = useState(false);
   const [letterOpen, setLetterOpen] = useState<string | null>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  /* the welcome arrives as sealed mail — the card waits inside */
+  const [mailOpened, setMailOpened] = useState(false);
+  /* during the demo tour, the guide crosses the street to you */
+  const [tourApproach, setTourApproach] = useState(false);
+  /* the star pulses when the guide points at it; the compass then takes
+     centre stage and each of its points lights up as it is named */
+  const [tourStar, setTourStar] = useState(false);
+  const [tourShowcase, setTourShowcase] = useState(false);
+  const [tourHi, setTourHi] = useState(-1);
   const [foundToast, setFoundToast] = useState(false);
   const [swApply, setSwApply] = useState<(() => void) | null>(null);
   const [touchPick, setTouchPick] = useState<string | null>(null);
@@ -694,6 +719,29 @@ export default function Home() {
   const onEncounterMeet = useCallback(
     (hit: { key: string; kind: string; seed: number }) => {
       if (encStageRef.current !== null) return; // already exchanged
+      if (demoRef.current && tourRef.current && !tourTalkedRef.current && hit.key === "person:0") {
+        // the guide's walk ends here: two streets of talk, then a finger
+        // pointed at the star below — the compass carries the rest
+        tourTalkedRef.current = true;
+        setTourApproach(false);
+        encStageRef.current = "their";
+        const gName = nameOf("person", hash32("person:0"));
+        const gSay = (
+          text: string,
+          choices?: { label: string; pick: () => void }[],
+          until = 180000,
+        ) => setBubble({ key: "person:0", name: gName, text, until: Date.now() + until, choices });
+        const gStar = () => {
+          tourPhaseRef.current = "star";
+          setTourStar(true);
+          setUiVisible(true);
+          gSay(t("tour.star"));
+        };
+        const g2 = () =>
+          gSay(t("tour.2"), [{ label: t("tour.2.r"), pick: () => { hum().click(); gStar(); } }]);
+        gSay(t("tour.1"), [{ label: t("tour.1.r"), pick: () => { hum().click(); g2(); } }]);
+        return;
+      }
       const kind = hit.kind as CreatureKind;
       const now = Date.now();
       const d = new Date(now);
@@ -1116,55 +1164,24 @@ export default function Home() {
   useEffect(() => {
     questRef.current = quest;
   }, [quest]);
-  /* the demo's guide: the oldest neighbour meets the newcomer and walks
-     them through three stops — a conversation, never a manual. Tapping
-     the street away is a valid answer and simply ends the tour. */
+  /* the demo's guide: a beat after the city fades in, the oldest
+     neighbour crosses the street to the newcomer — the camera leans in,
+     and the conversation starts when they arrive. */
   const tourRef = useRef(false);
+  const tourTalkedRef = useRef(false);
+  /* star → compass → done: where the walk-through stands */
+  const tourPhaseRef = useRef<"idle" | "star" | "compass" | "done">("idle");
   useEffect(() => {
     if (!isDemoCity || tourRef.current || metrics.length === 0) return;
-    const key = "person:0";
-    const name = nameOf("person", hash32(key));
-    const say = (
-      text: string,
-      choices?: { label: string; pick: () => void }[],
-      until = 45000,
-    ) => setBubble({ key, name, text, until: Date.now() + until, choices });
-    const stop3 = () =>
-      say(t("tour.3"), [
-        {
-          label: t("tour.3.r"),
-          pick: () => {
-            hum().click();
-            say(t("tour.end"), undefined, 9000);
-          },
-        },
-      ]);
-    const stop2 = () =>
-      say(t("tour.2"), [
-        {
-          label: t("tour.2.r"),
-          pick: () => {
-            hum().click();
-            stop3();
-          },
-        },
-      ]);
     const id = window.setTimeout(() => {
       // marked NOW, not at scheduling: a dep change inside the wait
       // would cancel the timer with the flag already burnt
       tourRef.current = true;
-      say(t("tour.1"), [
-        {
-          label: t("tour.1.r"),
-          pick: () => {
-            hum().click();
-            stop2();
-          },
-        },
-      ]);
-    }, 1800);
+      setTourApproach(true);
+      setEncounterKey("person:0");
+    }, 1600);
     return () => window.clearTimeout(id);
-  }, [isDemoCity, metrics, t, hum]);
+  }, [isDemoCity, metrics]);
 
   /* the favour's receipt: the moment tonight's asked-for order lands,
      say so once — otherwise the tip arrives in silence */
@@ -1332,16 +1349,80 @@ export default function Home() {
     };
   }, [replayOn, metrics, today]);
 
+  /* the star was tapped: the compass takes centre stage and the guide
+     names each of its points in turn — the show runs itself, and only
+     the last question waits for an answer */
+  useEffect(() => {
+    if (!compassOpen || tourPhaseRef.current !== "star") return;
+    tourPhaseRef.current = "compass";
+    setTourStar(false);
+    setTourShowcase(true);
+    setUiVisible(true);
+    const gName = nameOf("person", hash32("person:0"));
+    const gSay = (
+      text: string,
+      choices?: { label: string; pick: () => void }[],
+      until = 180000,
+    ) => setBubble({ key: "person:0", name: gName, text, until: Date.now() + until, choices });
+    const endShowcase = () => {
+      setTourShowcase(false);
+      setTourHi(-1);
+      setCompassOpen(false);
+    };
+    const firstPage = () => {
+      window.localStorage.setItem("tata.visited", "1");
+      window.localStorage.setItem("tata.firstpage", "1");
+      window.location.href = window.location.pathname;
+    };
+    const roam = () => {
+      tourPhaseRef.current = "done";
+      endShowcase();
+      clearEncounterTimers();
+      encStageRef.current = null;
+      setEncounterKey(null);
+      window.localStorage.setItem("tata.visited", "1");
+      gSay(t("tour.roam.end"), undefined, 9000);
+    };
+    const ids: number[] = [];
+    const BEAT = 3200;
+    ["tour.c1", "tour.c2", "tour.c3", "tour.c4", "tour.c5"].forEach((k, i) => {
+      ids.push(
+        window.setTimeout(() => {
+          setTourHi(i);
+          setUiVisible(true);
+          gSay(t(k));
+        }, i * BEAT),
+      );
+    });
+    ids.push(
+      window.setTimeout(() => {
+        setTourHi(-1);
+        // a decision, not a notice: the question waits all night
+        gSay(t("tour.ask"), [
+          { label: t("tour.go"), pick: firstPage },
+          { label: t("tour.stay"), pick: () => { hum().click(); roam(); } },
+        ], 86400000);
+      }, 5 * BEAT),
+    );
+    return () => {
+      for (const id of ids) window.clearTimeout(id);
+    };
+  }, [compassOpen, t, hum, clearEncounterTimers]);
+
   /* summoned compass: any outside tap or six idle seconds puts it away */
   useEffect(() => {
     if (!compassOpen) return;
     const close = (e: PointerEvent) => {
+      // while the guide is naming its points, the compass stays out
+      if (tourPhaseRef.current === "compass") return;
       const el = e.target as HTMLElement | null;
       if (el?.closest(".dpad") || el?.closest(".dpad-summon")) return;
       setCompassOpen(false);
     };
     document.addEventListener("pointerdown", close, true);
-    const id = window.setTimeout(() => setCompassOpen(false), 8000);
+    const id = window.setTimeout(() => {
+      if (tourPhaseRef.current !== "compass") setCompassOpen(false);
+    }, 8000);
     return () => {
       document.removeEventListener("pointerdown", close, true);
       window.clearTimeout(id);
@@ -1424,7 +1505,11 @@ export default function Home() {
     if (idleTimerRef.current !== null) window.clearTimeout(idleTimerRef.current);
     if (writeOpenRef.current) return;
     const idleMs = window.matchMedia("(pointer: coarse)").matches ? 3500 : 6000;
-    idleTimerRef.current = window.setTimeout(() => setUiVisible(false), idleMs);
+    idleTimerRef.current = window.setTimeout(() => {
+      // the guide is mid-show — the compass must not doze off
+      if (tourPhaseRef.current === "star" || tourPhaseRef.current === "compass") return;
+      setUiVisible(false);
+    }, idleMs);
   }, []);
 
   const registerActivity = useCallback(() => {
@@ -1486,6 +1571,15 @@ export default function Home() {
     setUiVisible(true);
     if (file) setRequestOpen({ file, n: Date.now() });
   }, [clearEncounterTimers]);
+
+  /* back from the tour with the pen in hand: the notebook opens itself */
+  useEffect(() => {
+    if (!introDone) return;
+    if (window.localStorage.getItem("tata.firstpage") !== "1") return;
+    window.localStorage.removeItem("tata.firstpage");
+    const id = window.setTimeout(() => openWrite(), 500);
+    return () => window.clearTimeout(id);
+  }, [introDone, openWrite]);
 
   /** landmark placements in world coords — a written day evicts the guest */
   const placements = useMemo(() => {
@@ -1816,6 +1910,7 @@ export default function Home() {
             onCreatureTap={onCreatureTap}
             onGroundTap={onGroundTap}
             encounterKey={encounterKey}
+            encounterApproach={tourApproach}
             onEncounterMeet={onEncounterMeet}
             look={game.look}
             emote={emote}
@@ -1949,7 +2044,20 @@ export default function Home() {
             {t("city.first")}
           </button>
         )}
-        {welcomeOpen && introDone && (
+        {welcomeOpen && introDone && !mailOpened && (
+          <button
+            type="button"
+            className="mail-drop"
+            aria-label={t("welcome.mail")}
+            onClick={() => {
+              hum().click();
+              setMailOpened(true);
+            }}
+          >
+            <PixelIcon rows={MAIL_ICON} size={56} pal={MAIL_PAL} />
+          </button>
+        )}
+        {welcomeOpen && introDone && mailOpened && (
           <div className="welcome-card" role="dialog" aria-label="Tata">
             <p>{t("welcome.l1")}</p>
             <p>{t("welcome.l2")}</p>
@@ -1963,22 +2071,12 @@ export default function Home() {
               return <p>{t("welcome.l3")}</p>;
             })()}
             <div className="welcome-actions">
+              {/* one road in: the city shows itself first, and the guide
+                  hands over the pen at the end of the walk */}
               <button
                 type="button"
                 className="welcome-write"
                 onClick={() => {
-                  setWelcomeOpen(false);
-                  window.localStorage.setItem("tata.visited", "1");
-                  setWelcomeOpen(false);
-                  openWrite();
-                }}
-              >
-                {t("welcome.write")}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  // looking at the sample must not burn the welcome for later
                   window.location.search = "?demo=40";
                 }}
               >
@@ -2137,7 +2235,7 @@ export default function Home() {
         <>
         <button
           type="button"
-          className="dpad-summon immersion-ui"
+          className={"dpad-summon immersion-ui" + (tourStar ? " tour-glow" : "")}
           onClick={() => {
             hum().click();
             registerActivity();
@@ -2149,14 +2247,14 @@ export default function Home() {
           <PixelIcon rows={COMPASS_ROSE} size={22} />
         </button>
         <nav
-          className="dpad immersion-ui"
+          className={"dpad immersion-ui" + (tourShowcase ? " dpad--tour" : "")}
           aria-label={t("topbar.settings")}
           onClickCapture={() => setCompassOpen(false)}
         >
           <PixelIcon rows={COMPASS_RING} size={148} pal={BOOK_PAL_PAGE} />
           <button
             type="button"
-            className="dpad-btn dpad-up"
+            className={"dpad-btn dpad-up" + (tourHi === 0 ? " tour-hi" : "")}
             onClick={() => {
               openWrite();
               setRequestToday(Date.now());
@@ -2168,7 +2266,7 @@ export default function Home() {
           </button>
           <button
             type="button"
-            className="dpad-btn dpad-left"
+            className={"dpad-btn dpad-left" + (tourHi === 1 ? " tour-hi" : "")}
             onClick={() => {
               openWrite();
               setRequestArchive(Date.now());
@@ -2180,7 +2278,7 @@ export default function Home() {
           </button>
           <button
             type="button"
-            className="dpad-btn dpad-right"
+            className={"dpad-btn dpad-right" + (tourHi === 2 ? " tour-hi" : "")}
             onClick={() => {
               hum().click();
               setMirrorOpen(true);
@@ -2192,7 +2290,7 @@ export default function Home() {
           </button>
           <button
             type="button"
-            className="dpad-btn dpad-down"
+            className={"dpad-btn dpad-down" + (tourHi === 3 ? " tour-hi" : "")}
             onClick={() => {
               hum().click();
               setShopOpen(!shopOpen);
@@ -2204,7 +2302,7 @@ export default function Home() {
           </button>
           <button
             type="button"
-            className="dpad-btn dpad-core"
+            className={"dpad-btn dpad-core" + (tourHi === 4 ? " tour-hi" : "")}
             onClick={() => {
               hum().click();
               setDexOpen(!dexOpen);

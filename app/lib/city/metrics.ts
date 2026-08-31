@@ -101,7 +101,23 @@ export function demoMetrics(count: number, now: number): NoteMetric[] {
       mtime: now - daysAgo * 86400000 - Math.floor(r() * 43200000),
     });
   }
-  return metrics;
+  // the showcase skyline earns all three archetypes, deterministically:
+  // a lighthouse needs a long silence before it, a bridge needs a
+  // bare-date backfill, a chapel a page from the smallest hours
+  const DAY = 86400000;
+  const dstr = (n: number) => {
+    const d = new Date(now - n * DAY);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+  const hole = new Set([24, 25, 26, 27, 28, 29, 30, 31].map(dstr));
+  const out = metrics.filter((mm) => !hole.has(mm.date));
+  out.push({ file: "demo/light.md", date: dstr(24), words: 420, mtime: now - 24 * DAY + 3600000 });
+  out.push({ file: "demo/far.md", date: dstr(32), words: 260, mtime: now - 32 * DAY });
+  out.push({ file: `demo/${dstr(15)}.md`, date: dstr(15), words: 180, mtime: now - 2 * DAY });
+  const chapel = new Date(now - 5 * DAY);
+  chapel.setHours(3, 15, 0, 0);
+  out.push({ file: "demo/chapel.md", date: dstr(5), words: 333, mtime: chapel.getTime() });
+  return out;
 }
 
 function rngSimple(seed: number): () => number {
