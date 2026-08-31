@@ -16,23 +16,25 @@ import { writeFileSync } from "node:fs";
 /* ---------- the figure: you_S_i wearing hat.tophat, from parts.ts ---- */
 
 const FIGURE = [
-  "...oooooooooo...",
-  "..occcccccccco..",
-  "..occcccccccco..",
-  "..occcccccccco..",
-  ".oooooooooooooo.",
-  "occcccccccccccco",
-  "oooooooooooooooo",
-  ".offffffffffffo.",
-  ".offffffffffffo.",
-  ".offeeffffeeffo.",
-  ".offeeffffeeffo.",
-  ".offffffffffffo.",
-  ".offffffffffffo.",
-  "..offffffffffo..",
-  ".occcccccccccco.",
-  "occcccccccccccco",
-  "oooooooooooooooo",
+  ".....oooooooooo.....",
+  "....occcccccccco....",
+  "....occcccccccco....",
+  "....occcccccccco....",
+  "...oooooooooooooo...",
+  "..occcccccccccccco..",
+  "..oooooooooooooooo..",
+  "...offffffffffffo...",
+  "...offffffffffffo...",
+  "...offeeffffeeffo...",
+  "...offeeffffeeffo...",
+  "...offffffffffffo...",
+  "...offffffffffffo...",
+  "....offffffffffo....",
+  "...occcccccccccco...",
+  "..occcccccccccccco..",
+  ".occcccccccccccccco.",
+  "occcccccccccccccccco",
+  "cccccccccccccccccccc",
 ];
 
 /* the Mirror's amber reading of the sprite charset */
@@ -78,11 +80,11 @@ tower(36, 4, 12, TOWER_DARK, [[1, 5], [2, 13], [1, 19]]);
 /* ground — a thin street under everything */
 for (let y = 36; y < G; y += 1) for (let x = 0; x < G; x += 1) grid[y][x] = GROUND;
 
-/* the portrait — 16×17 at ×2: head, and just enough shoulder to
-   hang a coat on; the bust stands on the street */
+/* the portrait — 20×19 at ×2 = 40×38: the bust bleeds to the bottom
+   edge and the shoulders run off into both lower corners */
 const SCALE = 2;
-const FX = Math.floor((G - 16 * SCALE) / 2);
-const FY = 36 - 17 * SCALE;
+const FX = Math.floor((G - 20 * SCALE) / 2);
+const FY = G - 19 * SCALE;
 FIGURE.forEach((row, sy) => {
   [...row].forEach((ch, sx) => {
     if (ch === ".") return;
