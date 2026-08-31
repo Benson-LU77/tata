@@ -75,6 +75,9 @@ function tower(x0, w, top, tone, windows) {
 tower(0, 4, 10, TOWER_LIGHT, [[1, 4], [2, 11], [1, 18], [2, 25]]);
 tower(2, 3, 20, TOWER_DARK, [[1, 5], [1, 13]]);
 tower(40, 4, 8, TOWER_MID, [[1, 3], [2, 12], [1, 20], [2, 27]]);
+/* one window burns amber: somewhere in this city, someone else is
+   writing tonight. Amber belongs to writers only — so does this. */
+grid[8 + 12][40 + 2] = "#e0a84f";
 tower(38, 3, 22, TOWER_DARK, [[1, 6], [1, 14]]);
 
 /* ground — a thin street under everything */
