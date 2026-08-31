@@ -1688,8 +1688,10 @@ label.panel-export {
 .levelup-toast {
   position: absolute;
   left: 50%;
-  top: 18%;
-  transform: translateX(-50%);
+  /* dead centre of the screen — the 18% band kept colliding with the
+     demo-exit bar and the corner block */
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 7;
   /* left:50% centring leaves only half the screen to size against —
      without nowrap the line folds exactly on phone widths */
@@ -1705,8 +1707,8 @@ label.panel-export {
   animation: toast-in .5s ease both;
 }
 @keyframes toast-in {
-  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 6px)); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
 }
 
 /* month page index — floats above the dock */
