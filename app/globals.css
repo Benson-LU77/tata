@@ -1606,6 +1606,12 @@ label.panel-export {
   color: var(--amber);
   cursor: pointer;
 }
+/* the outfit costs more than the purse holds */
+.mirror-wear:disabled {
+  border-color: var(--line);
+  color: var(--v5);
+  cursor: default;
+}
 
 /* registry topbar icon: two little ledger lines */
 .icon-registry {

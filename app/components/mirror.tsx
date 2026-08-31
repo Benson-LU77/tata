@@ -135,13 +135,8 @@ export function MirrorPanel({
                       type="button"
                       className={"mirror-opt" + (active ? " active" : "") + (unlocked ? "" : " locked")}
                       title={line}
-                      onClick={() => {
-                        if (unlocked) pick(slot, p.id);
-                        else if (watts >= p.cost) {
-                          onUnlock(p.id, p.cost);
-                          pick(slot, p.id);
-                        }
-                      }}
+                      // trying on is free — the till only rings at "Wear it"
+                      onClick={() => pick(slot, p.id)}
                     >
                       {name}
                       {!unlocked && <em> {p.cost}W</em>}
@@ -170,9 +165,27 @@ export function MirrorPanel({
               ))}
             </div>
           </div>
-          <button type="button" className="mirror-wear" onClick={() => onWear(draft)}>
-            {t("mirror.wear")}
-          </button>
+          {(() => {
+            /* whatever in the draft isn't yours yet gets bought here,
+               in one press — or the press stays out of reach */
+            const pending = SLOTS.map((slot) => PARTS.find((p) => p.id === draft[slot])).filter(
+              (p): p is (typeof PARTS)[number] => Boolean(p && !isOwned(p.id, p.cost)),
+            );
+            const cost = pending.reduce((s, p) => s + p.cost, 0);
+            return (
+              <button
+                type="button"
+                className="mirror-wear"
+                disabled={watts < cost}
+                onClick={() => {
+                  for (const p of pending) onUnlock(p.id, p.cost);
+                  onWear(draft);
+                }}
+              >
+                {cost > 0 ? `${t("mirror.wear")} · ${cost} W` : t("mirror.wear")}
+              </button>
+            );
+          })()}
         </div>
       </div>
     </aside>
