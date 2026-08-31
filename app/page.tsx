@@ -97,6 +97,8 @@ export default function Home() {
   const [synced, setSynced] = useState<"live" | "cached" | "local">("local");
   const [gl3d, setGl3d] = useState(true);
   const [shopOpen, setShopOpen] = useState(false);
+  /* the depot counter: one tile is picked, its line and its verb wait below */
+  const [depotPick, setDepotPick] = useState<string | null>(null);
   const [game, setGame] = useState<GameState>(EMPTY_STATE);
   const [searchHits, setSearchHits] = useState<Set<string> | null>(null);
   const [monthIx, setMonthIx] = useState(-1);
@@ -2470,20 +2472,33 @@ export default function Home() {
               t("shop." + item.id + ".line") !== "shop." + item.id + ".line"
                 ? t("shop." + item.id + ".line")
                 : item.line;
+            void itemLine; void movable; void clickable; // the counter's business now
             return (
-              <div key={item.id} className="depot-cell">
+              // a tile is a shelf: the goods, the name, the price. The one
+              // sentence each item owns waits at the counter below, so fifty
+              // products stay a wall of squares, never a scroll of prose.
               <button
+                key={item.id}
                 type="button"
-                className={"depot-item" + (owned ? " owned" : "") + (active ? " active" : "") + (stashed ? " stashed" : "")}
-                disabled={!clickable}
-                onClick={() => buy(item.id)}
+                className={
+                  "depot-item" +
+                  (owned ? " owned" : "") +
+                  (active ? " active" : "") +
+                  (stashed ? " stashed" : "") +
+                  (!owned && (locked || !affordable) ? " locked" : "") +
+                  (depotPick === item.id ? " picked" : "")
+                }
+                aria-pressed={depotPick === item.id}
+                onClick={() => {
+                  hum().click();
+                  setDepotPick(item.id);
+                }}
               >
                 {(() => {
                   const ic = iconOf(item.id);
                   return ic ? <PixelIcon rows={ic} /> : null;
                 })()}
                 <strong>{itemName}</strong>
-                <em>{itemLine}</em>
                 <span>
                   {active
                     ? t("depot.state.tonight")
@@ -2498,20 +2513,6 @@ export default function Home() {
                         : `${item.cost} ${t("depot.unit.w")}`}
                 </span>
               </button>
-              {movable && !stashed && (
-                <button
-                  type="button"
-                  className="move-chip"
-                  onClick={() => {
-                    hum().click();
-                    setMoveMode(item.id);
-                    setShopOpen(false);
-                  }}
-                >
-                  {t("depot.move")}
-                </button>
-              )}
-              </div>
             );
           })}
         </div>
@@ -2525,23 +2526,26 @@ export default function Home() {
             const affordable = balance >= def.cost;
             const locked = def.minLevel > level;
             return (
-              <div key={def.id} className="depot-cell">
               <button
+                key={def.id}
                 type="button"
                 className={
                   "depot-item" +
                   (mine ? " owned" : "") +
-                  (!mine && (locked || !affordable) ? " locked" : "")
+                  (!mine && (locked || !affordable) ? " locked" : "") +
+                  (depotPick === def.id ? " picked" : "")
                 }
-                disabled={Boolean(mine) || locked || !affordable}
-                onClick={() => orderCommission(def.id)}
+                aria-pressed={depotPick === def.id}
+                onClick={() => {
+                  hum().click();
+                  setDepotPick(def.id);
+                }}
               >
                 {(() => {
                   const ic = iconOf(def.id);
                   return ic ? <PixelIcon rows={ic} /> : null;
                 })()}
                 <strong>{t("comm." + def.id + ".name")}</strong>
-                <em>{t("comm." + def.id + ".line")}</em>
                 <span>
                   {mine
                     ? prog >= 1
@@ -2555,23 +2559,108 @@ export default function Home() {
                       : `${def.cost} W · ${def.days} ${t("works.days")}`}
                 </span>
               </button>
-              {mine && prog >= 1 && (
-                <button
-                  type="button"
-                  className="move-chip"
-                  onClick={() => {
-                    hum().click();
-                    setMoveMode(def.id);
-                    setShopOpen(false);
-                  }}
-                >
-                  {t("depot.move")}
-                </button>
-              )}
-              </div>
             );
           })}
         </div>
+        {(() => {
+          /* the counter: the picked tile's sentence, and its one verb */
+          const cat = CATALOG.find((i) => i.id === depotPick);
+          const def = cat ? undefined : COMMISSION_CATALOG.find((d) => d.id === depotPick);
+          if (cat) {
+            const owned = game.owned.includes(cat.id);
+            const affordable = balance >= cat.cost;
+            const locked = (cat.minLevel ?? 0) > level;
+            const active =
+              (cat.kind === "weather" && game.weather === cat.id) ||
+              (cat.kind === "skin" && game.skin === cat.id);
+            const stashed = (game.stashed ?? []).includes(cat.id);
+            const clickable = owned
+              ? cat.kind === "weather" ||
+                (cat.kind === "skin" && !active) ||
+                cat.kind === "decor" ||
+                cat.kind === "creature"
+              : affordable && !locked;
+            const movable = owned && (cat.id === "fountain" || cat.id === "observatory");
+            const name = t("shop." + cat.id + ".name") !== "shop." + cat.id + ".name" ? t("shop." + cat.id + ".name") : cat.name;
+            const line = t("shop." + cat.id + ".line") !== "shop." + cat.id + ".line" ? t("shop." + cat.id + ".line") : cat.line;
+            return (
+              <div className="depot-counter">
+                <div className="counter-words">
+                  <strong>{name}</strong>
+                  <em>{line}</em>
+                </div>
+                {movable && !stashed && (
+                  <button
+                    type="button"
+                    className="move-chip"
+                    onClick={() => {
+                      hum().click();
+                      setMoveMode(cat.id);
+                      setShopOpen(false);
+                    }}
+                  >
+                    {t("depot.move")}
+                  </button>
+                )}
+                <button type="button" className="counter-act" disabled={!clickable} onClick={() => buy(cat.id)}>
+                  {active
+                    ? t("depot.state.tonight")
+                    : owned
+                      ? (cat.kind === "decor" || cat.kind === "creature")
+                        ? stashed
+                          ? t("depot.state.stashed")
+                          : t("depot.state.shown")
+                        : t("depot.state.owned")
+                      : locked
+                        ? `${t("depot.balance.level")} ${cat.minLevel}`
+                        : `${cat.cost} ${t("depot.unit.w")}`}
+                </button>
+              </div>
+            );
+          }
+          if (def) {
+            const mine = (game.commissions ?? []).find((c) => c.id === def.id);
+            const prog = mine && nowTs ? progressOf(mine, nowTs) : 0;
+            const affordable = balance >= def.cost;
+            const locked = def.minLevel > level;
+            return (
+              <div className="depot-counter">
+                <div className="counter-words">
+                  <strong>{t("comm." + def.id + ".name")}</strong>
+                  <em>{t("comm." + def.id + ".line")}</em>
+                </div>
+                {mine && prog >= 1 && (
+                  <button
+                    type="button"
+                    className="move-chip"
+                    onClick={() => {
+                      hum().click();
+                      setMoveMode(def.id);
+                      setShopOpen(false);
+                    }}
+                  >
+                    {t("depot.move")}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="counter-act"
+                  disabled={Boolean(mine) || locked || !affordable}
+                  onClick={() => orderCommission(def.id)}
+                >
+                  {mine
+                    ? prog >= 1
+                      ? t("works.open")
+                      : `${t("works.building")} ${Math.min(def.days, Math.floor(prog * def.days) + 1)}/${def.days}`
+                    : locked
+                      ? `${t("depot.balance.level")} ${def.minLevel}`
+                      : `${def.cost} W · ${def.days} ${t("works.days")}`}
+                </button>
+              </div>
+            );
+          }
+          return null;
+        })()}
         <p className="depot-note">{t("depot.footer")}</p>
       </aside>
 

@@ -1264,40 +1264,87 @@ label.panel-export {
   color: var(--v5);
 }
 
+/* shelves: squares that scale by the square root, not the scroll.
+   Each tile is goods + name + price; the sentence lives at the counter. */
 .depot-items {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
   overflow-y: auto;
 }
 .depot-item {
   display: grid;
-  gap: 5px;
-  padding: 12px 14px;
-  text-align: left;
+  gap: 6px;
+  padding: 12px 6px 10px;
+  justify-items: center;
+  align-content: start;
+  text-align: center;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, .02);
   color: var(--v6);
   cursor: pointer;
   transition: border-color .25s ease, background .25s ease;
 }
-.depot-item:hover:not(:disabled) { border-color: var(--v4); background: rgba(255, 255, 255, .05); }
-.depot-item:disabled { cursor: default; opacity: .45; }
+.depot-item:hover { border-color: var(--v4); background: rgba(255, 255, 255, .05); }
+.depot-item.locked { opacity: .45; }
 .depot-item.owned { opacity: 1; border-color: rgba(255, 255, 255, .16); }
+.depot-item.picked { border-color: rgba(232, 180, 100, .55); background: rgba(232, 180, 100, .05); }
 .depot-item strong {
-  font: 400 11px/1.3 var(--pixel);
+  font: 400 10px/1.35 var(--pixel);
   color: var(--v7);
 }
-.depot-item em {
-  font: 400 11.5px/1.5 var(--ui);
-  font-style: normal;
-  color: var(--v5);
-}
 .depot-item span {
-  font: 400 9px/1 var(--pixel);
-  letter-spacing: .1em;
+  font: 400 8.5px/1 var(--pixel);
+  letter-spacing: .08em;
   color: var(--v5);
 }
 .depot-item.owned span { color: var(--v6); }
+
+/* the counter: one sentence, one verb, always at hand */
+.depot-counter {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 2px;
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(10, 12, 16, .96), rgba(6, 7, 10, .98));
+}
+.depot-counter .counter-words {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.depot-counter strong {
+  font: 400 10.5px/1.3 var(--pixel);
+  color: var(--v7);
+}
+.depot-counter em {
+  font: 400 11.5px/1.45 var(--ui);
+  font-style: normal;
+  color: var(--v5);
+}
+.depot-counter .counter-act {
+  flex: none;
+  white-space: nowrap;
+  padding: 9px 12px;
+  min-height: 36px;
+  border: 1px solid rgba(232, 180, 100, .55);
+  background: transparent;
+  font: 400 9.5px/1 var(--pixel);
+  letter-spacing: .08em;
+  color: var(--amber);
+  cursor: pointer;
+}
+.depot-counter .counter-act:disabled {
+  border-color: var(--line);
+  color: var(--v5);
+  cursor: default;
+}
+.depot-counter .move-chip { position: static; flex: none; }
 
 .depot-note {
   margin: 0;
@@ -1900,8 +1947,9 @@ label.panel-export {
   min-height: 44px;
 }
 
-/* every card shows its goods before you pay */
-.depot-item { position: relative; padding-right: 56px; }
+/* every tile shows its goods before you pay — the icon sits on the shelf,
+   not floating in a corner */
+.depot-item .depot-thumb { position: static; transform: none; opacity: 1; }
 .depot-thumb {
   position: absolute;
   right: 12px;
@@ -1952,7 +2000,6 @@ label.panel-export {
 .dex-item .depot-thumb { right: 10px; }
 
 /* stash & move: the pocket and the moving day */
-.depot-cell { position: relative; display: grid; }
 .depot-item.stashed { opacity: .55; }
 .move-chip {
   position: absolute;
