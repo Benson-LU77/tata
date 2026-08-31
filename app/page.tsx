@@ -1120,12 +1120,16 @@ export default function Home() {
     const done = Boolean(quest?.done);
     const was = questDoneSeenRef.current;
     questDoneSeenRef.current = done;
-    if (was === false && done) {
-      setQuestToast(true);
-      const id = window.setTimeout(() => setQuestToast(false), 6000);
-      return () => window.clearTimeout(id);
-    }
+    if (was === false && done) setQuestToast(true);
   }, [quest]);
+  // the hide timer lives on the toast itself — hanging it on `quest`
+  // meant every city replan rebuilt the effect, cancelled the alarm,
+  // and the receipt stayed up forever
+  useEffect(() => {
+    if (!questToast) return;
+    const id = window.setTimeout(() => setQuestToast(false), 6000);
+    return () => window.clearTimeout(id);
+  }, [questToast]);
   const decor = useMemo(() => {
     const on = (id: string) => game.owned.includes(id) && !(game.stashed ?? []).includes(id);
     return {
