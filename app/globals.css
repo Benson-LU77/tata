@@ -1154,16 +1154,18 @@ label.panel-export {
      reserves dead space on both sides and pushes the words away. Keep the
      cell, let it overlap its neighbours instead of shouldering them. */
   .brand-you { margin: -2px -6px -2px -6px; }
-  .brand { gap: 0; } /* the words keep the figure company */
+  .brand { gap: 0; margin-left: 6px; } /* the words keep the figure company */
   /* a tap leaves :hover stuck on a touch screen — the frame would sit
      around the figure long after the finger left */
   .brand-you:hover { border-color: transparent; }
+  /* the figure grows a step with the words (inline style needs the shove) */
+  .brand-you .depot-thumb { width: auto !important; height: 36px !important; }
   .brand-col { gap: 4px; padding-top: 1px; }
-  .brand-word { font-size: 12px; }
-  .brand-eyebrow { font-size: 7px; letter-spacing: .24em; }
+  .brand-word { font-size: 13px; }
+  .brand-eyebrow { font-size: 8px; letter-spacing: .24em; }
   /* the ledger line is desk furniture — the mirror still tells it all */
   .brand-ledger { display: none; }
-  .signal { gap: 5px; }
+  .signal { gap: 5px; font-size: 9px; }
 }
 
 /* ============================================================
