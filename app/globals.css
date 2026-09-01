@@ -2843,6 +2843,11 @@ label.panel-export {
 
 
 /* pixel tabs on the book's top edge: a fresh page, and the way home */
+.tab-plus:disabled {
+  opacity: .3;
+  cursor: default;
+  pointer-events: none;
+}
 .tab-plus,
 .tab-away {
   flex: none;
@@ -2982,7 +2987,7 @@ label.panel-export {
     justify-content: center;
     padding:
       calc(env(safe-area-inset-top, 0px) + 14px)
-      12px
+      20px
       calc(env(safe-area-inset-bottom, 0px) + 12px);
   }
   .notebook .notes-editor {

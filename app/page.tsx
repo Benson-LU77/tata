@@ -2587,6 +2587,7 @@ export default function Home() {
         }}
         requestSetup={requestSetup}
         recent={recent}
+        plusDisabled={metrics.filter((m) => m.date === today && !m.file.startsWith("__")).length >= 2}
         pages={allPages}
         onConnected={onConnected}
         cityLive={synced === "live"}

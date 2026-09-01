@@ -94,6 +94,7 @@ export function NotesPanel({
   onOpenTag,
   requestSetup,
   recent,
+  plusDisabled,
   pages,
   onConnected,
   cityLive,
@@ -121,6 +122,8 @@ export function NotesPanel({
   requestSetup?: number;
   /** recently touched pages, newest first */
   recent?: string[];
+  /** two pages already written tonight — the plus goes quiet */
+  plusDisabled?: boolean;
   /** every vault page, for [[wikilink]] autocomplete */
   pages?: string[];
   /** fired after a successful connect so the city adopts the client too */
@@ -526,10 +529,11 @@ export function NotesPanel({
   }, [store]);
 
   const newPage = useCallback(() => {
+    if (plusDisabled) return;
     store.newPage();
     setView("edit");
     cursorSoon(150);
-  }, [store, cursorSoon]);
+  }, [store, cursorSoon, plusDisabled]);
 
   const handleClose = useCallback(() => {
     void store.flush();
@@ -639,7 +643,7 @@ export function NotesPanel({
         <span>{view === "setup" ? t("notes.vault.title") : ""}</span>
         <div className="notes-heading-actions">
           {view !== "setup" && (
-            <button type="button" className="notes-gear" onClick={newPage} aria-label={t("notes.newpage")} title={t("notes.newpage")}>
+            <button type="button" className="notes-gear" disabled={plusDisabled} onClick={newPage} aria-label={t("notes.newpage")} title={t("notes.newpage")}>
               +
             </button>
           )}
@@ -895,6 +899,7 @@ export function NotesPanel({
                 <button
                   type="button"
                   className="tab-plus"
+                  disabled={plusDisabled}
                   onClick={newPage}
                   aria-label={t("notes.newpage")}
                   title={t("notes.newpage")}

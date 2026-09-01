@@ -121,7 +121,11 @@ const ORDER_POOL: OrderDef[] = [
   { id: "backfill", name: "Fill a past empty day", bonus: 12,
     done: (d) => d.some((m) => Math.floor(m.mtime / DAY) * DAY - new Date(m.date + "T00:00:00Z").getTime() > 2 * DAY) },
   { id: "settle", name: "Reach 150 words", bonus: 8, done: (d) => d.reduce((s, m) => s + m.words, 0) >= 150 },
-  { id: "third", name: "A third page", bonus: 12, done: (d) => d.length >= 3 },
+  { id: "threenights", name: "Three nights running", bonus: 12,
+    done: (d, all, date) =>
+      d.length >= 1 &&
+      all.some((m) => m.date === prevDate(date)) &&
+      all.some((m) => m.date === prevDate(prevDate(date))) },
 ];
 
 /** three orders per night, rotated deterministically; "write" is always first */
