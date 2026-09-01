@@ -192,6 +192,7 @@ export default function Home() {
   const encRoundRef = useRef(1);
   const encUsedRef = useRef<ReplyDef[]>([]);
   const encKeyRef = useRef<string | null>(null);
+  const encProfRef = useRef<string | undefined>(undefined);
   const encNameRef = useRef<string>("");
   /* today's favour, read at meeting time — a ref because the quest is
      computed further down the file and the greeting must never hold a
@@ -670,7 +671,7 @@ export default function Home() {
           encStageRef.current = "reply";
           encUsedRef.current.push(r);
           // the closer answers THIS reply, not the void
-          encCloserRef.current = closerFor(r, Math.random(), lang);
+          encCloserRef.current = closerFor(r, Math.random(), lang, encProfRef.current);
           // a chosen reply IS the conversation — this is what they
           // remember tomorrow. An errand's yes is not a subject.
           const rKey = encKeyRef.current;
@@ -894,6 +895,7 @@ export default function Home() {
       encRoundRef.current = 1;
       encUsedRef.current = [];
       encKeyRef.current = hit.key;
+      encProfRef.current = kind === "person" ? professionOf(hit.seed) : undefined;
       // the exchange is a fork now: you choose what to say or do
       let choices: { label: string; pick: () => void }[];
       if (kind === "cat" || kind === "dog") {

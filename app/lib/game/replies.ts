@@ -18,8 +18,9 @@ export type ReplyDef = {
   /** minimum bond tier — the warmth you have earned */
   tier?: Tier;
   reply: { en: string; zh: string };
-  /** how they answer YOUR words, not the void */
-  closers: { en: string; zh: string }[];
+  /** how they answer YOUR words, not the void — a closer tagged with a
+   *  profession only leaves that person's mouth */
+  closers: { en: string; zh: string; profession?: string }[];
 };
 
 export const REPLIES: ReplyDef[] = [
@@ -28,6 +29,8 @@ export const REPLIES: ReplyDef[] = [
     topics: ["night"],
     reply: { en: "Quiet suits it.", zh: "安靜挺好的。" },
     closers: [
+      { profession: "stationmaster", en: "Quiet means everything ran on time. You're welcome.", zh: "安靜代表一切準點。不客氣。" },
+      { profession: "stargazer", en: "Quiet's just the sky getting a word in.", zh: "安靜,不過是天空終於插得上話。" },
       { en: "Doesn't it. Loud cities forget things faster.", zh: "對吧。吵的城市忘性大。" },
       { en: "It's the only hour that tells the truth.", zh: "只有這個時辰不說謊。" },
     ],
@@ -36,6 +39,7 @@ export const REPLIES: ReplyDef[] = [
     topics: ["night"],
     reply: { en: "Couldn't sleep either.", zh: "我也睡不著。" },
     closers: [
+      { profession: "astronomer", en: "Insomnia is just unscheduled observation time.", zh: "失眠只是沒排進表的觀測時段。" },
       { en: "Then we're both doing this on purpose.", zh: "那我們都是故意的。" },
       { en: "Nobody out here is out here by accident.", zh: "會在這個時間出現的人,沒有一個是意外。" },
     ],
@@ -55,6 +59,8 @@ export const REPLIES: ReplyDef[] = [
     topics: ["city"],
     reply: { en: "It keeps growing.", zh: "它一直在長。" },
     closers: [
+      { profession: "gardener", en: "Everything I tend does that. This one just grows in floors.", zh: "我照顧的東西都這樣,只是這個是往樓層長。" },
+      { profession: "shipwright", en: "Growing's easy. Holding together is the trade.", zh: "長大容易,撐得住才是手藝。" },
       { en: "Bit by bit. Nobody notices the day it happened.", zh: "一點一點的。沒人記得是哪一天長的。" },
       { en: "And in the right direction, for once.", zh: "而且難得是往好的方向長。" },
     ],
@@ -82,6 +88,10 @@ export const REPLIES: ReplyDef[] = [
     topics: ["writing"],
     reply: { en: "I wrote a little.", zh: "我寫了一點。" },
     closers: [
+      { profession: "poet", en: "'A little' is the professional dose. More would be showing off.", zh: "「一點」是行家的劑量,再多就是炫技了。" },
+      { profession: "archivist", en: "Noted, dated, shelved. The collection thanks you.", zh: "記下了,標了日期,上架了。館藏謝謝你。" },
+      { profession: "lampkeeper", en: "Saw the window. Knew.", zh: "看到窗了。就知道。" },
+      { profession: "baker", en: "Good. Something's in the oven, then.", zh: "很好,爐裡有東西了。" },
       { en: "I knew it. A lit window looks different when someone's writing behind it.", zh: "我就知道。有人在後面寫字的窗,亮起來的樣子不一樣。" },
       { en: "'A little' builds this whole town, you know.", zh: "「一點」就夠了——這整座城都是「一點」蓋起來的。" },
     ],
@@ -90,6 +100,8 @@ export const REPLIES: ReplyDef[] = [
     topics: ["writing"],
     reply: { en: "Not tonight.", zh: "今晚沒有。" },
     closers: [
+      { profession: "baker", en: "Ovens rest too. That's how the next loaf rises.", zh: "烤爐也要休息,下一爐才發得起來。" },
+      { profession: "gardener", en: "Fallow nights feed the soil. Ask any field.", zh: "休耕的夜晚在養土,隨便問一塊田都知道。" },
       { en: "Then tonight is for walking. The page will keep.", zh: "那今晚就用來走路。紙不會跑掉。" },
       { en: "Fine by me. The street's better company than a blank page.", zh: "我覺得沒差。空白的紙沒有這條街好聊。" },
     ],
@@ -143,6 +155,7 @@ export const REPLIES: ReplyDef[] = [
     topics: ["you"],
     reply: { en: "You've been watching.", zh: "你一直在看啊。" },
     closers: [
+      { profession: "tailor", en: "Observing. A tailor never just watches.", zh: "是觀察。裁縫從來不只是看。" },
       { en: "It's a small street. Watching is the local sport.", zh: "街很小。看人是這裡的全民運動。" },
       { en: "Only the interesting parts. There have been a few.", zh: "只看有趣的部分。而且真的有幾段。" },
     ],
@@ -151,6 +164,7 @@ export const REPLIES: ReplyDef[] = [
     topics: ["you"],
     reply: { en: "Guilty.", zh: "被你說中了。" },
     closers: [
+      { profession: "courier", en: "Everyone tells the courier everything. Occupational perk.", zh: "大家什麼都跟信使說。職業福利。" },
       { en: "No charge. It's a good habit.", zh: "不罰。這是個好習慣。" },
       { en: "Everyone here is guilty of something. Yours is mild.", zh: "這裡每個人都有罪。你的算輕的。" },
     ],
@@ -195,6 +209,7 @@ export const REPLIES: ReplyDef[] = [
     topics: ["them"],
     reply: { en: "Tell me more.", zh: "多說一點。" },
     closers: [
+      { profession: "neighbour", en: "Careful. Nobody's asked me that in years. Sit down.", zh: "小心,好幾年沒人這樣問我了。坐吧。" },
       { en: "Another night. It's a long story and the lamps are tired.", zh: "改天吧。故事很長,路燈也累了。" },
       { en: "You asked. Nobody asks. I'll remember that.", zh: "你問了。沒有人問的。我會記得。" },
     ],
@@ -332,9 +347,12 @@ export function repliesFor(
   return chosen;
 }
 
-/** their closer for a reply you actually chose */
-export function closerFor(reply: ReplyDef, roll: number, lang: "en" | "zh"): string {
-  const at = Math.floor(scramble(roll, 977) * reply.closers.length);
-  const c = reply.closers[Math.min(at, reply.closers.length - 1)];
+/** their closer for a reply you actually chose — the trade's own voice
+ *  answers when it has something to say, neutral lines otherwise */
+export function closerFor(reply: ReplyDef, roll: number, lang: "en" | "zh", profession?: string): string {
+  const own = profession ? reply.closers.filter((c) => c.profession === profession) : [];
+  const pool = own.length > 0 ? own : reply.closers.filter((c) => !c.profession);
+  const at = Math.floor(scramble(roll, 977) * pool.length);
+  const c = pool[Math.min(at, pool.length - 1)];
   return lang === "zh" ? c.zh : c.en;
 }
