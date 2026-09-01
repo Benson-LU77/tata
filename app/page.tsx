@@ -64,6 +64,19 @@ const MAIL_PAL = ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#8b9099", "#e0a84
 /* the compass draws in the city's own greys */
 const BOOK_PAL_PAGE = ["#06070a", "#0d0f13", "#171a20", "#2a2e36", "#4a4f59", "#8b9099", "#e0a84f", "#f2f3f5"];
 
+/* screenshot mode: set true to hide the 「這是示範城市 ← 回到你的城市」
+   bar (appears after 先讓我逛逛 / a cancelled walk-over / the 90s
+   failsafe, as .demo-exit fixed at top calc(96px + safe-area)). */
+const DEMO_EXIT_HIDDEN = false;
+
+/* the tour scales the ring to 2.6x — the core's dark backing plate reads
+   as a stray square at that size, so the lesson uses a plateless ring */
+const COMPASS_RING_TOUR = COMPASS_RING.map((row, y) =>
+  y >= 13 && y <= 26 ? row.slice(0, 12) + row.slice(12, 28).replace(/[01]/g, ".") + row.slice(28) : row,
+);
+/* same story for the core icon: its black grid-lines read as a slab at 2.6x */
+const REGISTRY_TOUR = REGISTRY_PX.map((r) => r.replace(/0/g, "."));
+
 const ARCH_PINS: Record<string, number> = (() => {
   if (typeof window === "undefined") return {};
   try {
@@ -137,13 +150,23 @@ export default function Home() {
   const [mailOpened, setMailOpened] = useState(false);
   /* during the demo tour, the guide crosses the street to you */
   const [tourApproach, setTourApproach] = useState(false);
+  const [tourWonder, setTourWonder] = useState(false);
   /* the star pulses when the guide points at it; the compass then takes
      centre stage and each of its points lights up as it is named */
   const [tourStar, setTourStar] = useState(false);
   const [tourShowcase, setTourShowcase] = useState(false);
+  /* the ring fades out before the star fades back in — no hard cut */
+  const [tourFold, setTourFold] = useState(false);
   const [tourHi, setTourHi] = useState(-1);
+  /* the showcase advances on a tap, not a clock */
+  const tourNextRef = useRef<(() => void) | null>(null);
   /* the way home appears only once the guided part is over */
   const [demoExitVisible, setDemoExitVisible] = useState(false);
+  /* read synchronously: isDemoCity flips in an async effect, and the
+     corner chrome used to flash for those first few frames */
+  const [demoParam] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo"),
+  );
   const [foundToast, setFoundToast] = useState(false);
   const [swApply, setSwApply] = useState<(() => void) | null>(null);
   const [touchPick, setTouchPick] = useState<string | null>(null);
@@ -741,7 +764,9 @@ export default function Home() {
         const gSay = (
           text: string,
           choices?: { label: string; pick: () => void }[],
-          until = 180000,
+          // ceremony lines wait for the reader — an expired bubble here
+          // once softlocked the whole tour
+          until = 86400000,
         ) => setBubble({ key: "person:0", name: gName, text, until: Date.now() + until, choices });
         const gStar = () => {
           tourPhaseRef.current = "star";
@@ -1167,36 +1192,40 @@ export default function Home() {
   /* star → compass → done: where the walk-through stands */
   const tourPhaseRef = useRef<"idle" | "star" | "compass" | "done">("idle");
   useEffect(() => {
-    if (!isDemoCity || tourRef.current || metrics.length === 0) return;
+    if (!isDemoCity || !introDone || tourRef.current || metrics.length === 0) return;
     const ids: number[] = [];
-    // the overture pans from overview to street (~5s); then you walk a
-    // beat and wonder aloud — the line fades by itself — and only then
-    // does the neighbour notice and cross over
+    // the clock starts when the veil lifts: the crane shot descends for
+    // 5s; then you stop, the camera steps in, and you look around for a
+    // beat before wondering aloud — only when the line has faded do you
+    // turn back to the street, and the neighbour crosses over
+    ids.push(window.setTimeout(() => setTourWonder(true), 5000));
     ids.push(
       window.setTimeout(() => {
         setBubble({
           key: "you:0",
           name: t("bubble.you"),
           text: t("tour.walk"),
-          until: Date.now() + 2600,
+          until: Date.now() + 3200,
         });
-      }, 5200),
+      }, 8200),
     );
     ids.push(
       window.setTimeout(() => {
         // marked NOW, not at scheduling: a dep change inside the wait
         // would cancel the timer with the flag already burnt
         tourRef.current = true;
+        setTourWonder(false);
         setTourApproach(true);
         setEncounterKey("person:0");
-      }, 8600),
+      }, 11600),
     );
-    // failsafe: whatever happens, the way home shows up eventually
-    ids.push(window.setTimeout(() => setDemoExitVisible(true), 90000));
+    // failsafe: if the guide never reached you, the way home shows up —
+    // but never mid-ceremony over a conversation that IS happening
+    ids.push(window.setTimeout(() => { if (!tourTalkedRef.current) setDemoExitVisible(true); }, 90000));
     return () => {
       for (const id of ids) window.clearTimeout(id);
     };
-  }, [isDemoCity, metrics, t]);
+  }, [isDemoCity, introDone, metrics, t]);
 
   /* the favour's receipt: the moment tonight's asked-for order lands,
      say so once — otherwise the tip arrives in silence */
@@ -1380,10 +1409,11 @@ export default function Home() {
     const gSay = (
       text: string,
       choices?: { label: string; pick: () => void }[],
-      until = 180000,
+      until = 86400000,
     ) => setBubble({ key: "person:0", name: gName, text, until: Date.now() + until, choices });
     const endShowcase = () => {
       setTourShowcase(false);
+      setTourFold(false);
       setTourHi(-1);
       setCompassOpen(false);
     };
@@ -1396,6 +1426,7 @@ export default function Home() {
       tourPhaseRef.current = "done";
       setDemoExitVisible(true);
       setEmote(null);
+      setTourStar(false);
       endShowcase();
       clearEncounterTimers();
       encStageRef.current = null;
@@ -1403,31 +1434,46 @@ export default function Home() {
       window.localStorage.setItem("tata.visited", "1");
       gSay(t("tour.roam.end"), undefined, 9000);
     };
-    const ids: number[] = [];
-    const BEAT = 3200;
-    ["tour.c1", "tour.c2", "tour.c3", "tour.c4", "tour.c5"].forEach((k, i) => {
-      ids.push(
-        window.setTimeout(() => {
-          setTourHi(i);
-          setUiVisible(true);
-          gSay(t(k));
-        }, i * BEAT),
-      );
-    });
-    ids.push(
-      window.setTimeout(() => {
-        setTourHi(-1);
-        // a decision, not a notice: the question waits all night
-        gSay(t("tour.ask"), [
-          { label: t("tour.go"), pick: firstPage },
-          { label: t("tour.stay"), pick: () => { hum().click(); roam(); } },
-        ], 86400000);
-      }, 5 * BEAT),
-    );
-    return () => {
-      for (const id of ids) window.clearTimeout(id);
+    const lines = ["tour.c1", "tour.c2", "tour.c3", "tour.c4", "tour.c5"];
+    let step = 0;
+    let foldId = 0;
+    const showStep = () => {
+      setTourHi(step);
+      setUiVisible(true);
+      gSay(t(lines[step]));
     };
-  }, [compassOpen, t, hum, clearEncounterTimers]);
+    const next = () => {
+      hum().click();
+      if (step < lines.length - 1) {
+        step += 1;
+        showStep();
+        return;
+      }
+      tourNextRef.current = null;
+      // the lesson is over: the ring fades out first, then the star
+      // fades back in — never a hard cut
+      setTourHi(-1);
+      setTourFold(true);
+      foldId = window.setTimeout(() => {
+        setTourFold(false);
+        setTourShowcase(false);
+        setCompassOpen(false);
+        setTourStar(true);
+      }, 520);
+      // a decision, not a notice: the question waits all night
+      gSay(t("tour.ask"), [
+        { label: t("tour.go"), pick: firstPage },
+        { label: t("tour.stay"), pick: () => { hum().click(); roam(); } },
+      ], 86400000);
+    };
+    tourNextRef.current = next;
+    showStep();
+    return () => {
+      tourNextRef.current = null;
+      window.clearTimeout(foldId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compassOpen]);
 
   /* summoned compass: any outside tap or six idle seconds puts it away */
   useEffect(() => {
@@ -1574,6 +1620,7 @@ export default function Home() {
   );
 
   const openWrite = useCallback((file?: string) => {
+    if (demoRef.current && tourRef.current && tourPhaseRef.current !== "done") return;
     if (file) {
       const m = metricsRef.current.find((x) => x.file === file);
       if (m?.capsule && todayRef.current && m.capsule > todayRef.current) {
@@ -1871,7 +1918,7 @@ export default function Home() {
     "city-app",
     // the ceremony clears the stage: no chrome from the sealed letter
     // until the guide hands the city over
-    welcomeOpen || (isDemoCity && !demoExitVisible) ? "tour-clean" : "",
+    welcomeOpen || ((demoParam || isDemoCity) && !demoExitVisible) ? "tour-clean" : "",
     writeOpen ? "writing" : "",
     bubble ? "talking" : "",
     compassOpen ? "compass-open" : "",
@@ -1938,7 +1985,9 @@ export default function Home() {
             onGroundTap={onGroundTap}
             encounterKey={encounterKey}
             encounterApproach={tourApproach}
-            overture={isDemoCity}
+            overture={demoParam || isDemoCity}
+            overtureGo={introDone}
+            wonder={tourWonder}
             onEncounterMeet={onEncounterMeet}
             look={game.look}
             emote={emote}
@@ -2033,6 +2082,11 @@ export default function Home() {
             className="city-bubble city-bubble--docked"
             aria-live="polite"
             onClick={() => {
+              // during the compass lesson, any tap is "next"
+              if (tourNextRef.current) {
+                tourNextRef.current();
+                return;
+              }
               // during a meeting the bubble itself turns the page;
               // outside one, a tap simply puts the notice away
               if (encounterKey) advanceEncounter();
@@ -2067,7 +2121,7 @@ export default function Home() {
             {t("city.first")}
           </button>
         )}
-        {tourShowcase && <div className="tour-veil" aria-hidden="true" />}
+
         {welcomeOpen && introDone && !mailOpened && (
           <div className="mail-veil">
             <button
@@ -2272,12 +2326,22 @@ export default function Home() {
         >
           <PixelIcon rows={COMPASS_ROSE} size={22} />
         </button>
+        {tourShowcase && (
+          <div
+            className={"tour-veil" + (tourFold ? " tour-veil--out" : "")}
+            onClick={() => tourNextRef.current?.()}
+          />
+        )}
         <nav
-          className={"dpad immersion-ui" + (tourShowcase ? " dpad--tour" : "")}
+          className={
+            "dpad immersion-ui" +
+            (tourShowcase ? " dpad--tour" : "") +
+            (tourFold ? " dpad--tour-out" : "")
+          }
           aria-label={t("topbar.settings")}
           onClickCapture={() => setCompassOpen(false)}
         >
-          <PixelIcon rows={COMPASS_RING} size={148} pal={BOOK_PAL_PAGE} />
+          <PixelIcon rows={tourShowcase ? COMPASS_RING_TOUR : COMPASS_RING} size={148} pal={BOOK_PAL_PAGE} />
           <button
             type="button"
             className={"dpad-btn dpad-up" + (tourHi === 0 ? " tour-hi" : "")}
@@ -2339,7 +2403,7 @@ export default function Home() {
             {(game.letters ?? []).some((l) => !l.read) && (
               <span className="unread-dot" aria-hidden="true" />
             )}
-            <PixelIcon rows={REGISTRY_PX} size={18} />
+            <PixelIcon rows={tourShowcase ? REGISTRY_TOUR : REGISTRY_PX} size={18} />
           </button>
         </nav>
         </>
@@ -2469,7 +2533,7 @@ export default function Home() {
           />
         </div>
       )}
-      {isDemoCity && demoExitVisible && (
+      {isDemoCity && demoExitVisible && !DEMO_EXIT_HIDDEN && (
         <button
           type="button"
           className="demo-exit immersion-ui"

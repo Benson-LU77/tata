@@ -636,6 +636,8 @@ export function City3D({
   encounterKey,
   encounterApproach,
   overture,
+  overtureGo,
+  wonder,
   onEncounterMeet,
   look,
   emote,
@@ -678,6 +680,8 @@ export function City3D({
   encounterApproach?: boolean;
   /** open on a far overview and glide down to street level (~5s) */
   overture?: boolean;
+  overtureGo?: boolean;
+  wonder?: boolean;
   /** you arrived — the exchange may begin */
   onEncounterMeet: (hit: { key: string; kind: string; seed: number }) => void;
   /** your figure, composed into the atlas at runtime */
@@ -883,6 +887,23 @@ export function City3D({
     // stood instead of hurrying back to where time says they should be.
     const shifts = shiftRef.current;
     const poses = h.creatures.map((c) => poseAt(c, pl, t + (shifts.get(c.key) ?? 0)));
+    const offs = offsetRef.current;
+    if (offs.size > 0) {
+      const dtOff = Math.max(0, Math.min(0.25, t - offsetPrevTRef.current));
+      const decay = Math.exp(-dtOff / 45);
+      h.creatures.forEach((c, i) => {
+        const o = offs.get(c.key);
+        if (!o) return;
+        o.x *= decay;
+        o.z *= decay;
+        if (o.x * o.x + o.z * o.z < 0.01) {
+          offs.delete(c.key);
+          return;
+        }
+        poses[i] = { ...poses[i], x: poses[i].x + o.x, z: poses[i].z + o.z };
+      });
+    }
+    offsetPrevTRef.current = t;
     const chat = new Array(h.creatures.length).fill(false);
 
     // people who pause near each other stop and chat, facing one another
@@ -920,6 +941,27 @@ export function City3D({
       });
     }
 
+    // the wonder beat overrides you: freeze mid-street, face the lens,
+    // and look around — the camera slides in the first frame it sees this
+    if (wonderRef.current) {
+      const yIdx0 = h.creatures.findIndex((cc) => cc.kind === "you");
+      if (yIdx0 >= 0) {
+        if (!wonderPosRef.current) {
+          const yp0 = poses[yIdx0];
+          wonderPosRef.current = { x: yp0.x, z: yp0.z };
+          panTargetRef.current = {
+            x: yp0.x - centerRef.current.x,
+            z: yp0.z - centerRef.current.z,
+          };
+          overtureTweenRef.current = { t0: performance.now(), from: viewRef.current, to: VIEW_STOPS[4], dur: 1100 };
+        }
+        const wp = wonderPosRef.current;
+        const seq = Math.floor((t % 3.0) / 0.75); // front, left, front, right
+        const off = seq === 1 ? -1.35 : seq === 3 ? 1.35 : 0;
+        poses[yIdx0] = { ...poses[yIdx0], x: wp.x, z: wp.z, facing: camYaw + off, moving: false, phase: 0 };
+      }
+    }
+
     // the encounter overrides you and your interlocutor
     const enc = encRef.current;
     if (enc) {
@@ -939,7 +981,8 @@ export function City3D({
         if (enc.phase === "walk" && tIdx >= 0 && enc.approach) {
           // the guide crosses the street to YOU — you stand and watch
           const gap = 1.0;
-          const yp = poses[yIdx];
+          const wp = wonderPosRef.current;
+          const yp = wp ? { ...poses[yIdx], x: wp.x, z: wp.z } : poses[yIdx];
           enc.you = { x: yp.x, z: yp.z };
           const d0 = Math.hypot(enc.target.x - yp.x, enc.target.z - yp.z);
           if (d0 <= gap + 0.05) {
@@ -1023,7 +1066,11 @@ export function City3D({
                 }
               }
               shifts.set(c.key, bestS);
-              poses[idx] = poseAt(c, pl, t + bestS); // this frame too
+              // the ring rarely passes exactly here: carry the leftover
+              // as an offset so the walk continues from THIS spot
+              const p0 = poseAt(c, pl, t + bestS);
+              offsetRef.current.set(c.key, { x: want.x - p0.x, z: want.z - p0.z });
+              poses[idx] = { ...p0, x: want.x, z: want.z }; // this frame too
             };
             anchor(yIdx, enc.you);
             if (tIdx >= 0) anchor(tIdx, enc.target);
@@ -1311,15 +1358,19 @@ export function City3D({
       // camera from yaw/view/pan around city centre — the view height is
       // decoupled from city size (an endless city must not shrink its cast)
       const writing = stateRef.current.writeMode;
-      if (viewGoalRef.current !== null) {
+      const overTw = overtureTweenRef.current;
+      if (overTw) {
+        const p = Math.min(1, (performance.now() - overTw.t0) / overTw.dur);
+        const eased = p < 0.5 ? 2 * p * p : 1 - ((2 - 2 * p) ** 2) / 2;
+        viewRef.current = overTw.from + (overTw.to - overTw.from) * eased;
+        if (p >= 1) overtureTweenRef.current = null;
+        animating = true;
+      } else if (viewGoalRef.current !== null) {
         const goal = viewGoalRef.current;
-        // the overture descends gently; every other zoom snaps to work
-        const rate = overtureSlowRef.current ? dt / 950 : dt / 110;
-        viewRef.current += (goal - viewRef.current) * Math.min(1, rate);
+        viewRef.current += (goal - viewRef.current) * Math.min(1, dt / 110);
         if (Math.abs(viewRef.current - goal) < goal * 0.004) {
           viewRef.current = goal;
           viewGoalRef.current = null;
-          overtureSlowRef.current = false;
         }
         animating = true;
       }
@@ -1475,22 +1526,56 @@ export function City3D({
   } | null>(null);
   /* per-creature schedule shifts — the "walk on from here" memory */
   const shiftRef = useRef<Map<string, number>>(new Map());
+  /* per-creature position offsets: the ring rarely passes exactly
+     through a meeting spot, so after goodbye the walker carries the
+     difference and sheds it over ~45s — no visible slide back home */
+  const offsetRef = useRef<Map<string, { x: number; z: number }>>(new Map());
+  const offsetPrevTRef = useRef(0);
   const approachRef = useRef(false);
   approachRef.current = Boolean(encounterApproach);
-  /* the overture: a slow descent from overview to street level */
+  /* the overture: hold the overview while the veil is still up, then a
+     scripted 5s crane shot down to street level — the old exponential
+     ease spent itself behind the veil and nobody ever saw it */
   const overtureDoneRef = useRef(false);
-  const overtureSlowRef = useRef(false);
+  const overtureHoldRef = useRef(false);
+  const overtureTweenRef = useRef<{ t0: number; from: number; to: number; dur: number } | null>(null);
+  /* the wonder beat: you stop, face the lens, look around — the camera
+     steps in close, and your frozen spot is where the guide finds you */
+  const wonderRef = useRef(false);
+  wonderRef.current = Boolean(wonder);
+  const wonderPosRef = useRef<{ x: number; z: number } | null>(null);
+  const wonderPrevRef = useRef(false);
+  useEffect(() => {
+    const was = wonderPrevRef.current;
+    wonderPrevRef.current = Boolean(wonder);
+    if (wonder && !was) {
+      wonderPosRef.current = null; // captured fresh on the next frame
+      loopRef.current?.();
+    }
+    if (!wonder && was) {
+      overtureTweenRef.current = { t0: performance.now(), from: viewRef.current, to: VIEW_DEFAULT, dur: 900 };
+      loopRef.current?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wonder]);
 
   useEffect(() => {
-    if (!overture || overtureDoneRef.current) return;
-    if (stateRef.current.plan.blocks.length === 0) return;
-    overtureDoneRef.current = true;
-    viewRef.current = clampView(VIEW_STOPS[0] * 1.5);
-    viewGoalRef.current = VIEW_DEFAULT;
-    overtureSlowRef.current = true;
-    loopRef.current?.();
+    if (!overture) return;
+    if (!overtureDoneRef.current) {
+      if (stateRef.current.plan.blocks.length === 0) return;
+      overtureDoneRef.current = true;
+      viewRef.current = clampView(VIEW_STOPS[0] * 1.5);
+      viewGoalRef.current = null;
+      overtureHoldRef.current = true;
+      loopRef.current?.();
+    }
+    if (overtureGo && overtureHoldRef.current) {
+      overtureHoldRef.current = false;
+      overtureTweenRef.current = { t0: performance.now(), from: viewRef.current, to: VIEW_DEFAULT, dur: 5000 };
+      loopRef.current?.();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overture, plan]);
+  }, [overture, overtureGo, plan]);
 
   useEffect(() => {
     const h = hRef.current;
