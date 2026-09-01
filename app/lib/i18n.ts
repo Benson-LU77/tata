@@ -104,7 +104,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "depot.balance.skyline": "skyline",
     "depot.balance.floors": "floors",
     "orders.aria": "Tonight's work orders",
-    "depot.state.tonight": "tonight",
+    "depot.state.tonight": "tonight — tap to take off",
     "depot.state.owned": "in the city",
     "depot.unit.w": "W",
 
@@ -128,7 +128,6 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "dex.moon.name": "The moon",
     "dex.moon.line": "Tonight's real phase, from new to full.",
     "letters.archive": "The city archive",
-    "letters.capsule": "Time capsule",
     "depot.state.stashed": "stashed — tap to display",
     "depot.state.shown": "on display — tap to stash",
     "depot.move": "Move",
@@ -466,7 +465,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "depot.balance.skyline": "天際線",
     "depot.balance.floors": "層",
     "orders.aria": "今晚的工單",
-    "depot.state.tonight": "今晚生效",
+    "depot.state.tonight": "今晚生效，點擊換回",
     "depot.state.owned": "已擁有",
     "depot.unit.w": "W",
 
@@ -490,7 +489,6 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     "dex.moon.name": "月亮",
     "dex.moon.line": "今晚真實的月相，從新月到滿月。",
     "letters.archive": "城市檔案室",
-    "letters.capsule": "時間膠囊",
     "depot.state.stashed": "已收起，點擊擺出",
     "depot.state.shown": "陳列中，點擊收起",
     "depot.move": "搬家",

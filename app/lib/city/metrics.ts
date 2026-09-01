@@ -22,12 +22,6 @@ export function linksOf(text: string): string[] {
 }
 
 /** #tags in the body (unicode letters, dashes, slashes) */
-/** the seal line of a time capsule — an Obsidian-native callout */
-export function capsuleOf(text: string): string | undefined {
-  const m2 = text.match(/>\s*\[!capsule\]\s*(\d{4}-\d{2}-\d{2})/);
-  return m2 ? m2[1] : undefined;
-}
-
 export function tagsOf(text: string): string[] {
   const out = new Set<string>();
   for (const mt of text.matchAll(/(^|\s)#([\p{L}\p{N}_/-]+)/gu)) out.add(mt[2]);
@@ -167,7 +161,6 @@ export async function loadCityMetrics(
             mtime: doc.mtime ?? Date.now(),
             links: linksOf(doc.content),
             tags: tagsOf(doc.content),
-            capsule: capsuleOf(doc.content),
           } satisfies NoteMetric;
         });
         let fresh = metas.filter((m): m is NoteMetric => m !== null);

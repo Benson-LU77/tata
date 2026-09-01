@@ -1055,11 +1055,22 @@ export function City3D({
               const c = h.creatures[idx];
               if (!c) return;
               const cur = shifts.get(c.key) ?? 0;
+              // walking on means walking ON: prefer ring moments headed
+              // the way this walker already faces, not back where they
+              // came from — distance alone made goodbyes into U-turns
+              const face = poses[idx].facing;
+              const fx = Math.sin(face);
+              const fz = Math.cos(face);
               let bestS = cur;
               let bestD = Infinity;
               for (let s = 0; s < 130; s += 0.25) {
                 const p = poseAt(c, pl, t + cur + s);
-                const d = (p.x - want.x) ** 2 + (p.z - want.z) ** 2;
+                const q = poseAt(c, pl, t + cur + s + 0.4);
+                const vx = q.x - p.x;
+                const vz = q.z - p.z;
+                const vd = Math.hypot(vx, vz);
+                const align = vd > 0.01 ? (vx * fx + vz * fz) / vd : 0;
+                const d = (p.x - want.x) ** 2 + (p.z - want.z) ** 2 + (1 - align) * 5;
                 if (d < bestD) {
                   bestD = d;
                   bestS = cur + s;
@@ -1588,11 +1599,16 @@ export function City3D({
       const target = h.creatures.find((c) => c.key === encounterKey);
       const you = h.creatures.find((c) => c.kind === "you");
       if (!target || !you) return;
-      // both walkers may carry a schedule shift from earlier meetings
-      const tp = poseAt(target, stateRef.current.plan, now + (shiftRef.current.get(target.key) ?? 0));
+      // both walkers may carry a schedule shift AND a position offset
+      // from earlier meetings — forgetting the offset teleported you
+      // back to the raw ring position for every second conversation
+      const tOff = offsetRef.current.get(target.key);
+      const tp0 = poseAt(target, stateRef.current.plan, now + (shiftRef.current.get(target.key) ?? 0));
+      const tp = { ...tp0, x: tp0.x + (tOff?.x ?? 0), z: tp0.z + (tOff?.z ?? 0) };
       const start = encRef.current?.you ?? (() => {
+        const yOff = offsetRef.current.get(you.key);
         const yp = poseAt(you, stateRef.current.plan, now + (shiftRef.current.get(you.key) ?? 0));
-        return { x: yp.x, z: yp.z };
+        return { x: yp.x + (yOff?.x ?? 0), z: yp.z + (yOff?.z ?? 0) };
       })();
       if (approachRef.current) {
         // the visitor was already on their way: a guide scheduled three

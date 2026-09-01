@@ -38,8 +38,8 @@ export type Weather = "none" | "rain" | "snow" | "fog";
 import { logDebug } from "../debuglog";
 import type { YouLook } from "../city/sprites/compose";
 import { DEFAULT_LOOK } from "../city/sprites/compose";
-import type { Bonds } from "./bonds";
-import { mergeBonds } from "./bonds";
+import type { Bonds, Talk } from "./bonds";
+import { mergeBonds, mergeTalk } from "./bonds";
 import type { Commission, Letter } from "./commissions";
 import { mergeCommissions, mergeLetters } from "./commissions";
 import { db as sharedDb } from "../drafts";
@@ -67,6 +67,8 @@ export type GameState = {
   billboard: { text: string; date: string } | null;
   /** what the residents call you — empty means "the one who writes" */
   name: string;
+  /** short-term conversation state: cooldowns and your last replies */
+  talk?: Talk;
   updatedAt: number;
 };
 
@@ -161,6 +163,7 @@ function mergeStates(a: GameState, b: GameState): GameState {
     placedAt: keep(newer.placedAt ?? {}, older.placedAt ?? {}, keys),
     billboard: keep(newer.billboard ?? null, older.billboard ?? null, (v) => len(v?.text)),
     name: keep(newer.name ?? "", older.name ?? "", len),
+    talk: mergeTalk(a.talk, b.talk),
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }
@@ -210,6 +213,7 @@ export function decideVaultWrite(
         placedAt: remote.placedAt ?? {},
         billboard: remote.billboard ?? null,
         name: remote.name ?? "",
+      talk: remote.talk,
         updatedAt: remote.updatedAt ?? 0,
       }),
     };
@@ -248,6 +252,7 @@ async function loadLocalState(): Promise<GameState> {
                 placedAt: raw.placedAt ?? {},
                 billboard: raw.billboard ?? null,
                 name: raw.name ?? "",
+                talk: raw.talk,
                 updatedAt: raw.updatedAt ?? 0,
               }
             : EMPTY_STATE,
@@ -285,6 +290,7 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
       placedAt: remote.placedAt ?? {},
       billboard: remote.billboard ?? null,
       name: remote.name ?? "",
+      talk: remote.talk,
       updatedAt: remote.updatedAt ?? 0,
     });
     void saveGameState(merged); // heal the local copy
@@ -297,7 +303,43 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
   }
 }
 
+const BOOT_CACHE_KEY = "tata.game.cache";
+
+/** the last saved state, synchronously — so the first frame already
+ *  wears your outfit instead of flashing the default look while
+ *  IndexedDB and the vault wake up */
+export function cachedGameState(): GameState {
+  if (typeof window === "undefined") return EMPTY_STATE;
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(BOOT_CACHE_KEY) ?? "") as Partial<GameState>;
+    return {
+      spent: raw.spent ?? 0,
+      owned: raw.owned ?? [],
+      skin: raw.skin ?? "base",
+      weather: raw.weather ?? "none",
+      look: raw.look ?? DEFAULT_LOOK,
+      bonds: raw.bonds ?? {},
+      earnedFloor: raw.earnedFloor ?? 0,
+      commissions: raw.commissions ?? [],
+      letters: raw.letters ?? [],
+      stashed: raw.stashed ?? [],
+      placedAt: raw.placedAt ?? {},
+      billboard: raw.billboard ?? null,
+      name: raw.name ?? "",
+      talk: raw.talk,
+      updatedAt: raw.updatedAt ?? 0,
+    };
+  } catch {
+    return EMPTY_STATE;
+  }
+}
+
 export async function saveGameState(state: GameState, client?: VaultClient | null): Promise<void> {
+  try {
+    window.localStorage.setItem(BOOT_CACHE_KEY, JSON.stringify(state));
+  } catch {
+    /* private mode or full disk — the async stores still have it */
+  }
   // demo cities are stage sets: they must never write over a real save —
   // demo skips LOADING state, so persisting would clobber it (and inflate
   // the monotonic earnedFloor beyond repair)

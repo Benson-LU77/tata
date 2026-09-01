@@ -59,7 +59,7 @@ describe("conversation memory", () => {
       );
       let hits = 0;
       for (const roll of ROLLS) {
-        const spoken = lineFor(ctxWith({ lastTopic: topic }), roll, "zh");
+        const spoken = lineFor(ctxWith({ lastReply: { id: "r0", topic, daysAgo: 1 } }), roll, "zh");
         if (!callbackTexts.has(spoken.text)) continue;
         hits += 1;
         // when it surfaces, its topic matches the memory
@@ -72,7 +72,7 @@ describe("conversation memory", () => {
   it("never brings up 'last time' during the same day", () => {
     const callbackTexts = new Set(CALLBACK_LINES.flatMap((l) => [l.zh, l.en]));
     for (const roll of ROLLS) {
-      const spoken = lineFor(ctxWith({ lastTopic: "writing", daysSinceGreet: 0 }), roll, "zh");
+      const spoken = lineFor(ctxWith({ lastReply: { id: "r0", topic: "writing", daysAgo: 0 }, daysSinceGreet: 0 }), roll, "zh");
       expect(callbackTexts.has(spoken.text)).toBe(false);
     }
   });

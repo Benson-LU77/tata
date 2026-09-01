@@ -266,13 +266,8 @@ export const REPLIES: ReplyDef[] = [
       { en: "Then take the long way. It earned it.", zh: "那就繞遠路吧,這條街值得。" },
     ],
   },
-  {
-    reply: { en: "See you around.", zh: "回頭見。" },
-    closers: [
-      { en: "You will. I'm reliably here.", zh: "會的。我很可靠地一直在這。" },
-      { en: "Count on it. Same street, same me.", zh: "一定。同一條街,同一個我。" },
-    ],
-  },
+  /* "See you around" retired as a chip: walking away IS the goodbye,
+     and a farewell posing as an answer read as changing the subject */
   {
     tier: 4,
     reply: { en: "Glad you're still here.", zh: "還好你還在。" },
@@ -323,8 +318,13 @@ export function repliesFor(
     return out;
   };
 
-  /* one on-topic, one wildcard: the answer lands, the mood stays loose */
-  const chosen = [...pick(onTopic, 1, 1), ...pick(universal, 1, 2)];
+  /* both answers should land: two on-topic when the pool allows,
+     wildcards only fill the gaps — a guaranteed off-topic option read
+     as the resident not listening */
+  const chosen = pick(onTopic, 2, 1);
+  if (chosen.length < 2) {
+    chosen.push(...pick(universal.filter((r) => !chosen.includes(r)), 2 - chosen.length, 2));
+  }
   if (chosen.length < 2) {
     const spare = [...onTopic, ...universal].filter((r) => !chosen.includes(r));
     chosen.push(...pick(spare, 2 - chosen.length, 3));

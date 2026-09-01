@@ -24,25 +24,25 @@ export const LINES: LineDef[] = [
   { tier: 1, topic: "night", en: "Evening.", zh: "晚安。" },
   { tier: 1, topic: "night", en: "Nice night for it.", zh: "今晚很適合走走。" },
   { tier: 1, topic: "city", en: "The towers grew again, did you see?", zh: "高樓又長高了,你看見了嗎。" },
-  { tier: 1, topic: "city", en: "Mind the kerb.", zh: "小心路緣。" },
-  { tier: 1, topic: "you", en: "You're the amber one, aren't you.", zh: "你就是那個琥珀色的吧。" },
+  { tier: 1, maxTier: 2, topic: "city", en: "Mind the kerb.", zh: "小心路緣。" },
+  { tier: 1, maxTier: 2, topic: "you", en: "You're the amber one, aren't you.", zh: "你就是那個琥珀色的吧。" },
   { tier: 1, topic: "night", en: "Quiet tonight.", zh: "今晚很安靜。" },
   { tier: 1, topic: "night", en: "Cold roof tonight.", zh: "屋頂今晚有點涼。" },
   { tier: 1, topic: "city", en: "The stairs still creak. Some things don't change.", zh: "樓梯還是會吱嘎響,有些事沒變。" },
   { tier: 1, topic: "night", en: "Saw a shooting star. Might've been a satellite.", zh: "看到一顆流星,也可能只是衛星。" },
   { tier: 1, topic: "city", en: "The corner shop never opens. Never closes either.", zh: "轉角那間店從不開門,但也沒關過。" },
-  { tier: 1, topic: "city", en: "Watch the gap between the blocks.", zh: "小心街區之間的縫。" },
+  { tier: 1, maxTier: 2, topic: "city", en: "Watch the gap between the blocks.", zh: "小心街區之間的縫。" },
   { tier: 1, topic: "city", en: "Someone's window flickered. Not yours.", zh: "有扇窗閃了一下,不是你的。" },
   { tier: 1, topic: "night", en: "The air tastes like static tonight.", zh: "今晚空氣裡有股靜電味。" },
   { tier: 1, topic: "you", en: "Long way round, but you made it.", zh: "繞了遠路,但你到了。" },
   { tier: 1, topic: "city", en: "The cats have a meeting. You're not invited.", zh: "貓開會,你沒被邀。" },
   { tier: 1, topic: "city", en: "Same street, new dust.", zh: "還是那條街,不同的灰塵。" },
   { tier: 1, topic: "you", en: "I nodded. You nodded back. That's the whole conversation, some nights.", zh: "我點頭,你也點頭。有些夜晚,對話就到這裡。" },
-  { tier: 1, topic: "city", en: "Careful, the pavement's still soft where it grew.", zh: "小心,人行道新生的那塊還沒硬。" },
+  { tier: 1, maxTier: 2, topic: "city", en: "Careful, the pavement's still soft where it grew.", zh: "小心,人行道新生的那塊還沒硬。" },
   { tier: 1, topic: "night", en: "Nobody's out. Except you. Except me.", zh: "沒什麼人,除了你,除了我。" },
   { tier: 1, topic: "city", en: "The city hums lower after midnight.", zh: "過了午夜,城市的嗡嗡聲會變低。" },
   { tier: 1, topic: "you", en: "You walk like you've got somewhere to be. You don't, do you.", zh: "你走路像有地方要去,其實沒有,對吧。" },
-  { tier: 1, topic: "city", en: "Watch your step. The whole street's new since Tuesday.", zh: "小心腳下,整條街從星期二起就是新的。" },
+  { tier: 1, maxTier: 2, topic: "city", en: "Watch your step. The whole street's new since Tuesday.", zh: "小心腳下,整條街從星期二起就是新的。" },
   { tier: 1, topic: "city", en: "The lamp on the corner blinks in code. Nobody's cracked it.", zh: "轉角那盞燈用密碼閃,沒人破解過。" },
   { tier: 1, topic: "city", en: "Some buildings lean in like they're listening.", zh: "有些樓會微微傾身,像在聽你說話。" },
 
@@ -535,7 +535,7 @@ export const MEMORY_LINES: LineDef[] = [
   // they count your nights
   { tier: 1, topic: "writing", weight: 6, when: (c) => c.streak >= 3 && c.streak < 7,
     en: "{streak} nights running. I've started telling time by your window.", zh: "連續 {streak} 個晚上了。我開始用你的窗戶看時間。" },
-  { tier: 1, topic: "writing", weight: 7, when: (c) => c.streak >= 7,
+  { tier: 1, topic: "writing", weight: 7, once: true, when: (c) => c.streak >= 7,
     en: "{streak} nights. The lamplighters talk about you, you know.", zh: "{streak} 個晚上沒斷。點燈的人都在談論你,你知道嗎。" },
   { tier: 1, topic: "writing", weight: 6, when: (c) => c.wroteTonight,
     en: "You wrote already — I can tell. The ink smell gives you away.", zh: "你剛寫完吧——看得出來,墨水味出賣了你。" },
@@ -547,7 +547,7 @@ export const MEMORY_LINES: LineDef[] = [
   { tier: 2, topic: "you", weight: 6, when: (c) => c.daysSinceGreet >= 3 && c.daysSinceGreet < 7,
     en: "Been {days} days. The bench that isn't there missed you.", zh: "隔了 {days} 天。那張不存在的長椅很想你。" },
   // they count your pages
-  { tier: 2, topic: "writing", weight: 5, when: (c) => c.totalNotes >= 30,
+  { tier: 2, topic: "writing", weight: 5, once: true, when: (c) => c.totalNotes >= 30,
     en: "Page {total} somewhere in those towers. I count. Don't tell anyone.", zh: "那些樓裡已經有 {total} 頁了。我有在數,別跟別人說。" },
   // they know your name — used sparingly, like real neighbours do
   { tier: 2, topic: "you", weight: 5, when: (c) => Boolean(c.name),
@@ -565,7 +565,7 @@ export const MEMORY_LINES: LineDef[] = [
     en: "This hour again? One of us should sleep. Not me — I'm made of pixels.", zh: "又是這個時間?我們之中該有人去睡。不是我——我是像素做的。" },
   { tier: 3, topic: "writing", weight: 5, when: (c) => c.streak === 0 && c.daysSinceGreet <= 1,
     en: "Streak's broken? So what. Streets crack. We repave.", zh: "連續斷了?那又怎樣。路也會裂,補起來就好。" },
-  { tier: 3, topic: "city", weight: 5, when: (c) => c.totalNotes >= 60,
+  { tier: 3, topic: "city", weight: 5, once: true, when: (c) => c.totalNotes >= 60,
     en: "I remember when this was three buildings and a cat. Look at it now.", zh: "我還記得這裡只有三棟樓和一隻貓的時候。你看看現在。" },
 ]
 
@@ -628,7 +628,28 @@ export const VOICE_LINES: LineDef[] = [
  * you are offered continue the same thread.
  */
 const cb = (topic: NonNullable<LineDef["topic"]>) => (c: LineCtx) =>
-  c.lastTopic === topic && c.daysSinceGreet >= 1;
+  c.lastReply?.topic === topic && c.lastReply.daysAgo >= 1;
+
+/* the week's echo — they quote a line you actually wrote (tier 2+:
+   an acquaintance quoting your pages is warm; a stranger doing it is
+   surveillance). Guarded on ctx.echo being present. */
+export const ECHO_LINES: LineDef[] = [
+  { tier: 2, topic: "writing", weight: 4, when: (c) => Boolean(c.echo),
+    en: "Your lamp stayed on late a few nights back. A page worth staying up for, I hope.",
+    zh: "前幾晚你的燈熄得特別晚。希望是寫到捨不得停的那種。" },
+  { tier: 2, topic: "writing", weight: 4, when: (c) => Boolean(c.echo) && c.profession === "archivist",
+    en: "Filing this week's pages, one line stopped me: \u201c{echo}\u201d. The collection grows well.",
+    zh: "整理這週的館藏時,有一句讓我停下來:「{echo}」。收得很好。" },
+  { tier: 3, topic: "writing", weight: 5, when: (c) => Boolean(c.echo),
+    en: "\u201c{echo}\u201d. That line's been keeping me company all week.",
+    zh: "「{echo}」。這句陪了我一整個禮拜。" },
+  { tier: 3, topic: "writing", weight: 4, when: (c) => Boolean(c.echo),
+    en: "\u201c{echo}\u201d \u2014 your window glowed a little warmer the night that was written.",
+    zh: "「{echo}」——寫下這句的那晚,你的窗比平常暖一點。" },
+  { tier: 4, topic: "you", weight: 5, when: (c) => Boolean(c.echo),
+    en: "The night you wrote \u201c{echo}\u201d, I almost knocked.",
+    zh: "你寫「{echo}」的那一晚,我差點敲了你的門。" },
+];
 
 export const CALLBACK_LINES: LineDef[] = [
   // night
@@ -644,7 +665,8 @@ export const CALLBACK_LINES: LineDef[] = [
   // writing
   { tier: 1, topic: "writing", weight: 6, when: cb("writing"),
     en: "Last time we talked about your pages. I checked — the window stayed lit.", zh: "上次聊到你寫的東西。我後來看了,那扇窗一直亮著。" },
-  { tier: 2, topic: "writing", weight: 6, when: cb("writing"),
+  { tier: 2, topic: "writing", weight: 6, afterReply: "Harder than it looks.",
+    when: (c) => (c.lastReply?.daysAgo ?? 0) >= 1,
     en: "You said writing was hard. I've been rooting for you since. Quietly.", zh: "你上次說寫字很難。我從那天起就在幫你加油,小聲的。" },
   // weather
   { tier: 1, topic: "weather", weight: 6, when: cb("weather"),
@@ -654,10 +676,12 @@ export const CALLBACK_LINES: LineDef[] = [
   // you
   { tier: 1, topic: "you", weight: 6, when: cb("you"),
     en: "I kept thinking about what you said last time. Occupational hazard.", zh: "你上次說的話,我後來還在想。職業病。" },
-  { tier: 2, topic: "you", weight: 6, when: cb("you"),
+  { tier: 2, topic: "you", weight: 6, afterReply: "Is that a good thing?",
+    when: (c) => (c.lastReply?.daysAgo ?? 0) >= 1,
     en: "Last time you asked if being noticed was good. I stand by my answer.", zh: "上次你問被注意到算不算好事。我的答案不變。" },
   // them
-  { tier: 1, topic: "them", weight: 6, when: cb("them"),
+  { tier: 1, topic: "them", weight: 6, afterReply: "Tell me more.",
+    when: (c) => (c.lastReply?.daysAgo ?? 0) >= 1,
     en: "You heard my story and still came back. Rarer than you think.", zh: "上次聽了我的事,你居然還記得回來。這比你想的稀有。" },
   { tier: 2, topic: "them", weight: 6, when: cb("them"),
     en: "I told you something about myself last time. Felt lighter after.", zh: "上次跟你說了我自己的事。說完之後輕鬆多了。" },

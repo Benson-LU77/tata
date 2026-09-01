@@ -8,7 +8,7 @@
  * itself is free forever — amber is not for sale, in any direction.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { PARTS, type PartSlot } from "../lib/city/sprites/parts";
 import { composeYou, type YouLook } from "../lib/city/sprites/compose";
 import { PALETTE } from "../lib/city/palette";
@@ -51,13 +51,34 @@ export function MirrorPanel({
   t: (key: string) => string;
 }) {
   const [draft, setDraft] = useState<YouLook>(look);
-  // reset the draft each time the Mirror opens (setState-during-render
+  const [nameDraft, setNameDraft] = useState(name);
+  // reset the drafts each time the Mirror opens (setState-during-render
   // is React's endorsed pattern for derived resets — no effect cascade)
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setDraft(look);
+    if (open) {
+      setDraft(look);
+      setNameDraft(name);
+    }
   }
+  /* commit wherever the field ends its life: blur, Enter, or the panel
+     closing — iOS taps never blur an input, so blur alone lost names */
+  const nameDraftRef = useRef(nameDraft);
+  const nameRef = useRef(name);
+  const onNameRef = useRef(onName);
+  useEffect(() => {
+    nameDraftRef.current = nameDraft;
+    nameRef.current = name;
+    onNameRef.current = onName;
+  });
+  const commitName = useCallback(() => {
+    const v = nameDraftRef.current.trim();
+    if (v !== nameRef.current) onNameRef.current(v);
+  }, []);
+  useEffect(() => {
+    if (!open) commitName();
+  }, [open, commitName]);
 
   const frames = useMemo(() => {
     const all = composeYou(draft);
@@ -107,12 +128,17 @@ export function MirrorPanel({
         <span>{t("mirror.name")}</span>
         <input
           type="text"
-          defaultValue={name}
-          key={name + (open ? "1" : "0")}
+          value={nameDraft}
           maxLength={16}
           placeholder={t("mirror.name.placeholder")}
-          onBlur={(e) => {
-            if (e.target.value.trim() !== name) onName(e.target.value.trim());
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) return; // picking a candidate
+            if (e.key === "Enter") {
+              commitName();
+              (e.target as HTMLInputElement).blur();
+            }
           }}
           spellCheck={false}
         />

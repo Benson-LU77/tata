@@ -10,7 +10,8 @@
  */
 
 import type { CreatureKind } from "../city/residents";
-import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES } from "./bonds-lines";
+import { hash32 } from "../city/layout";
+import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES, ECHO_LINES } from "./bonds-lines";
 
 export type Bond = {
   /** days greeted (one per calendar day at most) */
@@ -78,12 +79,77 @@ export function mergeBonds(a: Bonds | undefined, b: Bonds | undefined): Bonds {
       met: aa.met && bb.met ? (aa.met < bb.met ? aa.met : bb.met) : aa.met || bb.met,
       last: aa.last > bb.last ? aa.last : bb.last,
     };
-    // the memory follows the most recent conversation; no memory, no key
-    const t = (aa.last >= bb.last ? aa.t : bb.t) ?? aa.t ?? bb.t;
+    // the memory follows the most recent conversation; a same-day tie
+    // breaks deterministically (lexicographic) so merging commutes
+    const t =
+      aa.last > bb.last
+        ? (aa.t ?? bb.t)
+        : bb.last > aa.last
+          ? (bb.t ?? aa.t)
+          : aa.t !== undefined && bb.t !== undefined
+            ? (aa.t < bb.t ? aa.t : bb.t)
+            : (aa.t ?? bb.t);
     if (t !== undefined) merged.t = t;
     out[key] = merged;
   }
   return out;
+}
+
+/* ------------- talk — short-term conversation state ------------------ */
+
+/**
+ * What was said and what you answered. Separate from Bonds on purpose:
+ * a Bond is the non-decaying friendship ledger; Talk is the week's
+ * conversational surface. Merging is commutative and monotone — `said`
+ * unions with the newer date winning, `replies` keeps the newer event
+ * (same-moment ties break on the id, deterministically).
+ */
+export type Talk = {
+  /** line id → the date it was last spoken, by anyone */
+  said: Record<string, string>;
+  /** per-resident: the last reply you actually chose */
+  replies: Record<string, { id: string; topic: Topic; at: string }>;
+};
+
+export const EMPTY_TALK: Talk = { said: {}, replies: {} };
+
+/** a line's stable id — the hash of its EN text. Editing a line resets
+ *  its cooldown, which is harmless; nobody hand-maintains 328 ids. */
+export function lineId(en: string): string {
+  return (hash32(en) >>> 0).toString(36);
+}
+
+export function mergeTalk(a?: Talk, b?: Talk): Talk {
+  const said: Record<string, string> = { ...(a?.said ?? {}) };
+  for (const [k, d] of Object.entries(b?.said ?? {})) {
+    said[k] = said[k] !== undefined && said[k] > d ? said[k] : d;
+  }
+  const replies: Talk["replies"] = { ...(a?.replies ?? {}) };
+  for (const [k, r] of Object.entries(b?.replies ?? {})) {
+    const cur = replies[k];
+    replies[k] = !cur
+      ? r
+      : r.at !== cur.at
+        ? (r.at > cur.at ? r : cur)
+        : r.id < cur.id
+          ? r
+          : cur;
+  }
+  return { said, replies };
+}
+
+/** note tonight's line was spoken; entries older than 30 days retire.
+ *  (Pruned copies may resurrect via merge — harmless, it only cools.) */
+export function markSaid(talk: Talk | undefined, id: string, today: string): Talk {
+  const cutoff = (() => {
+    const d = new Date(today + "T00:00:00");
+    d.setDate(d.getDate() - 30);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const said: Record<string, string> = {};
+  for (const [k, v] of Object.entries(talk?.said ?? {})) if (v >= cutoff) said[k] = v;
+  said[id] = today;
+  return { said, replies: { ...(talk?.replies ?? {}) } };
 }
 
 /* ---------------- names — seeded, revealed on first meeting ----------- */
@@ -137,6 +203,14 @@ export type LineCtx = {
   profession?: string;
   /** what THIS resident talked about with you last time */
   lastTopic?: Topic;
+  /** a short line quoted from one of this week's pages */
+  echo?: string;
+  /** line id → date last spoken (cooldowns and milestones) */
+  said?: Record<string, string>;
+  /** today, YYYY-MM-DD — anchors the cooldown window */
+  today?: string;
+  /** your last actually-chosen reply to THIS resident */
+  lastReply?: { id: string; topic: Topic; daysAgo: number };
 };
 
 /**
@@ -154,6 +228,13 @@ export type Topic = "night" | "city" | "writing" | "weather" | "you" | "them" | 
 export type LineDef = {
   /** minimum tier (default 1); firstMeet lines use tier 0 */
   tier?: Tier;
+  /** retire above this tier — family stops hearing stranger warnings */
+  maxTier?: Tier;
+  /** a milestone: said once, ever, by anyone */
+  once?: boolean;
+  /** EN text of the reply this line calls back to — only offered if the
+   *  player actually chose that reply last time */
+  afterReply?: string;
   /** what this line is about — steers which replies you are offered */
   topic?: Topic;
   /** situational guard — omit for always-eligible */
@@ -170,11 +251,12 @@ function fill(line: string, ctx: LineCtx): string {
     .replace(/\{streak\}/g, String(ctx.streak))
     .replace(/\{total\}/g, String(ctx.totalNotes))
     .replace(/\{days\}/g, String(ctx.daysSinceGreet))
-    .replace(/\{name\}/g, ctx.name ?? "");
+    .replace(/\{name\}/g, ctx.name ?? "")
+    .replace(/\{echo\}/g, ctx.echo ?? "");
 }
 
 /** the line they say, and what it was about — the reply answers the topic */
-export type SpokenLine = { text: string; topic?: Topic };
+export type SpokenLine = { text: string; topic?: Topic; id?: string; callback?: boolean };
 
 export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): SpokenLine {
   const table =
@@ -184,18 +266,44 @@ export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): S
         ? DOG_LINE_DEFS
         : ctx.firstMeet
           ? FIRST_MEET_LINES
-          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES, ...VOICE_LINES, ...CALLBACK_LINES];
-  const eligible = table.filter(
-    (l) => (l.tier ?? 0) <= ctx.tier && (!l.when || l.when(ctx)),
-  );
+          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES, ...VOICE_LINES, ...CALLBACK_LINES, ...ECHO_LINES];
+  const cool = (() => {
+    if (!ctx.today) return "";
+    const d = new Date(ctx.today + "T00:00:00");
+    d.setDate(d.getDate() - 7);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const eligible = table.filter((l) => {
+    if ((l.tier ?? 0) > ctx.tier) return false;
+    if (l.maxTier !== undefined && ctx.tier > l.maxTier) return false;
+    if (l.once && ctx.said?.[lineId(l.en)] !== undefined) return false;
+    if (l.afterReply !== undefined && ctx.lastReply?.id !== lineId(l.afterReply)) return false;
+    if (l.when && !l.when(ctx)) return false;
+    return true;
+  });
   if (eligible.length === 0) return { text: lang === "zh" ? "……" : "..." };
-  // weighted pick: situational lines carry more weight so they surface
-  const total = eligible.reduce((s2, l) => s2 + (l.weight ?? (l.when ? 3 : 1)), 0);
+  const speak = (l: LineDef): SpokenLine => ({
+    text: fill(lang === "zh" ? l.zh : l.en, ctx),
+    topic: l.topic,
+    id: lineId(l.en),
+    callback: l.afterReply !== undefined || CALLBACK_LINES.includes(l),
+  });
+  // a memory outranks everything: if they can call back to your last
+  // real reply, they do — the callback is consumed after it's spoken
+  const callbacks = eligible.filter((l) => l.afterReply !== undefined || CALLBACK_LINES.includes(l));
+  const pool = callbacks.length > 0 ? callbacks : eligible;
+  // weighted pick: situational lines outweigh small talk, and anything
+  // said in the last 7 days cools to a whisper of its weight
+  const w = (l: LineDef) => {
+    const base = l.weight ?? (l.when ? 3 : 1);
+    const saidOn = ctx.said?.[lineId(l.en)];
+    return saidOn !== undefined && saidOn >= cool ? base * 0.15 : base;
+  };
+  const total = pool.reduce((s2, l) => s2 + w(l), 0);
   let at = (Math.abs(roll * 7919) % 1) * total;
-  for (const l of eligible) {
-    at -= l.weight ?? (l.when ? 3 : 1);
-    if (at <= 0) return { text: fill(lang === "zh" ? l.zh : l.en, ctx), topic: l.topic };
+  for (const l of pool) {
+    at -= w(l);
+    if (at <= 0) return speak(l);
   }
-  const last = eligible[eligible.length - 1];
-  return { text: fill(lang === "zh" ? last.zh : last.en, ctx), topic: last.topic };
+  return speak(pool[pool.length - 1]);
 }

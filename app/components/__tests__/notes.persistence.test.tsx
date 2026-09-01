@@ -38,7 +38,7 @@ vi.mock("../editor", () => ({
     onBlur: () => void;
     onReady: (api: unknown) => void;
   }) => {
-    onReady({ toggle() {}, getSelection: () => "", focus() {}, cursorToEnd() {} });
+    onReady({ toggle() {}, getSelection: () => "", focus() {}, cursorToEnd() {}, insert() {} });
     return (
       <textarea
         data-testid="page"

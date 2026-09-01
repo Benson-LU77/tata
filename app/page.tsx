@@ -17,9 +17,9 @@ import type { VaultBridge } from "./lib/bridge/types";
 import { cityCache } from "./lib/drafts";
 import { bestStreakOf, earnedWatts, levelFromWatts, levelProgress, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
 import { dateAtCell, floorsOf } from "./lib/city/plan";
-import { CATALOG, EMPTY_STATE, demoGameState, loadGameState, saveGameState } from "./lib/game/shop";
+import { CATALOG, EMPTY_STATE, cachedGameState, demoGameState, loadGameState, saveGameState } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
-import { greet, remember, tierOf, nameOf, lineFor, tierName, type Tier, type Topic } from "./lib/game/bonds";
+import { greet, tierOf, nameOf, lineFor, lineId, markSaid, tierName, type Tier, type Topic } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
 import { creaturesFor } from "./lib/city/residents";
 import { hash32 } from "./lib/city/layout";
@@ -132,7 +132,9 @@ export default function Home() {
   const [fbOpen, setFbOpen] = useState(false);
   const [fbText, setFbText] = useState("");
   const [fbNote, setFbNote] = useState<string | null>(null);
-  const [game, setGame] = useState<GameState>(EMPTY_STATE);
+  // boot from the synchronous cache: the async load still runs and
+  // wins, but the first frame already wears your clothes
+  const [game, setGame] = useState<GameState>(() => cachedGameState());
   const [searchHits, setSearchHits] = useState<Set<string> | null>(null);
   /* the slow-road search cache: page text by file, keyed off mtime */
   const searchDocsRef = useRef(new Map<string, { mtime: number; text: string }>());
@@ -591,8 +593,13 @@ export default function Home() {
             if (!demoRef.current) void saveGameState(next, clientRef.current);
             return next;
           }
-          if (item.kind === "skin" && prev.skin !== id) {
-            const next: GameState = { ...prev, skin: id as GameState["skin"], updatedAt: Date.now() };
+          if (item.kind === "skin") {
+            // like weather: tapping the active district takes it off
+            const next: GameState = {
+              ...prev,
+              skin: prev.skin === id ? "base" : (id as GameState["skin"]),
+              updatedAt: Date.now(),
+            };
             if (!demoRef.current) void saveGameState(next, clientRef.current);
             return next;
           }
@@ -664,6 +671,30 @@ export default function Home() {
           encUsedRef.current.push(r);
           // the closer answers THIS reply, not the void
           encCloserRef.current = closerFor(r, Math.random(), lang);
+          // a chosen reply IS the conversation — this is what they
+          // remember tomorrow. An errand's yes is not a subject.
+          const rKey = encKeyRef.current;
+          if (rKey && !(r.topics ?? []).includes("quest")) {
+            setGame((prev) => {
+              const g2: GameState = {
+                ...prev,
+                talk: {
+                  said: { ...(prev.talk?.said ?? {}) },
+                  replies: {
+                    ...(prev.talk?.replies ?? {}),
+                    [rKey]: {
+                      id: lineId(r.reply.en),
+                      topic: r.topics?.[0] ?? encTopicRef.current ?? "night",
+                      at: todayRef.current || "",
+                    },
+                  },
+                },
+                updatedAt: Date.now(),
+              };
+              if (!demoRef.current) void saveGameState(g2, clientRef.current);
+              return g2;
+            });
+          }
           hum().click();
           setBubble({
             key: "you:0",
@@ -821,19 +852,37 @@ export default function Home() {
           totalNotes: metrics.length,
           daysSinceGreet: Math.max(0, sinceGreet),
           name: game.name || undefined,
-          lastTopic: had?.t,
+          echo: weekEchoRef.current ?? undefined,
+          said: game.talk?.said,
+          today,
+          lastReply: (() => {
+            const r = game.talk?.replies[hit.key];
+            if (!r) return undefined;
+            const days = Math.round(
+              (new Date(today + "T00:00:00").getTime() - new Date(r.at + "T00:00:00").getTime()) / 86400000,
+            );
+            return { id: r.id, topic: r.topic, daysAgo: Math.max(0, days) };
+          })(),
         },
         Math.random(),
         lang,
       );
-      // they will remember what tonight was about — but a favour is an
-      // errand, not a subject worth bringing up tomorrow
-      const kept =
-        spoken.topic && spoken.topic !== "quest"
-          ? remember(nextBonds, hit.key, spoken.topic)
-          : nextBonds;
-      if (kept !== game.bonds) {
-        const next: GameState = { ...game, bonds: kept, updatedAt: now };
+      // the spoken line goes on the record: cooldowns and milestones,
+      // and a delivered callback is consumed. What YOU said is recorded
+      // only at the moment you actually pick a reply — never here.
+      let talk2 = spoken.id ? markSaid(game.talk, spoken.id, today) : game.talk;
+      if (spoken.callback && talk2 && talk2.replies[hit.key]) {
+        const rest = { ...talk2.replies };
+        delete rest[hit.key];
+        talk2 = { said: talk2.said, replies: rest };
+      }
+      if (nextBonds !== game.bonds || talk2 !== game.talk) {
+        const next: GameState = {
+          ...game,
+          bonds: nextBonds,
+          ...(talk2 !== undefined && { talk: talk2 }),
+          updatedAt: now,
+        };
         setGame(next);
         scheduleBondSave(next);
       }
@@ -1050,32 +1099,6 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [metrics, today]);
 
-  /* a capsule's day arrives: the vault unlocks and a letter announces it */
-  useEffect(() => {
-    if (!today) return;
-    const due = metrics.filter(
-      (m) => m.capsule && m.capsule <= today && !(game.letters ?? []).some((l) => l.id === "capsule-" + m.file),
-    );
-    if (due.length === 0) return;
-    const timer = window.setTimeout(() => {
-      setGame((prev) => {
-        const fresh = due.filter((m) => !(prev.letters ?? []).some((l) => l.id === "capsule-" + m.file));
-        if (fresh.length === 0) return prev;
-        const next: GameState = {
-          ...prev,
-          letters: [
-            ...(prev.letters ?? []),
-            ...fresh.map((m) => ({ id: "capsule-" + m.file, date: today, read: false })),
-          ],
-          updatedAt: Date.now(),
-        };
-        if (!demoRef.current) void saveGameState(next, clientRef.current);
-        return next;
-      });
-      hum().levelUp();
-    }, 1500);
-    return () => window.clearTimeout(timer);
-  }, [metrics, today, game.letters, hum]);
 
   const orderCommission = useCallback(
     (id: string) => {
@@ -1136,12 +1159,6 @@ export default function Home() {
 
   const bodyOf = useCallback(
     (id: string, date: string) => {
-      if (id.startsWith("capsule-")) {
-        const file = id.slice(8).replace(/\.md$/, "");
-        return lang === "zh"
-          ? `寫字的人。\n\n你埋下的字醒了：「${file}」。\n它等到了自己的日子。去打開它——那是過去的你，寄給現在的你的信。\n\n—— 城市檔案室`
-          : `To the one who writes.\n\nA page you buried has woken: "${file}".\nIt waited for its own day. Go open it — the person you were, writing to the person you are.\n\n— The city archive`;
-      }
       const body = id.startsWith("month-")
         ? monthlyLetterBody(id.slice(6), monthStats(id.slice(6)), lang)
         : letterBody(id, { months: cityPlan.blocks.length, pages: metrics.length, date }, lang);
@@ -1184,6 +1201,54 @@ export default function Home() {
   useEffect(() => {
     questRef.current = quest;
   }, [quest]);
+  /* the week's echo: one short line from your recent pages, carried into
+     the streets — residents you know (tier 2+) quote you back. The demo
+     city reads nobody's diary. */
+  const weekEchoRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isDemoCity || !today || metrics.length === 0) return;
+    const d0 = new Date(today + "T00:00:00");
+    d0.setDate(d0.getDate() - 7);
+    const cutoff = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, "0")}-${String(d0.getDate()).padStart(2, "0")}`;
+    const recent = metrics
+      .filter(
+        (m) =>
+          !m.file.startsWith("__") &&
+          m.date >= cutoff &&
+          m.words > 0,
+      )
+      .sort((a, b) => b.mtime - a.mtime)
+      .slice(0, 14);
+    const client = clientRef.current;
+    if (recent.length === 0 || !client) return;
+    let dead = false;
+    void (async () => {
+      const found: string[] = [];
+      for (const m of recent) {
+        try {
+          const text = await client.read(m.file);
+          for (const raw of text.split("\n")) {
+            if (raw.includes("[!")) continue; // callouts stay off the street
+            const line = raw
+              .replace(/^[>#\-*\s\d.\u3001\[\]!]+/, "")
+              .replace(/[*_`~\[\]#]/g, "")
+              .trim();
+            if (!line || /^\d{1,2}:\d{2}/.test(line)) continue;
+            const len = [...line].length;
+            if (len < 4 || len > 16) continue;
+            found.push(line);
+          }
+        } catch {
+          /* an unreadable page just stays unquoted */
+        }
+      }
+      if (dead || found.length === 0) return;
+      weekEchoRef.current = found[hash32(today + ":echo") % found.length];
+    })();
+    return () => {
+      dead = true;
+    };
+  }, [isDemoCity, today, metrics]);
   /* the demo's guide: a beat after the city fades in, the oldest
      neighbour crosses the street to the newcomer — the camera leans in,
      and the conversation starts when they arrive. */
@@ -1621,15 +1686,6 @@ export default function Home() {
 
   const openWrite = useCallback((file?: string) => {
     if (demoRef.current && tourRef.current && tourPhaseRef.current !== "done") return;
-    if (file) {
-      const m = metricsRef.current.find((x) => x.file === file);
-      if (m?.capsule && todayRef.current && m.capsule > todayRef.current) {
-        // a sealed capsule: the whole point is that it will not open
-        setMoveToast(`\u23f3 ${m.capsule}`);
-        window.setTimeout(() => setMoveToast(null), 3200);
-        return;
-      }
-    }
     clearEncounterTimers();
     setEncounterKey(null);
     setBubble(null);
@@ -2731,9 +2787,7 @@ export default function Home() {
                   <strong>
                     {l.id.startsWith("month-")
                       ? `${t("letters.archive")} · ${l.id.slice(6)}`
-                      : l.id.startsWith("capsule-")
-                        ? `${t("letters.capsule")} · ${l.id.slice(8).replace(/\.md$/, "")}`
-                        : `${commissionDef(l.id)?.caretaker} · ${t("comm." + l.id + ".name")}`}
+                      : `${commissionDef(l.id)?.caretaker} · ${t("comm." + l.id + ".name")}`}
                   </strong>
                   <em>{l.date}</em>
                 </button>
@@ -2801,7 +2855,7 @@ export default function Home() {
             const stashed = (game.stashed ?? []).includes(item.id);
             const clickable = owned
               ? item.kind === "weather" ||
-                (item.kind === "skin" && !active) ||
+                item.kind === "skin" ||
                 item.kind === "decor" ||
                 item.kind === "creature"
               : affordable && !locked;
@@ -2919,7 +2973,7 @@ export default function Home() {
             const stashed = (game.stashed ?? []).includes(cat.id);
             const clickable = owned
               ? cat.kind === "weather" ||
-                (cat.kind === "skin" && !active) ||
+                cat.kind === "skin" ||
                 cat.kind === "decor" ||
                 cat.kind === "creature"
               : affordable && !locked;

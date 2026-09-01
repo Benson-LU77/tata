@@ -30,6 +30,8 @@ export type EditorApi = {
   getSelection: () => string;
   focus: () => void;
   cursorToEnd: () => void;
+  /** insert text at the cursor (the toolbar's stamps use this) */
+  insert: (text: string) => void;
 };
 
 /* ---------- live-preview highlighting ---------- */
@@ -332,7 +334,6 @@ const SLASH_DEFS: { label: string; en: string; zh: string; preview: string }[] =
   { label: "/quote", en: "quote block", zh: "引言區塊", preview: "> …" },
   { label: "/divider", en: "horizontal divider", zh: "分隔線", preview: "———" },
   { label: "/now", en: "current time stamp", zh: "現在時間戳記", preview: "> 21:30" },
-  { label: "/capsule", en: "time capsule — sealed until a date", zh: "時間膠囊，封緘到指定日期", preview: "> [!capsule] 2027-08-18" },
   { label: "/stamp", en: "pixel stamp picker", zh: "像素印章（也可直接輸入 ::）", preview: "::貓:: → 🐱" },
 ];
 
@@ -390,21 +391,6 @@ function slashSource(
             selection: { anchor: from + 2 },
           });
           window.setTimeout(() => startCompletion(view), 30);
-        },
-      },
-      {
-        label: "/capsule",
-        ...meta("/capsule"),
-        boost: 4.2,
-        apply: (view, _completion, from, to) => {
-          const d = new Date();
-          d.setFullYear(d.getFullYear() + 1);
-          const pad2 = (n: number) => String(n).padStart(2, "0");
-          const text = `> [!capsule] ${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}\n\n`;
-          view.dispatch({
-            changes: { from, to, insert: text },
-            selection: { anchor: from + text.length },
-          });
         },
       },
       {
@@ -721,6 +707,14 @@ export function MarkdownEditor({
       focus: () => view.focus(),
       cursorToEnd: () => {
         view.dispatch({ selection: { anchor: view.state.doc.length } });
+        view.focus();
+      },
+      insert: (text: string) => {
+        const { from, to } = view.state.selection.main;
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
+        });
         view.focus();
       },
     });
