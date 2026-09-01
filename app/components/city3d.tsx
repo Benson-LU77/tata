@@ -635,6 +635,7 @@ export function City3D({
   onGroundTap,
   encounterKey,
   encounterApproach,
+  overture,
   onEncounterMeet,
   look,
   emote,
@@ -675,6 +676,8 @@ export function City3D({
   encounterKey: string | null;
   /** the OTHER walker crosses the street to you (the demo's guide) */
   encounterApproach?: boolean;
+  /** open on a far overview and glide down to street level (~5s) */
+  overture?: boolean;
   /** you arrived — the exchange may begin */
   onEncounterMeet: (hit: { key: string; kind: string; seed: number }) => void;
   /** your figure, composed into the atlas at runtime */
@@ -1310,10 +1313,13 @@ export function City3D({
       const writing = stateRef.current.writeMode;
       if (viewGoalRef.current !== null) {
         const goal = viewGoalRef.current;
-        viewRef.current += (goal - viewRef.current) * Math.min(1, dt / 110);
+        // the overture descends gently; every other zoom snaps to work
+        const rate = overtureSlowRef.current ? dt / 950 : dt / 110;
+        viewRef.current += (goal - viewRef.current) * Math.min(1, rate);
         if (Math.abs(viewRef.current - goal) < goal * 0.004) {
           viewRef.current = goal;
           viewGoalRef.current = null;
+          overtureSlowRef.current = false;
         }
         animating = true;
       }
@@ -1471,6 +1477,20 @@ export function City3D({
   const shiftRef = useRef<Map<string, number>>(new Map());
   const approachRef = useRef(false);
   approachRef.current = Boolean(encounterApproach);
+  /* the overture: a slow descent from overview to street level */
+  const overtureDoneRef = useRef(false);
+  const overtureSlowRef = useRef(false);
+
+  useEffect(() => {
+    if (!overture || overtureDoneRef.current) return;
+    if (stateRef.current.plan.blocks.length === 0) return;
+    overtureDoneRef.current = true;
+    viewRef.current = clampView(VIEW_STOPS[0] * 1.5);
+    viewGoalRef.current = VIEW_DEFAULT;
+    overtureSlowRef.current = true;
+    loopRef.current?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overture, plan]);
 
   useEffect(() => {
     const h = hRef.current;

@@ -1169,16 +1169,18 @@ export default function Home() {
   useEffect(() => {
     if (!isDemoCity || tourRef.current || metrics.length === 0) return;
     const ids: number[] = [];
-    // you walk in first, wondering aloud — then the neighbour notices
+    // the overture pans from overview to street (~5s); then you walk a
+    // beat and wonder aloud — the line fades by itself — and only then
+    // does the neighbour notice and cross over
     ids.push(
       window.setTimeout(() => {
         setBubble({
           key: "you:0",
           name: t("bubble.you"),
           text: t("tour.walk"),
-          until: Date.now() + 30000,
+          until: Date.now() + 2600,
         });
-      }, 1200),
+      }, 5200),
     );
     ids.push(
       window.setTimeout(() => {
@@ -1187,7 +1189,7 @@ export default function Home() {
         tourRef.current = true;
         setTourApproach(true);
         setEncounterKey("person:0");
-      }, 3600),
+      }, 8600),
     );
     // failsafe: whatever happens, the way home shows up eventually
     ids.push(window.setTimeout(() => setDemoExitVisible(true), 90000));
@@ -1867,6 +1869,9 @@ export default function Home() {
 
   const rootClass = [
     "city-app",
+    // the ceremony clears the stage: no chrome from the sealed letter
+    // until the guide hands the city over
+    welcomeOpen || (isDemoCity && !demoExitVisible) ? "tour-clean" : "",
     writeOpen ? "writing" : "",
     bubble ? "talking" : "",
     compassOpen ? "compass-open" : "",
@@ -1933,6 +1938,7 @@ export default function Home() {
             onGroundTap={onGroundTap}
             encounterKey={encounterKey}
             encounterApproach={tourApproach}
+            overture={isDemoCity}
             onEncounterMeet={onEncounterMeet}
             look={game.look}
             emote={emote}

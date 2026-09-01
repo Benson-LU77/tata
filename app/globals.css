@@ -645,6 +645,14 @@ html, body {
 /* the privacy row is a link wearing the button's coat */
 a.panel-export { display: block; text-align: center; text-decoration: none; }
 
+/* the ceremony clears the stage: from the sealed letter until the
+   guide hands the city over, no corner chrome exists — only the star
+   may appear, and only when it is being pointed at */
+.tour-clean .topbar { display: none; }
+.tour-clean .dpad-summon { visibility: hidden; pointer-events: none; }
+.tour-clean .dpad-summon.tour-glow { visibility: visible; pointer-events: auto !important; }
+.tour-clean .dpad:not(.dpad--tour) { display: none; }
+
 /* the guide's show: the star pulses when pointed at; the compass takes
    centre stage; the point being named leans forward into the light */
 .tour-glow {
@@ -1987,8 +1995,11 @@ label.panel-export {
   min-height: 44px;
 }
 .welcome-actions .welcome-write {
-  border-color: var(--amber);
-  color: var(--amber);
+  /* on paper, ink — amber on light stock was unreadable */
+  border: 2px solid var(--p0, #06070a);
+  color: var(--p0, #06070a);
+  background: transparent;
+  font-weight: 600;
 }
 
 .sw-toast { display: flex; gap: 12px; align-items: center; pointer-events: auto; }
