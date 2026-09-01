@@ -696,6 +696,9 @@ export default function Home() {
 
   const onCreatureTap = useCallback(
     (hit: { key: string; kind: string; seed: number; x: number; y: number }) => {
+      // while the notebook is open, the street waits — no meetings can
+      // start behind the page you are writing
+      if (writeOpenRef.current) return;
       if (hit.kind === "you") {
         setMirrorOpen(true);
         return;
@@ -1213,10 +1216,13 @@ export default function Home() {
   const [questToast, setQuestToast] = useState(false);
   const questDoneSeenRef = useRef<boolean | null>(null);
   useEffect(() => {
-    const done = Boolean(quest?.done);
+    // tri-state: null while the quest hasn't loaded. Booting an app whose
+    // favour was already done is data ARRIVING, not a favour LANDING —
+    // only a false→true edge with the quest present on both sides rings.
+    const now = quest ? quest.done : null;
     const was = questDoneSeenRef.current;
-    questDoneSeenRef.current = done;
-    if (was === false && done) setQuestToast(true);
+    questDoneSeenRef.current = now;
+    if (was === false && now === true) setQuestToast(true);
   }, [quest]);
   // the hide timer lives on the toast itself — hanging it on `quest`
   // meant every city replan rebuilt the effect, cancelled the alarm,
