@@ -1122,28 +1122,6 @@ export default function Home() {
     [monthStats, cityPlan.blocks.length, metrics.length, lang, game.name],
   );
 
-  const exportLetter = useCallback(
-    (id: string) => {
-      const client = clientRef.current;
-      const letter = (game.letters ?? []).find((l) => l.id === id);
-      if (!client || !letter) return;
-      // ids can carry a note path (capsule-Journal/2026/…): flatten it, or
-      // the letter lands in a folder nobody asked for
-      const safe = id.replace(/[/\\]/g, "-").replace(/\.md$/i, "");
-      const body = bodyOf(id, letter.date) + "\n";
-      void client
-        .writeGuarded(`Letters/${letter.date} ${safe}.md`, body, null, null)
-        .then((r) => {
-          if (r.ok) return;
-          // you have edited the exported letter — keep your copy, add mine
-          const stamp = new Date().toISOString().slice(11, 16).replace(":", ".");
-          return client.writeGuarded(`Letters/${letter.date} ${safe} (${stamp}).md`, body, null, null);
-        })
-        .catch(() => {});
-    },
-    [game.letters, bodyOf],
-  );
-
   const extras = useMemo(() => {
     const on = (id: string) => game.owned.includes(id) && !(game.stashed ?? []).includes(id);
     return {
@@ -2410,11 +2388,6 @@ export default function Home() {
               {bodyOf(letterOpen, (game.letters ?? []).find((l) => l.id === letterOpen)?.date ?? "")}
             </pre>
             <div className="letter-actions">
-              {synced === "live" && (
-                <button type="button" onClick={() => exportLetter(letterOpen)}>
-                  {t("letters.export")}
-                </button>
-              )}
               <button type="button" onClick={() => setLetterOpen(null)}>
                 {t("common.close")}
               </button>
