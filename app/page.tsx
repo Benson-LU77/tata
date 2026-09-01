@@ -448,7 +448,14 @@ export default function Home() {
     if (!today) return "none" as const;
     const h = hash32(today + ":sky");
     const roll = h % 20;
-    return roll < 3 ? ("rain" as const) : roll < 4 ? ("fog" as const) : roll < 5 ? ("snow" as const) : ("none" as const);
+    // ambient snow keeps to winter — a September flurry reads as a bug,
+    // not a mood. (Bought weather above overrides the sky entirely.)
+    const month = Number(today.slice(5, 7));
+    const wintry = month === 12 || month <= 2;
+    if (roll < 3) return "rain" as const;
+    if (roll === 3) return "fog" as const;
+    if (roll === 4 && wintry) return "snow" as const;
+    return "none" as const;
   }, [game.weather, today]);
 
 
