@@ -56,6 +56,17 @@ button:focus-visible, input:focus-visible {
   box-shadow: 0 0 0 4px rgba(var(--accent-rgb), .1);
 }
 
+/* the glass is the world: nothing may pan the page itself. Without
+   this, one overflowing element let WKWebView drift the visual
+   viewport ~50pt sideways — and every "centred" overlay sat off-centre
+   on the phone while measuring perfectly in a desktop browser. */
+html, body {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
 .city-app {
   width: 100vw;
   height: 100dvh;
@@ -653,12 +664,20 @@ a.panel-export { display: block; text-align: center; text-decoration: none; }
 .dpad--tour {
   position: fixed !important;
   left: 50% !important;
-  top: 40% !important;
+  top: 42% !important;
   bottom: auto !important;
-  transform: translate(-50%, -50%) scale(1.9);
+  transform: translate(-50%, -50%) scale(2.6);
   z-index: 40;
   pointer-events: none; /* the show is not interactive */
   transition: transform .4s ease;
+}
+/* the city dims so the compass lesson owns the stage; the bubble (z6)
+   must stay above it, so the veil slips just underneath */
+.tour-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: rgba(4, 5, 8, .62);
 }
 .dpad--tour .dpad-btn .depot-thumb { transition: transform .35s ease, filter .35s ease; }
 .dpad--tour .tour-hi .depot-thumb {
@@ -667,21 +686,29 @@ a.panel-export { display: block; text-align: center; text-decoration: none; }
 }
 
 /* the sealed letter that opens the whole city */
-.mail-drop {
-  position: absolute;
+.mail-veil {
+  /* fixed: the hosting container proved wider than the glass, and
+     absolute centring inherited its offset */
+  position: fixed;
+  inset: 0;
   z-index: 30;
-  left: 50%;
-  top: 50%;
+  display: flex;
+}
+.mail-veil .mail-drop { margin: auto; }
+/* the global depot-thumb rule floats every PixelIcon absolutely —
+   neutralised here like everywhere else, or the envelope drifts off */
+.mail-drop .depot-thumb { position: static; transform: none; }
+.mail-drop {
   background: transparent;
   border: 0;
-  padding: 12px;
+  padding: 16px;
   cursor: pointer;
   animation: mail-bob 2.6s ease-in-out infinite;
-  filter: drop-shadow(0 0 18px rgba(224, 168, 79, .22));
+  filter: drop-shadow(0 0 22px rgba(224, 168, 79, .3));
 }
 @keyframes mail-bob {
-  0%, 100% { transform: translate(-50%, -53%); }
-  50% { transform: translate(-50%, -47%); }
+  0%, 100% { transform: translateY(-7px); }
+  50% { transform: translateY(7px); }
 }
 
 /* where the words live — a fact, spoken quietly */
@@ -1736,7 +1763,7 @@ label.panel-export {
 
 /* level-up: one quiet line over the city, then gone */
 .levelup-toast {
-  position: absolute;
+  position: fixed;
   left: 50%;
   /* dead centre of the screen — the 18% band kept colliding with the
      demo-exit bar and the corner block */
@@ -1925,21 +1952,22 @@ label.panel-export {
 
 /* the welcome card: three sentences and two doors */
 .welcome-card {
-  position: absolute;
-  z-index: 12;
+  position: fixed;
+  z-index: 31;
   left: 50%;
   top: 44%;
   transform: translate(-50%, -50%);
   width: min(340px, calc(100vw - 48px));
-  padding: 28px 30px 24px;
-  border: 1px solid var(--v3);
-  background: rgba(10, 12, 16, .94);
-  backdrop-filter: blur(10px);
+  padding: 30px 30px 26px;
+  /* the letter itself: paper out of the envelope, not another night panel */
+  border: 2px solid var(--p0, #06070a);
+  box-shadow: inset 0 0 0 1px rgba(6, 7, 10, .18), 10px 12px 0 rgba(0, 0, 0, .55);
+  background: var(--p6, #c9ccd2);
   text-align: center;
 }
 .welcome-card p {
   font: 400 14px/2 var(--mono);
-  color: var(--v6);
+  color: var(--p1, #0d0f13);
   letter-spacing: .04em;
 }
 .welcome-actions {

@@ -142,6 +142,8 @@ export default function Home() {
   const [tourStar, setTourStar] = useState(false);
   const [tourShowcase, setTourShowcase] = useState(false);
   const [tourHi, setTourHi] = useState(-1);
+  /* the way home appears only once the guided part is over */
+  const [demoExitVisible, setDemoExitVisible] = useState(false);
   const [foundToast, setFoundToast] = useState(false);
   const [swApply, setSwApply] = useState<(() => void) | null>(null);
   const [touchPick, setTouchPick] = useState<string | null>(null);
@@ -739,7 +741,12 @@ export default function Home() {
         };
         const g2 = () =>
           gSay(t("tour.2"), [{ label: t("tour.2.r"), pick: () => { hum().click(); gStar(); } }]);
-        gSay(t("tour.1"), [{ label: t("tour.1.r"), pick: () => { hum().click(); g2(); } }]);
+        const g1 = () =>
+          gSay(t("tour.1"), [{ label: t("tour.1.r"), pick: () => { hum().click(); g2(); } }]);
+        // a wave floats over the guide for the whole talk — you can
+        // always see who is speaking to you
+        setEmote({ key: "person:0", icon: "emote_wave", until: Date.now() + 600000 });
+        gSay(t("tour.hello"), [{ label: t("tour.hello.r"), pick: () => { hum().click(); g1(); } }]);
         return;
       }
       const kind = hit.kind as CreatureKind;
@@ -1173,15 +1180,33 @@ export default function Home() {
   const tourPhaseRef = useRef<"idle" | "star" | "compass" | "done">("idle");
   useEffect(() => {
     if (!isDemoCity || tourRef.current || metrics.length === 0) return;
-    const id = window.setTimeout(() => {
-      // marked NOW, not at scheduling: a dep change inside the wait
-      // would cancel the timer with the flag already burnt
-      tourRef.current = true;
-      setTourApproach(true);
-      setEncounterKey("person:0");
-    }, 1600);
-    return () => window.clearTimeout(id);
-  }, [isDemoCity, metrics]);
+    const ids: number[] = [];
+    // you walk in first, wondering aloud — then the neighbour notices
+    ids.push(
+      window.setTimeout(() => {
+        setBubble({
+          key: "you:0",
+          name: t("bubble.you"),
+          text: t("tour.walk"),
+          until: Date.now() + 30000,
+        });
+      }, 1200),
+    );
+    ids.push(
+      window.setTimeout(() => {
+        // marked NOW, not at scheduling: a dep change inside the wait
+        // would cancel the timer with the flag already burnt
+        tourRef.current = true;
+        setTourApproach(true);
+        setEncounterKey("person:0");
+      }, 3600),
+    );
+    // failsafe: whatever happens, the way home shows up eventually
+    ids.push(window.setTimeout(() => setDemoExitVisible(true), 90000));
+    return () => {
+      for (const id of ids) window.clearTimeout(id);
+    };
+  }, [isDemoCity, metrics, t]);
 
   /* the favour's receipt: the moment tonight's asked-for order lands,
      say so once — otherwise the tip arrives in silence */
@@ -1376,6 +1401,8 @@ export default function Home() {
     };
     const roam = () => {
       tourPhaseRef.current = "done";
+      setDemoExitVisible(true);
+      setEmote(null);
       endShowcase();
       clearEncounterTimers();
       encStageRef.current = null;
@@ -1636,6 +1663,10 @@ export default function Home() {
           clearEncounterTimers();
           hum().click();
           setEncounterKey(null);
+          if (demoRef.current) {
+            setDemoExitVisible(true);
+            setEmote(null);
+          }
         } else {
           // mid-talk, the ground turns the page (it can never open the
           // notebook here — the notebook stays behind the conversation)
@@ -1922,12 +1953,7 @@ export default function Home() {
             <span>{t("nogl.body")}</span>
           </div>
         )}
-        {levelToast && (
-          <div className="levelup-toast" role="status">
-            {t("levelup.line")}
-          </div>
-        )}
-        {questToast && !levelToast && (
+        {questToast && (
           <div className="levelup-toast" role="status">
             {t("quest.delivered")}
           </div>
@@ -2044,18 +2070,21 @@ export default function Home() {
             {t("city.first")}
           </button>
         )}
+        {tourShowcase && <div className="tour-veil" aria-hidden="true" />}
         {welcomeOpen && introDone && !mailOpened && (
-          <button
-            type="button"
-            className="mail-drop"
-            aria-label={t("welcome.mail")}
-            onClick={() => {
-              hum().click();
-              setMailOpened(true);
-            }}
-          >
-            <PixelIcon rows={MAIL_ICON} size={56} pal={MAIL_PAL} />
-          </button>
+          <div className="mail-veil">
+            <button
+              type="button"
+              className="mail-drop"
+              aria-label={t("welcome.mail")}
+              onClick={() => {
+                hum().click();
+                setMailOpened(true);
+              }}
+            >
+              <PixelIcon rows={MAIL_ICON} size={112} pal={MAIL_PAL} />
+            </button>
+          </div>
         )}
         {welcomeOpen && introDone && mailOpened && (
           <div className="welcome-card" role="dialog" aria-label="Tata">
@@ -2448,7 +2477,7 @@ export default function Home() {
           />
         </div>
       )}
-      {isDemoCity && (
+      {isDemoCity && demoExitVisible && (
         <button
           type="button"
           className="demo-exit immersion-ui"
