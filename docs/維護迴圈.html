@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TATA 維護迴圈</title>
+<style>
+  :root {
+    --bg:#0b0d10; --card:#12151a; --line:#22262e; --txt:#e8eaee; --dim:#8b9099;
+    --amber:#e0a84f; --blue:#7fa7d9; --pink:#d98fa7; --green:#8fc9a0; --violet:#a99ad9;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt); font:14.5px/1.85 "PingFang TC","Noto Sans TC",system-ui,sans-serif; padding:56px 24px 90px; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  h1 { font-family:Georgia,"Songti TC",serif; font-size:44px; font-weight:600; text-align:center; letter-spacing:.06em; }
+  .sub { text-align:center; color:var(--dim); font-size:13px; letter-spacing:.3em; margin:10px 0 26px; }
+  .tagline { display:block; width:fit-content; margin:0 auto 40px; padding:10px 26px;
+             border:1px solid rgba(224,168,79,.5); border-radius:12px; color:var(--amber);
+             background:rgba(224,168,79,.06); font-size:14px; letter-spacing:.12em; }
+  .nav { text-align:center; margin:0 0 40px; font-size:12.5px; }
+  .nav a { color:var(--dim); text-decoration:none; margin:0 10px; border-bottom:1px dotted var(--line); }
+  .nav a:hover { color:var(--amber); }
+  h2.section { font-family:Georgia,"Songti TC",serif; font-size:22px; margin:52px 0 16px; text-align:center; letter-spacing:.2em; }
+  h2.section span { border-bottom:2px solid var(--amber); padding-bottom:6px; }
+  .flow { display:flex; flex-wrap:wrap; justify-content:center; gap:0; margin:14px 0 6px; }
+  .flow .node { border:1px solid var(--line); background:var(--card); border-radius:12px;
+                padding:10px 16px; font-size:12.5px; text-align:center; min-width:110px; }
+  .flow .node b { display:block; font-size:13.5px; }
+  .flow .node small { color:var(--dim); font-size:11px; }
+  .flow .arr { align-self:center; color:var(--amber); font-size:18px; padding:0 9px; }
+  .flow .node.hot { border-color:rgba(224,168,79,.5); background:rgba(224,168,79,.07); }
+  .flow .node.auto { border-color:rgba(143,201,160,.4); background:rgba(143,201,160,.06); }
+  .hint { text-align:center; color:var(--dim); font-size:12px; margin-bottom:8px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
+  th,td { border:1px solid var(--line); padding:8px 12px; text-align:left; vertical-align:top; }
+  th { color:var(--amber); background:var(--card); letter-spacing:.1em; font-weight:600; }
+  td code { font-family:ui-monospace,Menlo,monospace; color:var(--amber); font-size:12px; }
+  td b { color:var(--txt); }
+  td { color:#b7bcc4; }
+  footer { margin-top:70px; text-align:center; color:#3a3f48; font-size:11px; letter-spacing:.3em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>TATA 維護迴圈</h1>
+<p class="sub">怎麼養一座城市 · 2026-09-03</p>
+<span class="tagline">Tata 不是蓋完就好的房子,是要澆水的城市 —— 四個迴圈:日常 · Bug · 發版 · 健檢</span>
+<p class="nav"><a href="施工架構圖.html">← 施工架構圖</a><a href="wireframe.html">← 畫面線框</a><a href="資安守護.html">資安守護 →</a></p>
+
+<h2 class="section"><span>迴圈一 · 日常開發(每次改碼)</span></h2>
+<div class="flow">
+  <div class="node"><b>改程式</b></div><div class="arr">→</div>
+  <div class="node hot"><b>npm test</b><small>74 條</small></div><div class="arr">→</div>
+  <div class="node hot"><b>tsc --noEmit</b><small>vite build 不查型別</small></div><div class="arr">→</div>
+  <div class="node"><b>實測</b><small>瀏覽器/模擬器</small></div><div class="arr">→</div>
+  <div class="node"><b>commit+push</b></div><div class="arr">→</div>
+  <div class="node auto"><b>Obsidian 日記</b><small>hook 自動</small></div><div class="arr">→</div>
+  <div class="node auto"><b>更新記憶</b><small>教訓入庫</small></div>
+</div>
+<p class="hint">綠色=自動發生,不用動手。</p>
+
+<table>
+<tr><th style="width:46%">鐵則</th><th>踩過的雷</th></tr>
+<tr><td><b>改完必跑 tsc</b></td><td>vite build 不做型別檢查——曾漏 seed 欄位,鄰居三天都是預設臉</td></tr>
+<tr><td><b>互動驗證用真實點擊</b>,不用 JS .click()</td><td>.click() 繞過命中測試,曾漏掉「按鈕根本點不到」</td></tr>
+<tr><td><b>改台詞必同步改 answers 鍵名</b></td><td>測試強制 100% 覆蓋,鍵=開場句英文全文</td></tr>
+<tr><td><b>新 sprite 必過 zz-sprite-guard</b></td><td>一個非法字元=啟動全黑畫面(發生過兩次)</td></tr>
+<tr><td><b>手機 CSS 覆寫一律放 globals.css 檔尾</b></td><td>同權重後者贏,已踩 5 次</td></tr>
+<tr><td><b>python 批次替換必加 assert</b></td><td>無聲失敗兩次讓功能「半上線」</td></tr>
+</table>
+
+<h2 class="section"><span>迴圈二 · Bug 處理(使用者回報)</span></h2>
+<div class="flow">
+  <div class="node"><b>回報</b><small>截圖/診斷條</small></div><div class="arr">→</div>
+  <div class="node"><b>重現</b></div><div class="arr">→</div>
+  <div class="node hot"><b>找根因</b><small>不是找症狀</small></div><div class="arr">→</div>
+  <div class="node hot"><b>寫測試釘死</b><small>先釘再修</small></div><div class="arr">→</div>
+  <div class="node"><b>修</b></div><div class="arr">→</div>
+  <div class="node"><b>部署</b></div><div class="arr">→</div>
+  <div class="node auto"><b>記進問題總表</b></div>
+</div>
+<p class="hint" style="max-width:720px;margin:8px auto">app 內建診斷:環形日誌(debuglog)+ 設定面板底部診斷條——使用者截設定面板圖=自帶錯誤現場。<br>
+測試要能在「舊的壞程式」上失敗才算釘住;根因要能解釋<b style="color:var(--txt)">全部</b>症狀,解釋不了的部分=還沒找到根因。</p>
+
+<h2 class="section"><span>迴圈三 · 發版</span></h2>
+<table>
+<tr><th style="width:22%">通道</th><th>步驟</th></tr>
+<tr><td><b>網頁 tata.page</b><br><small style="color:var(--dim)">隨改隨發</small></td><td>迴圈一全綠 → <code>npm run deploy</code>(CNAME 自動帶上,少了它網域會掉)→ 自己重整實測一次(SW 快取,必要時重整兩次)。PWA 是提示制更新,寫作中不打擾。</td></tr>
+<tr><td><b>iOS App Store</b></td><td><code>npm run ios:sync</code>(自動補回 VaultPlugin 註冊)→ Release 建置在模擬器過主流程(寫一頁→收書→相遇→補給站)→ Xcode:<b>Build 號 +1</b> → Any iOS Device → Archive → Upload → 文案照 appstore-copy.md,隱私=不收集資料。</td></tr>
+</table>
+
+<h2 class="section"><span>迴圈四 · 定期健檢</span></h2>
+<table>
+<tr><th style="width:22%">頻率</th><th>做什麼</th></tr>
+<tr><td><b>每次大功能前</b></td><td>交叉檢核(architect 深讀 + codex 第二意見);只有重大決策才觸發</td></tr>
+<tr><td><b>每月</b></td><td><code>npm audit</code> + 依賴升級評估;CI 是否仍全綠;<code>npm outdated</code> 看主要套件</td></tr>
+<tr><td><b>每季</b></td><td>全站易用性走查(逐畫面、桌機+手機);對比度掃一輪</td></tr>
+<tr><td><b>域名/憑證</b></td><td>tata.page 自動續約已開;憑證卡住:拆掉 cname 再重綁即刻觸發</td></tr>
+<tr><td><b>資料安全</b></td><td>抽查影子備份在寫(IndexedDB "shadows",每檔 3 份);跑 fs-bridge 守衛測試</td></tr>
+</table>
+
+<h2 class="section"><span>護欄總表(壞了會叫,平常不用管)</span></h2>
+<table>
+<tr><th style="width:36%">護欄</th><th>守什麼</th></tr>
+<tr><td><code>CI(GitHub Actions)</code></td><td>lint + typecheck + 雙套測試 + build,每次 push 都跑</td></tr>
+<tr><td><code>notes.persistence.test</code>(12 場景)</td><td>8/21 資料遺失事故的所有形狀</td></tr>
+<tr><td><code>fs-bridge.test</code>(5 條守衛)</td><td>「讀不到 ≠ 不存在」契約,四座橋共用</td></tr>
+<tr><td><code>answers.test</code></td><td>325 句開場 100% 有專屬回話</td></tr>
+<tr><td><code>zz-sprite-guard.test</code></td><td>所有像素圖合法字元+等寬</td></tr>
+<tr><td><code>test-city</code>(16 組)</td><td>城市推導確定性(含 moonwalk、merge 可交換性)</td></tr>
+<tr><td><code>golden test</code></td><td>預設角色外觀逐字元不變</td></tr>
+</table>
+
+<h2 class="section"><span>待辦的家</span></h2>
+<table>
+<tr><th style="width:26%">哪類</th><th>在哪</th></tr>
+<tr><td>短期待辦</td><td><code>docs/上架待辦.md</code>(含 v1.1 B2 區)</td></tr>
+<tr><td>長期記憶</td><td><code>~/.claude/.../memory/</code>(教訓與架構,跨對話存活)</td></tr>
+<tr><td>開發史+問題總表</td><td><code>~/Obsidian/Tata/開發日記/</code>(commit 與對話自動匯出)</td></tr>
+</table>
+
+<footer>TATA · 維護迴圈 · 2026-09-03</footer>
+</div>
+</body>
+</html>

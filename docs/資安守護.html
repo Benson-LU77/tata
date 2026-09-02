@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TATA 資安守護</title>
+<style>
+  :root {
+    --bg:#0b0d10; --card:#12151a; --line:#22262e; --txt:#e8eaee; --dim:#8b9099;
+    --amber:#e0a84f; --blue:#7fa7d9; --pink:#d98fa7; --green:#8fc9a0;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt); font:14.5px/1.85 "PingFang TC","Noto Sans TC",system-ui,sans-serif; padding:56px 24px 90px; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  h1 { font-family:Georgia,"Songti TC",serif; font-size:44px; font-weight:600; text-align:center; letter-spacing:.06em; }
+  .sub { text-align:center; color:var(--dim); font-size:13px; letter-spacing:.3em; margin:10px 0 26px; }
+  .tagline { display:block; width:fit-content; margin:0 auto 40px; padding:10px 26px;
+             border:1px solid rgba(224,168,79,.5); border-radius:12px; color:var(--amber);
+             background:rgba(224,168,79,.06); font-size:14px; letter-spacing:.12em; }
+  .nav { text-align:center; margin:0 0 40px; font-size:12.5px; }
+  .nav a { color:var(--dim); text-decoration:none; margin:0 10px; border-bottom:1px dotted var(--line); }
+  .nav a:hover { color:var(--amber); }
+  h2.section { font-family:Georgia,"Songti TC",serif; font-size:22px; margin:52px 0 16px; text-align:center; letter-spacing:.2em; }
+  h2.section span { border-bottom:2px solid var(--amber); padding-bottom:6px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
+  th,td { border:1px solid var(--line); padding:8px 12px; text-align:left; vertical-align:top; }
+  th { color:var(--amber); background:var(--card); letter-spacing:.1em; font-weight:600; }
+  td code { font-family:ui-monospace,Menlo,monospace; color:var(--amber); font-size:12px; }
+  td b { color:var(--txt); } td { color:#b7bcc4; }
+  .flow { display:flex; flex-wrap:wrap; justify-content:center; gap:0; margin:14px 0; }
+  .flow .node { border:1px solid var(--line); background:var(--card); border-radius:12px;
+                padding:10px 18px; font-size:12.5px; text-align:center; }
+  .flow .node b { display:block; font-size:13.5px; }
+  .flow .node small { color:var(--dim); font-size:11px; }
+  .flow .arr { align-self:center; color:var(--amber); font-size:18px; padding:0 10px; }
+  .flow .node.dead { border-color:rgba(217,143,167,.45); background:rgba(217,143,167,.06); color:var(--pink); }
+  .flow .arr.dead { color:var(--pink); text-decoration:line-through; }
+  .lawlist { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:10px; }
+  .law { border-left:3px solid var(--pink); background:var(--card); border-radius:0 10px 10px 0;
+         padding:10px 14px; font-size:12.8px; color:#c9cdd4; }
+  .law b { color:var(--txt); }
+  .law small { display:block; color:var(--dim); margin-top:3px; font-size:11.3px; }
+  .three { max-width:760px; margin:0 auto; }
+  .three .law { border-left-color:var(--amber); margin:10px 0; }
+  footer { margin-top:70px; text-align:center; color:#3a3f48; font-size:11px; letter-spacing:.3em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>TATA 資安守護</h1>
+<p class="sub">威脅模型 · 防線 · 紅線 · 2026-09-03</p>
+<span class="tagline">最不會外洩的資料,是從來沒離開過你機器的資料</span>
+<p class="nav"><a href="施工架構圖.html">← 施工架構圖</a><a href="wireframe.html">← 畫面線框</a><a href="維護迴圈.html">← 維護迴圈</a></p>
+
+<h2 class="section"><span>威脅模型(我們在防什麼)</span></h2>
+<table>
+<tr><th style="width:34%">威脅</th><th>Tata 的處境</th></tr>
+<tr><td>伺服器被駭/資料庫外洩</td><td><b>不存在</b>——零伺服器、零資料庫、零帳號系統</td></tr>
+<tr><td>日記內容外洩</td><td>字只存使用者本機/自選資料夾,永不上傳</td></tr>
+<tr><td><b>使用者的字被 app 自己弄丟</b></td><td><b style="color:var(--pink)">最真實的威脅</b>(8/21 事故),防線最厚(見下)</td></tr>
+<tr><td>供應鏈(npm 套件)投毒</td><td>依賴極少(React/Three/Vite 核心),CI + lockfile 把關</td></tr>
+<tr><td>同源網站偷金鑰</td><td>已用自訂網域 tata.page 隔離 origin</td></tr>
+</table>
+
+<h2 class="section"><span>資料流向(隱私)</span></h2>
+<div class="flow">
+  <div class="node"><b>你的字</b></div><div class="arr">→</div>
+  <div class="node"><b>本機</b><small>OPFS / 資料夾 / 檔案App / Obsidian</small></div>
+  <div class="arr dead">→</div>
+  <div class="node dead"><b>❌ 任何伺服器</b><small>這條路不存在</small></div>
+</div>
+<div class="flow">
+  <div class="node"><b>tata.page</b></div><div class="arr">→</div>
+  <div class="node"><b>只下載程式</b><small>到你的瀏覽器</small></div>
+  <div class="arr dead">→</div>
+  <div class="node dead"><b>❌ 分析/追蹤/cookie</b><small>一個都沒有</small></div>
+</div>
+<p style="text-align:center;color:#b7bcc4;font-size:12.8px;max-width:720px;margin:10px auto">無登入、無遙測、無第三方 SDK、無廣告。App Store 隱私聲明=「不收集資料」——而且是真的。REST 金鑰只存 localStorage、只對本機 127.0.0.1 使用;診斷日誌只留本機,由使用者自己決定給誰看。</p>
+
+<h2 class="section"><span>防「弄丟使用者的字」七鐵律(最厚的一層)</span></h2>
+<div class="lawlist">
+  <div class="law"><b>① 缺欄位一律拒寫。</b>樂觀鎖任何「讀不到 mtime/內容」的分支,預設拒寫不是放行。<small>血案:8/21 mtime:null 繞過守衛直接覆蓋。</small></div>
+  <div class="law"><b>② 讀不到 ≠ 不存在。</b>read() 回 null 只准代表「證實不存在」,失敗必須拋錯。<small>iCloud 未下載 stub 讓這從理論變現實。</small></div>
+  <div class="law"><b>③ 覆寫前先影子。</b>每次覆寫前存影子備份(IndexedDB,每檔 3 份)。</div>
+  <div class="law"><b>④ 墓碑先立,原稿才准死。</b>衝突選「用他們的」時,我方版本先存成 <code>xxx (tata HH.MM).md</code>。</div>
+  <div class="law"><b>⑤ 寫後驗證。</b>寫完讀回比對;verified:false 不刪草稿。</div>
+  <div class="law"><b>⑥ 就地寫、非 atomic。</b>rename 在別人的 vault 裡=刪除+新建,會弄壞 Obsidian 分頁與 iCloud 版本史。</div>
+  <div class="law"><b>⑦ 單一寫入通道。</b>write 私有化,所有路徑必經守衛;list 失敗必 reject 絕不回空陣列。<small>空陣列=城市清空+每頁可自由覆寫。</small></div>
+</div>
+
+<h2 class="section"><span>網頁前線</span></h2>
+<table>
+<tr><th style="width:34%">防線</th><th>狀態</th></tr>
+<tr><td>自訂網域 origin 隔離</td><td>✅ tata.page(github.io 專案頁共用 origin,金鑰會被同帳號其他頁讀到——已遷離)</td></tr>
+<tr><td>HTTPS 強制</td><td>✅ <code>https_enforced:true</code>,DNS 灰雲直連 GitHub Pages</td></tr>
+<tr><td>CNAME 防抖</td><td>✅ public/CNAME 隨每次 deploy(少了它網域會被 gh-pages 抖掉)</td></tr>
+<tr><td>PWA 更新</td><td>提示制(不強制換版);SW 混載 chunk 曾造成 IME 異常,已有組字守衛</td></tr>
+<tr><td>外部連結</td><td>全 app 僅兩個(obsidian.md 官方);不載入任何第三方資源</td></tr>
+</table>
+
+<h2 class="section"><span>iOS 前線</span></h2>
+<table>
+<tr><th style="width:34%">防線</th><th>說明</th></tr>
+<tr><td>沙盒</td><td>字存 App Documents(檔案 App 可見,使用者可自行備份)</td></tr>
+<tr><td>Security-scoped bookmark<br><small style="color:var(--dim)">iCloud 資料夾,v1.1</small></td><td>解析失敗<b>絕不刪書籤</b>(重開機時 file provider 可能未起),退避重試;打不開回 needsPick 且不給橋——靜默退回自家 Documents 會開出第二個保管庫</td></tr>
+<tr><td>與 Obsidian 併寫</td><td>引導選 vault <b>子資料夾</b>(Vault/Tata/),把併寫機率壓到近零</td></tr>
+<tr><td>加密聲明</td><td><code>ITSAppUsesNonExemptEncryption=false</code>(只用系統 HTTPS)</td></tr>
+</table>
+
+<h2 class="section"><span>供應鏈與倉庫紀律</span></h2>
+<table>
+<tr><th style="width:34%">紅線</th><th>說明</th></tr>
+<tr><td><b>金鑰不進 repo</b></td><td>repo 公開;appstore 素材已 gitignore;任何 token/憑證永不 commit</td></tr>
+<tr><td><b>lockfile 必 commit</b></td><td>依賴版本鎖死,CI 用同一份</td></tr>
+<tr><td>每月 <code>npm audit</code></td><td>見「維護迴圈」健檢節</td></tr>
+<tr><td><b>不執行來源不明指令/網址</b></td><td>特別是帶 token 參數的(全域安全規則)</td></tr>
+<tr><td><b>改設定檔前先備份</b></td><td>備份到 ~/Claude/backups</td></tr>
+</table>
+
+<h2 class="section"><span>給維護者的三句話</span></h2>
+<div class="three">
+  <div class="law"><b>一、</b>動儲存層之前,先跑 fs-bridge 測試的 "unreadable is not absent" 區塊,讀懂為什麼。</div>
+  <div class="law"><b>二、</b>任何新的「讀取失敗」分支,問自己:這會不會讓守衛以為檔案不存在?</div>
+  <div class="law"><b>三、</b>想加任何會把資料送出本機的功能(同步、分析、雲端)——答案預設是<b>不加</b>。那是產品轉向,不是功能。</div>
+</div>
+
+<footer>TATA · 資安守護 · 2026-09-03</footer>
+</div>
+</body>
+</html>

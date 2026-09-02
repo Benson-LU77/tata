@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TATA APP Wireframe</title>
+<style>
+  :root {
+    --bg:#0b0d10; --card:#12151a; --line:#22262e; --txt:#e8eaee; --dim:#8b9099;
+    --amber:#e0a84f; --blue:#7fa7d9; --pink:#d98fa7; --green:#8fc9a0;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt); font:14.5px/1.85 "PingFang TC","Noto Sans TC",system-ui,sans-serif; padding:56px 24px 90px; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  h1 { font-family:Georgia,"Songti TC",serif; font-size:44px; font-weight:600; text-align:center; letter-spacing:.06em; }
+  .sub { text-align:center; color:var(--dim); font-size:13px; letter-spacing:.3em; margin:10px 0 26px; }
+  .tagline { display:block; width:fit-content; margin:0 auto 40px; padding:10px 26px;
+             border:1px solid rgba(224,168,79,.5); border-radius:12px; color:var(--amber);
+             background:rgba(224,168,79,.06); font-size:14px; letter-spacing:.12em; }
+  .nav { text-align:center; margin:0 0 40px; font-size:12.5px; }
+  .nav a { color:var(--dim); text-decoration:none; margin:0 10px; border-bottom:1px dotted var(--line); }
+  .nav a:hover { color:var(--amber); }
+  h2.section { font-family:Georgia,"Songti TC",serif; font-size:22px; margin:52px 0 16px; text-align:center; letter-spacing:.2em; }
+  h2.section span { border-bottom:2px solid var(--amber); padding-bottom:6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(440px,1fr)); gap:18px; }
+  .panel { border:1px solid var(--line); border-radius:14px; background:var(--card); overflow:hidden; }
+  .panel header { padding:10px 16px 8px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:baseline; }
+  .panel header h3 { font-size:15.5px; }
+  .panel header small { color:var(--dim); font-size:11px; letter-spacing:.15em; }
+  pre.wire { font:12px/1.5 ui-monospace,Menlo,Consolas,monospace; color:#c9cdd4; padding:14px 16px;
+             overflow-x:auto; background:#0e1116; white-space:pre; }
+  pre.wire b { color:var(--amber); font-weight:400; }
+  .panel .notes { padding:10px 16px 14px; font-size:12.3px; color:#a6acb5; line-height:1.8; border-top:1px solid var(--line); }
+  .panel .notes b { color:var(--txt); }
+  .panel .notes .m { color:var(--pink); }
+  .full { grid-column:1 / -1; }
+  .flowline { display:flex; flex-wrap:wrap; justify-content:center; gap:0; padding:16px; }
+  .flowline .node { border:1px solid var(--line); background:#0e1116; border-radius:10px; padding:8px 14px; font-size:12.3px; text-align:center; }
+  .flowline .arr { align-self:center; color:var(--amber); padding:0 8px; }
+  footer { margin-top:70px; text-align:center; color:#3a3f48; font-size:11px; letter-spacing:.3em; }
+  @media (max-width:720px){ .grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>TATA APP Wireframe</h1>
+<p class="sub">全畫面線框 · 2026-09-03</p>
+<span class="tagline">□=按鈕 · ▣=像素圖示 · 琥珀=互動熱點</span>
+<p class="nav"><a href="施工架構圖.html">← 施工架構圖</a><a href="維護迴圈.html">維護迴圈 →</a><a href="資安守護.html">資安守護 →</a></p>
+
+<h2 class="section"><span>主舞台</span></h2>
+<div class="grid">
+
+<div class="panel full">
+<header><h3>① 城市主畫面(桌機)</h3><small>page.tsx + city3d</small></header>
+<pre class="wire">
+┌────────────────────────────────────────────────┐
+│ <b>▣你 阿七</b>            [點亮城市🔍] [⋯設定<b>●</b>]     │ ← 頂欄:左=市民證入口(頭像+名+LV·W·夜)
+│ LV4 · 123W · 3夜                        ●=未讀信 │
+│                 ✦  ☾   ✦·✦                     │ ← 星空:星座=等級、真實月相
+│        ▓▓▓                                     │
+│      ▓▓▓▓▓  ▓▓        ▓▓▓                      │ ← 建築=每天一頁,字多樓高
+│   ~~▓▓▓▓▓▓~▓▓▓▓~<b>♟</b>~~▓▓▓▓▓~~                     │ ← ♟=居民(點=街頭相遇)
+│  ~~~~~🌳~~⛲~~~~~🐈~~~~~~~~~                     │ ← 樹/噴泉/貓/街邊小物
+│ ≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈                    │ ← 海:每月一島,棧道連月
+│  月份列 [8月][9月]…               🕐夜間時鐘    │
+│   ⊕N                                           │
+│  ⊕W<b>✦</b>⊕E   <b>✴星辰</b>                                │ ← 羅盤:上筆記本/左檔案庫/右鏡子
+│   ⊕S                                           │    /下補給站/中名冊 + 召喚星辰
+└────────────────────────────────────────────────┘
+</pre>
+<div class="notes"><span class="m">手機差異:</span>羅盤縮成單顆 48px 玫瑰鈕(點開瞬間展開 148px 環、8 秒自動收);月份列/右下時鐘/LV 帳本行/全螢幕開關全移除;閒置 3.5s 介面淡出。</div>
+</div>
+
+<div class="panel full">
+<header><h3>② 筆記本(攤開的書)</h3><small>notes.tsx + editor.tsx</small></header>
+<pre class="wire">
+┌────────────────────────────────────────────────┐
+│            (城市在後面,調暗)                   │
+│   ┌─────────────┬──┬─────────────┐<b>◄旗 9/3</b>      │ ← 書籤=書口燕尾旗(近5頁+[+])
+│   │ 9月3日 週三 │書│ 今晚寫的字…▍             │
+│   │             │脊│ 躺在稿紙橫線上            │
+│   │ 7×6 月曆    │  │                          │
+│   │ ▪▪▪▫▫…      │  │                          │
+│   │ 132字·再68字 │  │                          │
+│   │ 多一層樓     │  │                          │
+│   │ 今晚 +14W   │  │                          │
+│   │ [B][☑][❝][⚑]│  │                          │ ← 工具列+⚑釘告示板
+│   │ ⚙保管庫     │  │                      <b>[✓]</b>│ ← ✓=收書(落成儀式)
+│   └─────────────┴──┴─────────────┘             │
+│         整本書=一張 220×150 像素底圖             │
+└────────────────────────────────────────────────┘
+</pre>
+<div class="notes">左頁=資訊板(日曆/字數/樓層價/反向連結),右頁=純寫字。過去頁「已定稿」唯讀。桌機點背景收書、無 × 鈕;<span class="m">手機右上有 X(使用者指定例外)</span>。收書 → 琥珀光柱落成儀式(每日一次)。</div>
+</div>
+
+</div>
+
+<h2 class="section"><span>面板</span></h2>
+<div class="grid">
+
+<div class="panel">
+<header><h3>③ 檔案庫</h3><small>獨立像素卡櫃</small></header>
+<pre class="wire">
+┌──────────────────┐
+│ ▣ 檔案庫      [×]│
+│ ▸ 2026-09 ▾      │ ← 月份抽屜
+│   9月2日 · 214字 │
+│   9月1日 · 180字 │
+│ ▸ 2026-08        │
+└──────────────────┘
+</pre>
+<div class="notes">點中某頁 → 卡櫃關、筆記本翻開到那頁(「找到才翻開筆記本」)。手機=底部抽屜。</div>
+</div>
+
+<div class="panel">
+<header><h3>④ 補給站(三區)</h3><small>shop.ts</small></header>
+<pre class="wire">
+┌────────────────────────────┐
+│ ▣ 補給站            餘額 W │
+│ ╔══ <b>今日限定 ⏳23:14:07</b> ══╗│
+│ ║ ▣ 石燈籠  40W   [買]    ║│
+│ ╚═════════════════════════╝│
+│ ── 常設 ────────────────── │
+│ ▣樹 ▣貓 ▣彗星 ▣姊妹星 …    │
+│ ── 我的小物 ─────────────── │
+│ ▣長椅 ▣風向雞 …            │
+│ <b>[搬家] [收起]</b>              │
+└────────────────────────────┘
+</pre>
+<div class="notes">今日限定=16 款街邊小物每午夜輪替(倒數計時)。已擁有=點卡切換收起/擺出;footer 比照噴泉(搬家/收放)。</div>
+</div>
+
+<div class="panel">
+<header><h3>⑤ 街頭相遇對話</h3><small>encounter 狀態機</small></header>
+<pre class="wire">
+        <b>♟!</b>          ← 點居民:頭上!
+   ♟(你)              雙方放大1.7×,鏡頭平移
+
+┌────────────────────────────┐
+│ 點燈人 Vesper:「亮了。」   │
+│ <b>[今晚會寫] [還在想]</b>        │
+└────────────────────────────┘
+</pre>
+<div class="notes">固定式對話欄(底部中央)。二輪:開場→你的回話→收尾;城市記住的是你<b>選過</b>的回話。點任意地面=推進/離開。</div>
+</div>
+
+<div class="panel">
+<header><h3>⑥ 名冊/圖鑑</h3><small>方格牆</small></header>
+<pre class="wire">
+┌──────────────────────┐
+│ ▣▣▣?▣?▣▣  ← 44px 方格 │
+│ 選中:Fern · II · 園丁 │
+│ ■□□□ 好感             │
+│ <b>[打開鏡子][看城市年輪]</b>│
+└──────────────────────┘
+</pre>
+<div class="notes">未知格顯示「?」;點格出單行說明。鏡子=捏角色(帽5/髮4/圍巾/琥珀4階);市民證=橫式證件卡(琥珀頭像/落籍日/頁·夜·連寫/條碼)。</div>
+</div>
+
+<div class="panel">
+<header><h3>⑦ 保管庫 setup</h3><small>字要住在哪裡?</small></header>
+<pre class="wire">
+┌────────────────────────────┐
+│      <b>字要住在哪裡?</b>        │
+│ ┌──────┐┌──────┐┌──────┐   │
+│ │選資料夾││接外掛││本機書庫│ │
+│ └──────┘└──────┘└──────┘   │
+└────────────────────────────┘
+</pre>
+<div class="notes">三選一像素卡。iPhone:存「檔案 › Tata」;零設定也能直接寫(OPFS 墊底)。選資料夾會自動搬家、不覆寫既有。</div>
+</div>
+
+</div>
+
+<h2 class="section"><span>流程</span></h2>
+<div class="grid">
+
+<div class="panel full">
+<header><h3>⑧ 開場儀式(首訪)</h3><small>overture → wonder → Ash → 羅盤課</small></header>
+<div class="flowline">
+  <div class="node">信封<br><small>置中脈動</small></div><div class="arr">→</div>
+  <div class="node">卡片<br><small>[先看看示範城市]</small></div><div class="arr">→</div>
+  <div class="node">黑幕掀開<br><small>鏡頭 5s 緩降路口</small></div><div class="arr">→</div>
+  <div class="node">左顧右盼<br><small>→ 自白</small></div><div class="arr">→</div>
+  <div class="node">Ash 從左上走來<br><small>約 5s,停你左側</small></div><div class="arr">→</div>
+  <div class="node">羅盤課<br><small>「點左下那顆星辰」</small></div><div class="arr">→</div>
+  <div class="node">二選一<br><small>[開始寫]/[先逛逛]</small></div>
+</div>
+</div>
+
+<div class="panel full">
+<header><h3>⑨ 博物館(示範城市 ?demo=year)</h3><small>read-only</small></header>
+<div class="notes" style="border-top:none">一年 12 島、名冊全滿、居民全時滿員。<b>所有面板可打開、全部不可編輯</b>(筆記唯讀、買/搬/命名全鎖),琥珀返回列退出。示範永不寫真存檔。</div>
+</div>
+
+</div>
+
+<footer>TATA · WIREFRAME · 2026-09-03</footer>
+</div>
+</body>
+</html>

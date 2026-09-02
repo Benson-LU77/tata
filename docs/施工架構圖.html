@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TATA 完整施工架構圖</title>
+<style>
+  :root {
+    --bg:#0b0d10; --card:#12151a; --line:#22262e; --txt:#e8eaee; --dim:#8b9099;
+    --amber:#e0a84f; --blue:#7fa7d9; --pink:#d98fa7; --green:#8fc9a0; --violet:#a99ad9;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt); font:14.5px/1.85 "PingFang TC","Noto Sans TC",system-ui,sans-serif; padding:56px 24px 90px; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  h1 { font-family:Georgia,"Songti TC",serif; font-size:44px; font-weight:600; text-align:center; letter-spacing:.06em; }
+  .sub { text-align:center; color:var(--dim); font-size:13px; letter-spacing:.3em; margin:10px 0 26px; }
+  .tagline { display:block; width:fit-content; margin:0 auto 46px; padding:10px 26px;
+             border:1px solid rgba(224,168,79,.5); border-radius:12px; color:var(--amber);
+             background:rgba(224,168,79,.06); font-size:14px; letter-spacing:.12em; }
+  .tier { display:grid; grid-template-columns:120px 1fr; gap:18px; margin:6px 0; }
+  .tier > aside { padding-top:6px; }
+  .tier .no { font-family:Georgia,serif; font-size:19px; }
+  .tier .name { font-size:15px; margin-top:2px; }
+  .tier .note { font-size:11px; color:var(--dim); line-height:1.6; margin-top:4px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; }
+  .card { border:1px solid var(--line); border-radius:14px; padding:16px 18px; background:var(--card); }
+  .card .cat { font-size:10.5px; letter-spacing:.28em; color:var(--dim); margin-bottom:6px; }
+  .card h3 { font-size:17px; font-weight:650; margin-bottom:6px; }
+  .card p { font-size:12.5px; color:#b7bcc4; line-height:1.75; }
+  .chips { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font:11.5px/1 ui-monospace,Menlo,monospace; padding:5px 9px; border-radius:7px;
+          background:rgba(255,255,255,.05); border:1px solid var(--line); color:#cfd3da; }
+  .t-blue   { background:rgba(127,167,217,.07); border-color:rgba(127,167,217,.32); } .t-blue .cat{color:var(--blue)}
+  .t-pink   { background:rgba(217,143,167,.07); border-color:rgba(217,143,167,.32); } .t-pink .cat{color:var(--pink)}
+  .t-amber  { background:rgba(224,168,79,.08);  border-color:rgba(224,168,79,.4);  } .t-amber .cat{color:var(--amber)}
+  .t-green  { background:rgba(143,201,160,.07); border-color:rgba(143,201,160,.3); } .t-green .cat{color:var(--green)}
+  .t-violet { background:rgba(169,154,217,.08); border-color:rgba(169,154,217,.32);} .t-violet .cat{color:var(--violet)}
+  .down { text-align:center; color:var(--dim); font-size:20px; margin:16px 0; }
+  h2.section { font-family:Georgia,"Songti TC",serif; font-size:22px; margin:56px 0 18px; text-align:center; letter-spacing:.2em; }
+  h2.section span { border-bottom:2px solid var(--amber); padding-bottom:6px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
+  th,td { border:1px solid var(--line); padding:8px 12px; text-align:left; }
+  th { color:var(--amber); background:var(--card); letter-spacing:.1em; font-weight:600; }
+  td code, p code { font-family:ui-monospace,Menlo,monospace; color:var(--amber); font-size:12px; }
+  .lawlist { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:10px; }
+  .law { border-left:3px solid var(--amber); background:var(--card); border-radius:0 10px 10px 0;
+         padding:9px 14px; font-size:12.8px; color:#c9cdd4; }
+  .law b { color:var(--txt); }
+  /* 水平流程鏈 */
+  .flow { display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch; gap:0; margin:14px 0; }
+  .flow .node { border:1px solid var(--line); background:var(--card); border-radius:12px;
+                padding:10px 16px; font-size:12.5px; text-align:center; min-width:118px; }
+  .flow .node b { display:block; font-size:13.5px; color:var(--txt); }
+  .flow .node small { color:var(--dim); font-size:11px; }
+  .flow .arr { align-self:center; color:var(--amber); font-size:18px; padding:0 10px; }
+  .flow .node.hot { border-color:rgba(224,168,79,.5); background:rgba(224,168,79,.07); }
+  /* 直向步驟(旅程) */
+  .steps { max-width:760px; margin:0 auto; }
+  .step { display:grid; grid-template-columns:34px 1fr; gap:14px; margin:10px 0; }
+  .step .n { width:30px; height:30px; border-radius:50%; border:1px solid var(--amber); color:var(--amber);
+             display:flex; align-items:center; justify-content:center; font-family:Georgia,serif; }
+  .step .body { border:1px solid var(--line); background:var(--card); border-radius:12px; padding:10px 16px; font-size:13px; color:#c9cdd4; }
+  .step .body b { color:var(--txt); }
+  .step.guard .body { border-color:rgba(217,143,167,.4); background:rgba(217,143,167,.05); }
+  .nav { text-align:center; margin:0 0 40px; font-size:12.5px; }
+  .nav a { color:var(--dim); text-decoration:none; margin:0 10px; border-bottom:1px dotted var(--line); }
+  .nav a:hover { color:var(--amber); }
+  footer { margin-top:70px; text-align:center; color:#3a3f48; font-size:11px; letter-spacing:.3em; }
+  @media (max-width:720px){ .tier{grid-template-columns:1fr} .tier>aside{display:flex;gap:10px;align-items:baseline} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>TATA 完整施工架構圖</h1>
+<p class="sub">2026-09-03 · V1 送審版現況</p>
+<span class="tagline">你寫的字是唯一真相 —— 城市、瓦特、居民,全部從字「推導」出來,壞了隨時重算</span>
+<p class="nav"><a href="wireframe.html">畫面線框 →</a><a href="維護迴圈.html">維護迴圈 →</a><a href="資安守護.html">資安守護 →</a></p>
+
+<h2 class="section" style="margin-top:10px"><span>核心迴圈</span></h2>
+<div class="flow">
+  <div class="node hot"><b>你寫字</b><small>每晚一頁 .md</small></div><div class="arr">→</div>
+  <div class="node"><b>字的統計</b><small>metrics</small></div><div class="arr">→</div>
+  <div class="node"><b>瓦特/等級</b><small>watts</small></div><div class="arr">→</div>
+  <div class="node"><b>城市規劃</b><small>plan</small></div><div class="arr">→</div>
+  <div class="node"><b>像素渲染</b><small>city3d</small></div><div class="arr">→</div>
+  <div class="node hot"><b>城市長高</b><small>明晚再寫</small></div>
+</div>
+
+<h2 class="section"><span>五層分工</span></h2>
+
+<div class="tier">
+  <aside><div class="no">①</div><div class="name">呈現層</div><div class="note">React 19<br>只組裝不算帳</div></aside>
+  <div class="cards">
+    <div class="card t-blue"><div class="cat">組裝</div><h3>page.tsx</h3><p>所有面板、街頭相遇、開場儀式的總指揮。</p></div>
+    <div class="card t-blue"><div class="cat">渲染</div><h3>city3d.tsx</h3><p>Three.js 自寫 shader 的像素城市:日夜、天氣、真實月相。</p></div>
+    <div class="card t-blue"><div class="cat">書寫</div><h3>notes + editor</h3><p>像素筆記本(CodeMirror 6),雙頁對開,過去頁定稿唯讀。</p></div>
+    <div class="card t-blue"><div class="cat">周邊</div><h3>mirror / minimap</h3><p>鏡子捏角色、每月一島海圖。</p></div>
+  </div>
+</div>
+<div class="down">↓</div>
+<div class="tier">
+  <aside><div class="no">②</div><div class="name">遊戲層</div><div class="note">純函數<br>可交換合併</div></aside>
+  <div class="cards">
+    <div class="card t-green"><div class="cat">經濟</div><h3>watts.ts</h3><p>字→瓦特→等級;earnedFloor 只升不降。</p></div>
+    <div class="card t-green"><div class="cat">商店</div><h3>shop.ts</h3><p>補給站、每日限定小物、存檔讀寫合併。</p></div>
+    <div class="card t-green"><div class="cat">關係</div><h3>bonds*.ts</h3><p>好感 4 階、對話記憶、325 句開場+550 條專屬問答。</p></div>
+    <div class="card t-green"><div class="cat">建設</div><h3>commissions.ts</h3><p>委託建案:真實天數施工,完工鄰居搬入。</p></div>
+  </div>
+</div>
+<div class="down">↓</div>
+<div class="tier">
+  <aside><div class="no">③</div><div class="name">城市層</div><div class="note">確定性雜湊<br>同筆記=同城市</div></aside>
+  <div class="cards">
+    <div class="card t-violet"><div class="cat">度量</div><h3>metrics.ts</h3><p>每頁字數/連結/標籤。</p></div>
+    <div class="card t-violet"><div class="cat">規劃</div><h3>plan + terrain</h3><p>每月一島、每天一格、字多樓高;海岸線、草地、廣場。</p></div>
+    <div class="card t-violet"><div class="cat">居民</div><h3>npc + residents</h3><p>12 職業終身固定,身分=hash32("kind:i")。</p></div>
+    <div class="card t-violet"><div class="cat">美術</div><h3>sprites/</h3><p>ASCII 手繪像素圖→atlas→billboard;小於 2 世界單位一律 sprite。</p></div>
+  </div>
+</div>
+<div class="down">↓</div>
+<div class="tier">
+  <aside><div class="no">④</div><div class="name">持久層</div><div class="note">守衛最嚴<br>缺欄位一律拒寫</div></aside>
+  <div class="cards">
+    <div class="card t-pink"><div class="cat">狀態機</div><h3>doc-store.ts</h3><p>542 行零 React:debounce、in-flight 鎖、openSeq 防賽跑。</p></div>
+    <div class="card t-pink"><div class="cat">橋</div><h3>bridge/</h3><p>四座橋共用一顆守衛腦(見下方)。</p></div>
+    <div class="card t-pink"><div class="cat">備援</div><h3>IndexedDB</h3><p>草稿即刻落地+影子備份每檔 3 份。</p></div>
+  </div>
+</div>
+<div class="down">↓</div>
+<div class="tier">
+  <aside><div class="no">⑤</div><div class="name">殼層</div><div class="note">零伺服器<br>差別只在字放哪</div></aside>
+  <div class="cards">
+    <div class="card t-amber"><div class="cat">WEB</div><h3>tata.page</h3><p>PWA,更新提示制;GitHub Pages + 自訂網域。</p></div>
+    <div class="card t-amber"><div class="cat">iOS</div><h3>Capacitor 8</h3><p>Swift VaultPlugin 寫 App Documents;iCloud 資料夾橋已完工待 v1.1 開閘。</p></div>
+  </div>
+</div>
+
+<h2 class="section"><span>一頁筆記的旅程(寫入守衛鏈)</span></h2>
+<div class="steps">
+  <div class="step"><div class="n">1</div><div class="body"><b>打字</b> — editor 的每一筆變更即刻進 IndexedDB 草稿(先落地,再談上傳)。</div></div>
+  <div class="step"><div class="n">2</div><div class="body"><b>debounce + in-flight 鎖</b> — doc-store 攢幾秒才寫,一次只飛一發。</div></div>
+  <div class="step guard"><div class="n">3</div><div class="body"><b>樂觀鎖比對</b> — writeGuarded 先讀遠端:被別人動過/讀不到/缺 mtime → <b>拒寫</b>,跳衝突三選一(用我的/用他們的/都留)。放行要證據,拒寫是預設。</div></div>
+  <div class="step guard"><div class="n">4</div><div class="body"><b>影子備份</b> — 覆寫前先存一份到 IndexedDB(每檔留 3 份)。</div></div>
+  <div class="step"><div class="n">5</div><div class="body"><b>就地寫入</b> — 非 atomic(rename 會弄壞 Obsidian 分頁與 iCloud 版本史)。</div></div>
+  <div class="step guard"><div class="n">6</div><div class="body"><b>寫後驗證</b> — 讀回比對;<code>verified:false</code> 不刪草稿。</div></div>
+</div>
+<p style="text-align:center;color:var(--dim);font-size:12px;margin-top:10px">遊戲存檔 tata.json 走自己的守衛 <code>decideVaultWrite</code>:未載入/讀壞一律拒寫、遠端較新先 merge。</p>
+
+<h2 class="section"><span>四座橋(字要住在哪裡)</span></h2>
+<div class="cards">
+  <div class="card t-amber"><div class="cat">解析順位 1</div><h3>指定橋</h3><p>localStorage <code>tata.bridge</code> 手動指定。</p></div>
+  <div class="card"><div class="cat">順位 2 · 電腦</div><h3>FSAPI 資料夾</h3><p>選一個資料夾,字直接住進去(Chromium)。</p></div>
+  <div class="card"><div class="cat">順位 3 · OBSIDIAN</div><h3>REST 外掛</h3><p>接 Obsidian Local REST API,金鑰只存本機。</p></div>
+  <div class="card"><div class="cat">順位 4 · 墊底</div><h3>OPFS 本機書庫</h3><p>零設定直接可寫,新訪客的預設家。</p></div>
+  <div class="card t-pink"><div class="cat">iOS</div><h3>Native 橋</h3><p>Swift VaultPlugin → App Documents(檔案 App 可見)。</p></div>
+</div>
+<p style="text-align:center;color:#b7bcc4;font-size:12.8px;margin-top:12px">四座橋只實作 <code>FileStore</code> 三方法(read/write/list),共用同一顆守衛腦 <code>buildFsBridge()</code> —— <b style="color:var(--amber)">守衛只寫一次,每座橋自動繼承</b>。</p>
+
+<h2 class="section"><span>部署管線</span></h2>
+<div class="flow">
+  <div class="node"><b>本機開發</b><small>localhost:8080</small></div><div class="arr">→</div>
+  <div class="node"><b>護欄</b><small>74 測試+tsc+CI</small></div><div class="arr">→</div>
+  <div class="node hot"><b>npm run deploy</b><small>gh-pages+CNAME</small></div><div class="arr">→</div>
+  <div class="node"><b>tata.page</b><small>PWA 提示更新</small></div>
+</div>
+<div class="flow">
+  <div class="node"><b>ios:sync</b><small>自動補 VaultPlugin</small></div><div class="arr">→</div>
+  <div class="node"><b>模擬器實測</b><small>主流程走一遍</small></div><div class="arr">→</div>
+  <div class="node hot"><b>Xcode Archive</b><small>Build 號 +1</small></div><div class="arr">→</div>
+  <div class="node"><b>App Store</b><small>審查</small></div>
+</div>
+
+<h2 class="section"><span>產品鐵律(所有工程決策的上游)</span></h2>
+<div class="lawlist">
+  <div class="law"><b>三色。</b>黑・白・琥珀,僅此三色;琥珀永不販售。</div>
+  <div class="law"><b>全像素。</b>像素感來自畫出來的結構,不是 CSS 妝點。</div>
+  <div class="law"><b>不要說明文。</b>用居民和設計教學,不放教學文字。</div>
+  <div class="law"><b>不懲罰。</b>斷更不倒扣、刪字不縮城、過去頁定稿唯讀。</div>
+  <div class="law"><b>花瓦特必須看得見。</b>買了看不到的東西,不如收掉。</div>
+  <div class="law"><b>字勝過家具。</b>新樓永遠優先,擺飾自動讓路。</div>
+  <div class="law"><b>示範城市絕不寫真存檔。</b></div>
+</div>
+
+<footer>TATA · 施工架構圖 · 2026-09-03</footer>
+</div>
+</body>
+</html>
