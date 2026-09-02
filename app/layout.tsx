@@ -12,7 +12,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Tata — signal becomes structure",
   description: "A city built from your notes. Every page you write becomes a structure; the archive grows into a skyline.",
-  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+  icons: { icon: "/favicon.png?v=3", shortcut: "/favicon.png?v=3", apple: "/icons/icon-192.png?v=3" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
