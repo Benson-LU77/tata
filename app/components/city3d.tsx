@@ -1255,11 +1255,18 @@ export function City3D({
         place(`ship_E_${beat}`, p.x, y, p.z, SPRITE_WORLD_H.ship, mirror, 0);
         continue;
       }
-      // population tide: people sleep; cats, the dog and you do not
+      // population tide: people sleep; cats, the dog and you do not.
+      // Never the one you're TALKING to, never tonight's quest giver
+      // (a 1 a.m. ceremony once culled the guide mid-sentence), and the
+      // showcase city keeps its full cast at every hour
       if (c.kind === "person") {
-        const hr = new Date(now + performance.timeOrigin).getHours();
-        const fr = hr < 5 ? 15 : hr < 8 ? 50 : hr < 17 ? 85 : 100;
-        if ((c.seed >>> 3) % 100 >= fr) continue;
+        const talkingTo = enc !== null && c.key === enc.key;
+        const giver = stateRef.current.quest?.key === c.key;
+        if (!talkingTo && !giver && !overtureDoneRef.current) {
+          const hr = new Date(now + performance.timeOrigin).getHours();
+          const fr = hr < 5 ? 15 : hr < 8 ? 50 : hr < 17 ? 85 : 100;
+          if ((c.seed >>> 3) % 100 >= fr) continue;
+        }
       }
       const frame = p.moving ? beat : "i";
       // wardrobe variety: each resident keeps one of three looks for life
