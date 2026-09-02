@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ANSWERS } from "../bonds-answers";
-import { LINES, FIRST_MEET_LINES, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES, ECHO_LINES, GIFT_LINES } from "../bonds-lines";
+import { LINES, FIRST_MEET_LINES, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES, ECHO_LINES, BENCH_LINES } from "../bonds-lines";
 
-const POOLS = { FIRST_MEET_LINES, LINES, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES, ECHO_LINES, GIFT_LINES };
+const POOLS = { FIRST_MEET_LINES, LINES, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES, ECHO_LINES, BENCH_LINES };
 const ALL = Object.values(POOLS).flat();
 
 describe("bespoke answers", () => {

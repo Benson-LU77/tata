@@ -62,17 +62,6 @@ describe("lineId", () => {
   });
 });
 
-describe("mergeBonds gift", () => {
-  it("keeps the newer gift and commutes on same-day ties", () => {
-    const a = { k: { n: 12, met: "2026-08-01", last: "2026-09-01", g: { id: "posy", at: "2026-08-30" } } };
-    const b = { k: { n: 12, met: "2026-08-01", last: "2026-09-01", g: { id: "chime", at: "2026-09-01" } } };
-    expect(mergeBonds(a, b).k.g?.id).toBe("chime");
-    expect(mergeBonds(a, b)).toStrictEqual(mergeBonds(b, a));
-    const c = { k: { n: 12, met: "2026-08-01", last: "2026-09-01", g: { id: "scarf", at: "2026-09-01" } } };
-    expect(mergeBonds(b, c)).toStrictEqual(mergeBonds(c, b));
-  });
-});
-
 describe("mergeBonds topic tie", () => {
   it("commutes when both devices talked the same day about different things", () => {
     const a = { k: { n: 3, met: "2026-08-01", last: "2026-09-01", t: "you" as const } };

@@ -3577,8 +3577,14 @@ label.panel-export {
 .city-app:not(.compass-open) .dpad { display: none; }
 .talking .dpad-summon { opacity: .12; pointer-events: none; }
 
-/* the seasonal shelf: one dashed card, quietly for sale */
-.depot-gift {
+
+/* the museum's notebook: the tool row and vault card are exhibits */
+.tools-locked button { opacity: .35; pointer-events: none; }
+.page-gear:disabled,
+.notes-connect:disabled { opacity: .35; pointer-events: none; cursor: default; }
+
+/* the daily shelf: one dashed card, a clock running out */
+.depot-daily {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -3591,16 +3597,11 @@ label.panel-export {
   color: var(--p6);
   cursor: pointer;
 }
-.depot-gift .depot-thumb { position: static; transform: none; flex: none; image-rendering: pixelated; }
-.depot-gift .gift-text { display: flex; flex-direction: column; gap: 4px; }
-.depot-gift strong { color: var(--p7); font-size: 15px; }
-.depot-gift .gift-text > span { font-size: 13px; color: var(--p5); }
-.depot-gift.locked { opacity: .45; cursor: default; }
-
-/* the museum's notebook: the tool row and vault card are exhibits */
-.tools-locked button { opacity: .35; pointer-events: none; }
-.page-gear:disabled,
-.notes-connect:disabled { opacity: .35; pointer-events: none; cursor: default; }
+.depot-daily .depot-thumb { position: static; transform: none; flex: none; image-rendering: pixelated; }
+.depot-daily .daily-text { display: flex; flex-direction: column; gap: 3px; }
+.depot-daily strong { color: var(--p7); font-size: 15px; }
+.depot-daily .daily-text > span { font-size: 13px; color: var(--p5); font-variant-numeric: tabular-nums; }
+.depot-daily.locked { opacity: .5; }
 
 /* while the book is open, toasts float in the night sky above it */
 .writing .levelup-toast { top: 13%; }

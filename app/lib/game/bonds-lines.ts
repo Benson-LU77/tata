@@ -785,22 +785,14 @@ export const ECHO_LINES: LineDef[] = [
     zh: "你寫「{echo}」的那一晚,我差點敲了你的門。" },
 ];
 
-/* gifts, remembered — guard on the gift this resident actually has.
- *  In the callback bucket: a present outranks small talk, and the 7-day
- *  cooldown keeps it from becoming a daily speech. */
-export const GIFT_LINES: LineDef[] = [
-  { tier: 3, topic: "them", weight: 6, when: (c) => c.gift?.id === "posy" && c.gift.daysAgo >= 1,
-    en: "Your posy's on the sill. It leans toward the street — watching for you, I think.",
-    zh: "你送的野花在窗台上。它會朝街的方向傾,大概是在等你。" },
-  { tier: 3, topic: "them", weight: 6, when: (c) => c.gift?.id === "chime" && c.gift.daysAgo >= 1,
-    en: "The chime you gave me rang twice last night. Both times, good news.",
-    zh: "你送的風鈴昨晚響了兩次。兩次都是好消息。" },
-  { tier: 3, topic: "them", weight: 6, when: (c) => c.gift?.id === "lantern" && c.gift.daysAgo >= 1,
-    en: "Your lantern's the warmest light on my floor. The lampkeeper is officially jealous.",
-    zh: "你送的紙燈籠是我這層樓最暖的光。管燈的正式表示吃醋。" },
-  { tier: 3, topic: "them", weight: 6, when: (c) => c.gift?.id === "scarf" && c.gift.daysAgo >= 1,
-    en: "Wearing the scarf. It's a warm argument against every wind on this street.",
-    zh: "圍巾戴著呢。這條街上每一陣風,它都替我吵贏了。" },
+/* the bench came true — the city's oldest running joke pays off */
+export const BENCH_LINES: LineDef[] = [
+  { tier: 1, topic: "city", weight: 7, when: (c) => Boolean(c.bench),
+    en: "...The bench is real now. I sat on it. Checked your spot personally.",
+    zh: "……長椅是真的了。我坐過了，幫你確認過位子。" },
+  { tier: 2, topic: "city", weight: 6, when: (c) => Boolean(c.bench),
+    en: "Years of saying 'there is no bench'. Now I have to retrain. Worth it.",
+    zh: "說了那麼多年「其實沒有長椅」。現在得重新練台詞了。值得。" },
 ];
 
 export const CALLBACK_LINES: LineDef[] = [

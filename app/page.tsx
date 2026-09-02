@@ -17,7 +17,8 @@ import type { VaultBridge } from "./lib/bridge/types";
 import { cityCache } from "./lib/drafts";
 import { bestStreakOf, earnedWatts, favourPick, levelFromWatts, levelProgress, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
 import { dateAtCell, floorsOf } from "./lib/city/plan";
-import { CATALOG, EMPTY_STATE, cachedGameState, demoGameState, loadGameState, saveGameState, seasonGift } from "./lib/game/shop";
+import { CATALOG, EMPTY_STATE, cachedGameState, dailyOrnament, demoGameState, loadGameState, saveGameState } from "./lib/game/shop";
+import { ORNAMENTS_PX } from "./lib/city/sprites/data";
 import type { GameState } from "./lib/game/shop";
 import { greet, tierOf, nameOf, lineFor, lineId, markSaid, tierName, type Tier, type Topic } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
@@ -37,7 +38,7 @@ import { PET_ACTIONS, QUEST_LINES } from "./lib/game/bonds-lines";
 import { repliesFor, closerFor, type ReplyDef } from "./lib/game/replies";
 import { nativeAvailable } from "./lib/bridge/native";
 import { allShadows } from "./lib/bridge/shadow";
-import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON, GIFT_ICONS } from "./lib/game/icons";
+import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
@@ -578,20 +579,6 @@ export default function Home() {
     return entries;
   }, [cityPlan.lots, game.owned, game.commissions, nowTs, level, t]);
 
-  const buyGift = useCallback(() => {
-    if (demoRef.current) return;
-    const gift = seasonGift(new Date().getMonth() + 1);
-    setGame((prev) => {
-      if (earned - prev.spent < gift.cost) return prev;
-      const bag = { ...(prev.giftBag ?? {}) };
-      bag[gift.id] = (bag[gift.id] ?? 0) + 1;
-      const next: GameState = { ...prev, spent: prev.spent + gift.cost, giftBag: bag, updatedAt: Date.now() };
-      void saveGameState(next, clientRef.current);
-      hum().settle();
-      return next;
-    });
-  }, [earned, hum]);
-
   const buy = useCallback(
     (id: string) => {
       if (demoRef.current) return; // museum glass: look, don't buy
@@ -870,14 +857,7 @@ export default function Home() {
           daysSinceGreet: Math.max(0, sinceGreet),
           name: game.name || undefined,
           echo: weekEchoRef.current ?? undefined,
-          gift: (() => {
-            const gg = game.bonds[hit.key]?.g;
-            if (!gg) return undefined;
-            const days = Math.round(
-              (new Date(today + "T00:00:00").getTime() - new Date(gg.at + "T00:00:00").getTime()) / 86400000,
-            );
-            return { id: gg.id, daysAgo: Math.max(0, days) };
-          })(),
+          bench: game.owned.includes("bench"),
           said: game.talk?.said,
           today,
           lastReply: (() => {
@@ -950,43 +930,6 @@ export default function Home() {
         } else {
           const pool = repliesFor(spoken.topic, tierAfter, Math.random());
           choices = replyChoices([...bespoke, ...pool].slice(0, 2));
-        }
-      }
-      // a friend can be given this season's gift — once per season each
-      if (kind === "person" && tierAfter >= 3 && !demoRef.current) {
-        const gift = seasonGift(new Date(now).getMonth() + 1);
-        const inBag = game.giftBag?.[gift.id] ?? 0;
-        const alreadyHas = game.bonds[hit.key]?.g?.id === gift.id;
-        if (inBag > 0 && !alreadyHas) {
-          choices = [
-            ...choices,
-            {
-              label: t("gift.give." + gift.id),
-              pick: () => {
-                encStageRef.current = "closer";
-                encCloserRef.current = null;
-                hum().settle();
-                setGame((prev) => {
-                  const bag = { ...(prev.giftBag ?? {}) };
-                  bag[gift.id] = Math.max(0, (bag[gift.id] ?? 0) - 1);
-                  const b = prev.bonds[hit.key];
-                  const bonds2 = b
-                    ? { ...prev.bonds, [hit.key]: { ...b, g: { id: gift.id, at: today } } }
-                    : prev.bonds;
-                  const next: GameState = { ...prev, giftBag: bag, bonds: bonds2, updatedAt: Date.now() };
-                  if (!demoRef.current) void saveGameState(next, clientRef.current);
-                  return next;
-                });
-                setEmote({ key: hit.key, icon: "emote_heart", until: Date.now() + 3000 });
-                setBubble({
-                  key: hit.key,
-                  name: shownName,
-                  text: t("gift.thanks." + gift.id),
-                  until: Date.now() + 30000,
-                });
-              },
-            },
-          ];
         }
       }
       setBubble({ key: hit.key, name: shownName, text: line, until: now + 30000, choices });
@@ -1802,6 +1745,34 @@ export default function Home() {
     return out;
   }, [game.placedAt, cityPlan.blocks, metrics]);
 
+  /* the street ornaments standing tonight: owned, not stashed, at their
+     chosen cell or a deterministic kerb spot near a hashed island */
+  const ornaments = useMemo(() => {
+    const out: { id: string; x: number; z: number }[] = [];
+    if (cityPlan.blocks.length === 0) return out;
+    for (const item of CATALOG) {
+      if (!item.daily || !game.owned.includes(item.id)) continue;
+      if ((game.stashed ?? []).includes(item.id)) continue;
+      const forced = placements[item.id];
+      if (forced) {
+        out.push({ id: item.id, ...forced });
+        continue;
+      }
+      const h = hash32("orn:" + item.id);
+      const b = cityPlan.blocks[h % cityPlan.blocks.length];
+      out.push({ id: item.id, x: b.x + 2 + ((h >>> 4) % 17), z: b.z + 18 + 1.6 });
+    }
+    return out;
+  }, [game.owned, game.stashed, placements, cityPlan.blocks]);
+
+  /* the daily shelf's clock — ticks only while the depot is open */
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!shopOpen) return;
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [shopOpen]);
+
   /* a new building claimed a chosen cell — the landmark steps aside, told */
   useEffect(() => {
     const evicted = Object.entries(game.placedAt ?? {}).filter(([, cell]) => {
@@ -2128,6 +2099,7 @@ export default function Home() {
             overture={demoParam || isDemoCity}
             overtureGo={introDone}
             wonder={tourWonder}
+            ornaments={ornaments}
             onEncounterMeet={onEncounterMeet}
             look={game.look}
             emote={emote}
@@ -2947,31 +2919,36 @@ export default function Home() {
             </span>
           ))}
         </div>
-        {(() => {
-          const gift = seasonGift(new Date().getMonth() + 1);
-          const inBag = game.giftBag?.[gift.id] ?? 0;
-          const affordable = balance >= gift.cost;
-          const mo = gift.months;
-          const range = `${mo[0]}\u2013${mo[mo.length - 1]}${lang === "zh" ? "\u6708" : ""}`;
+        {booted && (() => {
+          const item = dailyOrnament(nowTick);
+          const owned = game.owned.includes(item.id);
+          const affordable = balance >= item.cost;
+          const mid = new Date(nowTick);
+          mid.setHours(24, 0, 0, 0);
+          const left = Math.max(0, mid.getTime() - nowTick);
+          const p2 = (n: number) => String(n).padStart(2, "0");
+          const clock = `${p2(Math.floor(left / 3600000))}:${p2(Math.floor(left / 60000) % 60)}:${p2(Math.floor(left / 1000) % 60)}`;
+          const itemName = t("shop." + item.id + ".name") !== "shop." + item.id + ".name" ? t("shop." + item.id + ".name") : item.name;
           return (
             <button
               type="button"
-              className={"depot-gift" + (affordable ? "" : " locked")}
-              onClick={buyGift}
+              className={"depot-daily" + (owned || !affordable ? " locked" : "")}
+              disabled={owned}
+              onClick={() => buy(item.id)}
             >
-              <PixelIcon rows={GIFT_ICONS[gift.id]} size={40} />
-              <span className="gift-text">
-                <strong>{t("gift." + gift.id)}</strong>
+              <PixelIcon rows={ORNAMENTS_PX["orn_" + item.id]} size={40} />
+              <span className="daily-text">
+                <strong>{itemName}</strong>
                 <span>
-                  {t("gifts.season")} {range}
-                  {inBag > 0 ? ` · ${t("gifts.inbag")} ${inBag}` : ""} · {gift.cost} {t("depot.unit.w")}
+                  {t("depot.daily")} · {t("depot.daily.left")} {clock}
                 </span>
+                <span>{owned ? t("depot.state.owned") : `${item.cost} ${t("depot.unit.w")}`}</span>
               </span>
             </button>
           );
         })()}
         <div className="depot-items">
-          {CATALOG.map((item) => {
+          {CATALOG.filter((i) => !i.daily).map((item) => {
             const owned = game.owned.includes(item.id);
             const affordable = balance >= item.cost;
             const locked = (item.minLevel ?? 0) > level;
@@ -3038,6 +3015,42 @@ export default function Home() {
             );
           })}
         </div>
+        {CATALOG.some((i) => i.daily && game.owned.includes(i.id)) && (
+          <>
+            <div className="panel-heading dex-sub">
+              <span>{t("depot.mine")}</span>
+            </div>
+            <div className="depot-items">
+              {CATALOG.filter((i) => i.daily && game.owned.includes(i.id)).map((item) => {
+                const stashed = (game.stashed ?? []).includes(item.id);
+                const itemName =
+                  t("shop." + item.id + ".name") !== "shop." + item.id + ".name"
+                    ? t("shop." + item.id + ".name")
+                    : item.name;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={
+                      "depot-item owned" +
+                      (stashed ? " stashed" : "") +
+                      (depotPick === item.id ? " picked" : "")
+                    }
+                    aria-pressed={depotPick === item.id}
+                    onClick={() => {
+                      hum().click();
+                      setDepotPick(item.id);
+                    }}
+                  >
+                    <PixelIcon rows={ORNAMENTS_PX["orn_" + item.id]} size={30} />
+                    <strong>{itemName}</strong>
+                    <span>{stashed ? t("depot.state.stashed") : t("depot.state.shown")}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
         <div className="panel-heading dex-sub">
           <span>{t("works.title")}</span>
         </div>
@@ -3103,7 +3116,7 @@ export default function Home() {
                 cat.kind === "decor" ||
                 cat.kind === "creature"
               : affordable && !locked;
-            const movable = owned && (cat.id === "fountain" || cat.id === "observatory");
+            const movable = owned && (cat.id === "fountain" || cat.id === "observatory" || Boolean(cat.daily));
             const name = t("shop." + cat.id + ".name") !== "shop." + cat.id + ".name" ? t("shop." + cat.id + ".name") : cat.name;
             const line = t("shop." + cat.id + ".line") !== "shop." + cat.id + ".line" ? t("shop." + cat.id + ".line") : cat.line;
             return (

@@ -11,7 +11,7 @@
 
 import type { CreatureKind } from "../city/residents";
 import { hash32 } from "../city/layout";
-import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES, ECHO_LINES, GIFT_LINES } from "./bonds-lines";
+import { LINES, FIRST_MEET_LINES, CAT_LINE_DEFS, DOG_LINE_DEFS, TRADE_LINES, MEMORY_LINES, VOICE_LINES, CALLBACK_LINES, ECHO_LINES, BENCH_LINES } from "./bonds-lines";
 import { ANSWERS } from "./bonds-answers";
 
 export type Bond = {
@@ -23,8 +23,6 @@ export type Bond = {
   last: string;
   /** what you two talked about last time — they bring it up again */
   t?: Topic;
-  /** the last gift you gave them, and when */
-  g?: { id: string; at: string };
 };
 
 export type Bonds = Record<string, Bond>;
@@ -61,7 +59,6 @@ export function greet(bonds: Bonds, key: string, today: string): Bonds {
         met: prev.met,
         last: today,
         ...(prev.t !== undefined && { t: prev.t }),
-        ...(prev.g !== undefined && { g: prev.g }),
       }
     : { n: 1, met: today, last: today };
   return { ...bonds, [key]: next };
@@ -99,18 +96,6 @@ export function mergeBonds(a: Bonds | undefined, b: Bonds | undefined): Bonds {
             ? (aa.t < bb.t ? aa.t : bb.t)
             : (aa.t ?? bb.t);
     if (t !== undefined) merged.t = t;
-    // a gift is an event: the newer one wins, same-day ties break on id
-    const g =
-      aa.g && bb.g
-        ? aa.g.at > bb.g.at
-          ? aa.g
-          : bb.g.at > aa.g.at
-            ? bb.g
-            : aa.g.id <= bb.g.id
-              ? aa.g
-              : bb.g
-        : (aa.g ?? bb.g);
-    if (g !== undefined) merged.g = g;
     out[key] = merged;
   }
   return out;
@@ -226,14 +211,14 @@ export type LineCtx = {
   lastTopic?: Topic;
   /** a short line quoted from one of this week's pages */
   echo?: string;
+  /** the bench exists now — the city's oldest joke came true */
+  bench?: boolean;
   /** line id → date last spoken (cooldowns and milestones) */
   said?: Record<string, string>;
   /** today, YYYY-MM-DD — anchors the cooldown window */
   today?: string;
   /** your last actually-chosen reply to THIS resident */
   lastReply?: { id: string; topic: Topic; daysAgo: number };
-  /** the gift you gave THIS resident, if any */
-  gift?: { id: string; daysAgo: number };
 };
 
 /**
@@ -291,8 +276,6 @@ export type SpokenLine = {
   topic?: Topic;
   id?: string;
   callback?: boolean;
-  /** a gift-memory line — never consumed, only cooled */
-  gifted?: boolean;
   /** bespoke replies for this exact line, when the script has them */
   answers?: AnswerDef[];
 };
@@ -305,7 +288,7 @@ export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): S
         ? DOG_LINE_DEFS
         : ctx.firstMeet
           ? FIRST_MEET_LINES
-          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES, ...VOICE_LINES, ...CALLBACK_LINES, ...ECHO_LINES, ...GIFT_LINES];
+          : [...LINES, ...TRADE_LINES, ...MEMORY_LINES, ...VOICE_LINES, ...CALLBACK_LINES, ...ECHO_LINES, ...BENCH_LINES];
   const cool = (() => {
     if (!ctx.today) return "";
     const d = new Date(ctx.today + "T00:00:00");
@@ -326,12 +309,11 @@ export function lineFor(ctx: LineCtx, roll: number, lang: "en" | "zh" = "en"): S
     topic: l.topic,
     id: lineId(l.en),
     callback: l.afterReply !== undefined || CALLBACK_LINES.includes(l),
-    gifted: GIFT_LINES.includes(l),
     answers: ANSWERS[l.en],
   });
   // a memory outranks everything: if they can call back to your last
   // real reply, they do — the callback is consumed after it's spoken
-  const callbacks = eligible.filter((l) => l.afterReply !== undefined || CALLBACK_LINES.includes(l) || GIFT_LINES.includes(l));
+  const callbacks = eligible.filter((l) => l.afterReply !== undefined || CALLBACK_LINES.includes(l));
   const pool = callbacks.length > 0 ? callbacks : eligible;
   // weighted pick: situational lines outweigh small talk, and anything
   // said in the last 7 days cools to a whisper of its weight

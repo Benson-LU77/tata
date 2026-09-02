@@ -638,6 +638,7 @@ export function City3D({
   overture,
   overtureGo,
   wonder,
+  ornaments,
   onEncounterMeet,
   look,
   emote,
@@ -682,6 +683,8 @@ export function City3D({
   overture?: boolean;
   overtureGo?: boolean;
   wonder?: boolean;
+  /** street ornaments standing in the city: sprite id + world spot */
+  ornaments?: { id: string; x: number; z: number }[];
   /** you arrived — the exchange may begin */
   onEncounterMeet: (hit: { key: string; kind: string; seed: number }) => void;
   /** your figure, composed into the atlas at runtime */
@@ -1219,6 +1222,10 @@ export function City3D({
       param.setXYZ(si, worldH, mirror, amber);
       si += 1;
     };
+    // street ornaments: bought once, standing every night
+    for (const orn of ornamentsRef.current) {
+      place(`orn_${orn.id}`, orn.x, 0, orn.z, SPRITE_WORLD_H[`orn_${orn.id}`] ?? 1.0, 0, 0);
+    }
     for (let i = 0; i < h.creatures.length; i += 1) {
       const c = h.creatures[i];
       const p = poses[i];
@@ -1622,6 +1629,8 @@ export function City3D({
      steps in close, and your frozen spot is where the guide finds you */
   const wonderRef = useRef(false);
   wonderRef.current = Boolean(wonder);
+  const ornamentsRef = useRef<{ id: string; x: number; z: number }[]>([]);
+  ornamentsRef.current = ornaments ?? [];
   const wonderPosRef = useRef<{ x: number; z: number } | null>(null);
   const wonderPrevRef = useRef(false);
   useEffect(() => {
@@ -2247,7 +2256,7 @@ export function City3D({
       h.spriteMesh.geometry.dispose(); // material and atlas live on
     }
     const creatures = creaturesFor(plan, plan.lots.length, extras);
-    const slots = creatures.length * 2 + 8 + h.trees.length + h.animSpots.length; // umbrellas, emotes, groves, spot animations
+    const slots = creatures.length * 2 + 8 + h.trees.length + h.animSpots.length + 24; // umbrellas, emotes, groves, spot animations, street ornaments
     if (slots > 0 && h.spriteMat) {
       const g = new THREE.PlaneGeometry(1, 1);
       g.translate(0, 0.5, 0);

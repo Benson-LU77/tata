@@ -12,6 +12,8 @@ export type ShopItem = {
   kind: "creature" | "decor" | "skin" | "weather";
   /** hidden until the skyline reaches this level */
   minLevel?: number;
+  /** on the daily shelf only — one per day, 24h, then it rotates */
+  daily?: boolean;
 };
 
 export const CATALOG: ShopItem[] = [
@@ -31,7 +33,32 @@ export const CATALOG: ShopItem[] = [
   { id: "rain", name: "Night rain", line: "Thin rain over the rooftops.", cost: 150, kind: "weather" },
   { id: "snow", name: "First snow", line: "Slow flakes, soft streets.", cost: 150, kind: "weather" },
   { id: "fog", name: "Sea fog", line: "The far blocks half-dissolve.", cost: 120, kind: "weather" },
+  // ---- the daily shelf: street ornaments, one in stock per day ----
+  { id: "bench", name: "The bench", line: "It exists now. The spot was always yours.", cost: 50, kind: "decor", daily: true },
+  { id: "postbox", name: "A postbox", line: "An amber slot for slow letters.", cost: 40, kind: "decor", daily: true },
+  { id: "flowerbed", name: "A flowerbed", line: "Amber specks along the kerb.", cost: 35, kind: "decor", daily: true },
+  { id: "catstatue", name: "A cat statue", line: "The meetings have a chaircat now.", cost: 45, kind: "decor", daily: true },
+  { id: "signpost", name: "A crooked signpost", line: "It points somewhere that isn't.", cost: 30, kind: "decor", daily: true },
+  { id: "telescope", name: "A coin telescope", line: "Aimed at the galaxy band.", cost: 55, kind: "decor", daily: true },
+  { id: "stonelantern", name: "A stone lantern", line: "Low, warm, patient.", cost: 40, kind: "decor", daily: true },
+  { id: "waterpump", name: "An old water pump", line: "Still works. Probably.", cost: 35, kind: "decor", daily: true },
+  { id: "bicycle", name: "A leaning bicycle", line: "Nobody knows whose. Everybody's.", cost: 40, kind: "decor", daily: true },
+  { id: "milkbox", name: "A milk box", line: "Old-fashioned kindness at the door.", cost: 30, kind: "decor", daily: true },
+  { id: "umbrellastand", name: "An umbrella stand", line: "One amber umbrella, always spare.", cost: 30, kind: "decor", daily: true },
+  { id: "newsbox", name: "A newspaper box", line: "The headline is always tonight.", cost: 45, kind: "decor", daily: true },
+  { id: "pigeonperch", name: "A pigeon perch", line: "The couriers' rest stop.", cost: 35, kind: "decor", daily: true },
+  { id: "weathervane", name: "A weathervane", line: "A small bird, pointing at the wind.", cost: 45, kind: "decor", daily: true },
+  { id: "hydrant", name: "A fire hydrant", line: "Short, stout, dependable.", cost: 30, kind: "decor", daily: true },
+  { id: "gramophone", name: "A street gramophone", line: "Playing a song nobody hears.", cost: 55, kind: "decor", daily: true },
 ];
+
+/** today's shelf item — rotates at local midnight, repeats every 16 days */
+export function dailyOrnament(now: number): ShopItem {
+  const d = new Date(now);
+  const key = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
+  const pool = CATALOG.filter((i) => i.daily);
+  return pool[((key % pool.length) + pool.length) % pool.length];
+}
 
 export type Weather = "none" | "rain" | "snow" | "fog";
 
@@ -69,23 +96,8 @@ export type GameState = {
   name: string;
   /** short-term conversation state: cooldowns and your last replies */
   talk?: Talk;
-  /** gifts bought and not yet given, by gift id */
-  giftBag?: Record<string, number>;
   updatedAt: number;
 };
-
-/** the seasonal shelf: one gift in stock per season, gone when it turns.
- *  Gifts are for giving — they live in conversations, not on streets. */
-export type GiftDef = { id: string; cost: number; months: number[] };
-export const GIFTS: GiftDef[] = [
-  { id: "posy", cost: 40, months: [3, 4, 5] },
-  { id: "chime", cost: 40, months: [6, 7, 8] },
-  { id: "lantern", cost: 40, months: [9, 10, 11] },
-  { id: "scarf", cost: 40, months: [12, 1, 2] },
-];
-export function seasonGift(month: number): GiftDef {
-  return GIFTS.find((g) => g.months.includes(month)) ?? GIFTS[0];
-}
 
 export const EMPTY_STATE: GameState = {
   spent: 0,
@@ -174,16 +186,11 @@ function mergeStates(a: GameState, b: GameState): GameState {
     earnedFloor: Math.max(a.earnedFloor ?? 0, b.earnedFloor ?? 0),
     commissions: mergeCommissions(a.commissions, b.commissions),
     letters: mergeLetters(a.letters, b.letters),
-    stashed: keep(newer.stashed ?? [], older.stashed ?? [], count),
+    stashed: newer.stashed ?? [], // display toggle: the last decision wins
     placedAt: keep(newer.placedAt ?? {}, older.placedAt ?? {}, keys),
     billboard: keep(newer.billboard ?? null, older.billboard ?? null, (v) => len(v?.text)),
     name: keep(newer.name ?? "", older.name ?? "", len),
     talk: mergeTalk(a.talk, b.talk),
-    giftBag: (() => {
-      const out: Record<string, number> = { ...(a.giftBag ?? {}) };
-      for (const [k, v] of Object.entries(b.giftBag ?? {})) out[k] = Math.max(out[k] ?? 0, v);
-      return out;
-    })(),
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }
@@ -234,7 +241,6 @@ export function decideVaultWrite(
         billboard: remote.billboard ?? null,
         name: remote.name ?? "",
       talk: remote.talk,
-      giftBag: remote.giftBag,
         updatedAt: remote.updatedAt ?? 0,
       }),
     };
@@ -274,7 +280,6 @@ async function loadLocalState(): Promise<GameState> {
                 billboard: raw.billboard ?? null,
                 name: raw.name ?? "",
                 talk: raw.talk,
-                giftBag: raw.giftBag,
                 updatedAt: raw.updatedAt ?? 0,
               }
             : EMPTY_STATE,
@@ -313,7 +318,6 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
       billboard: remote.billboard ?? null,
       name: remote.name ?? "",
       talk: remote.talk,
-      giftBag: remote.giftBag,
       updatedAt: remote.updatedAt ?? 0,
     });
     void saveGameState(merged); // heal the local copy
@@ -350,7 +354,6 @@ export function cachedGameState(): GameState {
       billboard: raw.billboard ?? null,
       name: raw.name ?? "",
       talk: raw.talk,
-      giftBag: raw.giftBag,
       updatedAt: raw.updatedAt ?? 0,
     };
   } catch {

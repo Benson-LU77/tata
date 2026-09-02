@@ -1705,29 +1705,17 @@ export const ANSWERS: Record<string, AnswerDef[]> = {
       closers: [{ en: "You're not breaking it. You're in it. There's a difference.", zh: "你沒有打破它,你在它裡面。這是兩回事。" }] },
   ],
 
-  /* ---------------- gift memories ---------------- */
-  "Your posy's on the sill. It leans toward the street — watching for you, I think.": [
-    { reply: { en: "Water it for me.", zh: "替我照顧它。" },
-      closers: [{ en: "Daily. It drinks better than I do.", zh: "每天都澆。它喝水比我規律。" }] },
-    { reply: { en: "It suits your window.", zh: "很配你的窗。" },
-      closers: [{ en: "It completes it. The window agrees.", zh: "是它讓窗完整的。窗本人也同意。" }] },
+  /* ---------------- the bench, come true ---------------- */
+  "...The bench is real now. I sat on it. Checked your spot personally.": [
+    { reply: { en: "How's the spot?", zh: "位子怎麼樣?" },
+      closers: [{ en: "Best on the street. It's been reserved for years — the wood just caught up.", zh: "全街最好的。訂了好幾年,木頭現在才跟上而已。" }] },
+    { reply: { en: "Took the city long enough.", zh: "這座城也拖夠久了。" },
+      closers: [{ en: "Good things arrive at bench speed. Slow, then all at once.", zh: "好東西都是長椅速度:很慢,然後一次到位。" }] },
   ],
-  "The chime you gave me rang twice last night. Both times, good news.": [
-    { reply: { en: "What was the news?", zh: "什麼好消息?" },
-      closers: [{ en: "A finished page somewhere, and rain that turned away. Chime knows.", zh: "某處有一頁寫完了,還有一場雨轉彎了。風鈴都知道。" }] },
-    { reply: { en: "It only rings good news?", zh: "它只報好消息?" },
-      closers: [{ en: "Your gift. It came calibrated that way.", zh: "你送的嘛。出廠就調成這樣。" }] },
-  ],
-  "Your lantern's the warmest light on my floor. The lampkeeper is officially jealous.": [
-    { reply: { en: "Don't tell the lampkeeper.", zh: "別讓管燈的知道。" },
-      closers: [{ en: "Too late. There's been a formal complaint. I framed it.", zh: "來不及了,正式抗議函已送達。我把它裱起來了。" }] },
-    { reply: { en: "It'll last the winter.", zh: "它撐得過冬天。" },
-      closers: [{ en: "It'll outlast three winters. Good paper. Better giver.", zh: "它能撐過三個冬天。紙好,送的人更好。" }] },
-  ],
-  "Wearing the scarf. It's a warm argument against every wind on this street.": [
-    { reply: { en: "It looks good on you.", zh: "很適合你。" },
-      closers: [{ en: "Warmth suits everyone. Yours especially.", zh: "溫暖人人合穿。你給的,尤其合。" }] },
-    { reply: { en: "Winning the argument?", zh: "吵贏了嗎?" },
-      closers: [{ en: "Undefeated since you gave it. The wind's filed for arbitration.", zh: "自你送來後全勝。風已申請仲裁。" }] },
+  "Years of saying 'there is no bench'. Now I have to retrain. Worth it.": [
+    { reply: { en: "You can keep the old line.", zh: "舊台詞可以留著啊。" },
+      closers: [{ en: "As a historical reenactment, maybe. Weekends only.", zh: "當歷史重演節目吧,只在週末上演。" }] },
+    { reply: { en: "What's the new line?", zh: "新台詞是什麼?" },
+      closers: [{ en: "'There is a bench.' Doesn't rhyme. Sits better.", zh: "「有長椅了。」不押韻,但坐起來舒服。" }] },
   ],
 };
