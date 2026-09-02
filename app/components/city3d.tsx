@@ -942,6 +942,11 @@ export function City3D({
         const p0 = poseAt(you0, pl, t + bestS);
         // the leftover ride is small (a ring already runs these streets)
         offsetRef.current.set(you0.key, { x: tx - p0.x, z: tz - p0.z });
+        // and the crane aims HERE from the very top: the descent's last
+        // frame is the crossroads with you in it — no pan afterwards
+        panRef.current.x = tx - centerRef.current.x;
+        panRef.current.z = tz - centerRef.current.z;
+        panTargetRef.current = null;
       }
     }
     const offs = offsetRef.current;
@@ -1056,9 +1061,13 @@ export function City3D({
             enc.target = { x: mv.x, z: mv.z };
             poses[tIdx] = { x: mv.x, y: poses[tIdx].y, z: mv.z, facing: mv.facing, moving: true, phase: t * 6.5 };
           }
+          const nearNow = Math.hypot(enc.target.x - yp.x, enc.target.z - yp.z) < 3.2;
           poses[yIdx] = {
             ...yp,
-            facing: Math.atan2(enc.target.x - yp.x, enc.target.z - yp.z),
+            // the turn is the beat: face the lens until they're close
+            facing: nearNow
+              ? Math.atan2(enc.target.x - yp.x, enc.target.z - yp.z)
+              : settledYawRef.current,
             moving: false,
             phase: 0,
           };
@@ -1673,16 +1682,13 @@ export function City3D({
         return { x: yp.x + (yOff?.x ?? 0), z: yp.z + (yOff?.z ?? 0) };
       })();
       if (approachRef.current) {
-        // the visitor was already on their way: a guide scheduled three
-        // islands over must not spend twenty seconds beelining across
-        // water — they enter from just up the street instead
-        const adx = tp.x - start.x;
-        const adz = tp.z - start.z;
-        const ad = Math.hypot(adx, adz);
-        if (ad > 9) {
-          tp.x = start.x + (adx / ad) * 8;
-          tp.z = start.z + (adz / ad) * 8;
-        }
+        // the guide enters from the screen's upper-left and walks down
+        // for about five seconds — a visible arrival, not a teleport
+        const yaw = settledYawRef.current;
+        const ulx = (-Math.sin(yaw) - Math.cos(yaw)) / Math.SQRT2;
+        const ulz = (-Math.cos(yaw) + Math.sin(yaw)) / Math.SQRT2;
+        tp.x = start.x + ulx * 11;
+        tp.z = start.z + ulz * 11;
       }
       encRef.current = {
         key: encounterKey,

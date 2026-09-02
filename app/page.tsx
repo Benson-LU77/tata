@@ -37,7 +37,7 @@ import { PET_ACTIONS, QUEST_LINES } from "./lib/game/bonds-lines";
 import { repliesFor, closerFor, type ReplyDef } from "./lib/game/replies";
 import { nativeAvailable } from "./lib/bridge/native";
 import { allShadows } from "./lib/bridge/shadow";
-import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON } from "./lib/game/icons";
+import { iconOf, BACKPACK_ICON, MIRROR_ICON, COMPASS_RING, DEPOT_PX, REGISTRY_PX, CABINET_ICON, GIFT_ICONS } from "./lib/game/icons";
 import { AMBER_PAL, PixelIcon } from "./components/pixel-icon";
 import { composeYou } from "./lib/city/sprites/compose";
 import { loadLang, saveLang, makeT } from "./lib/i18n";
@@ -2951,16 +2951,21 @@ export default function Home() {
           const gift = seasonGift(new Date().getMonth() + 1);
           const inBag = game.giftBag?.[gift.id] ?? 0;
           const affordable = balance >= gift.cost;
+          const mo = gift.months;
+          const range = `${mo[0]}\u2013${mo[mo.length - 1]}${lang === "zh" ? "\u6708" : ""}`;
           return (
             <button
               type="button"
               className={"depot-gift" + (affordable ? "" : " locked")}
               onClick={buyGift}
             >
-              <strong>{t("gift." + gift.id)}</strong>
-              <span>
-                {t("gifts.season")}
-                {inBag > 0 ? ` · ${t("gifts.inbag")} ${inBag}` : ""} · {gift.cost} {t("depot.unit.w")}
+              <PixelIcon rows={GIFT_ICONS[gift.id]} size={40} />
+              <span className="gift-text">
+                <strong>{t("gift." + gift.id)}</strong>
+                <span>
+                  {t("gifts.season")} {range}
+                  {inBag > 0 ? ` · ${t("gifts.inbag")} ${inBag}` : ""} · {gift.cost} {t("depot.unit.w")}
+                </span>
               </span>
             </button>
           );
