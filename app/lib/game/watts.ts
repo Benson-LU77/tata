@@ -152,10 +152,19 @@ export function workOrders(metrics: NoteMetric[], date: string): WorkOrder[] {
  *  top of the order itself — same daily draw the quest giver uses */
 export const FAVOUR_TIP = 6;
 
+/** orders a neighbour may claim in person: never the 2-4am window, never
+ *  backfill — a resident asking for the impossible breaks the one promise
+ *  this city makes. Those stay on the board as bonuses only. */
+export function favourPick(orders: WorkOrder[], date: string): WorkOrder | null {
+  if (orders.length === 0) return null;
+  const askable = orders.filter((o) => o.id !== "small" && o.id !== "backfill");
+  const pool = askable.length > 0 ? askable : orders;
+  return pool[hash32(date + ":favour") % pool.length];
+}
+
 export function favourOrderId(metrics: NoteMetric[], date: string): string | null {
   const orders = workOrders(metrics, date);
-  if (orders.length === 0) return null;
-  return orders[hash32(date + ":favour") % orders.length].id;
+  return favourPick(orders, date)?.id ?? null;
 }
 
 export function orderBonus(metrics: NoteMetric[]): number {
@@ -164,7 +173,7 @@ export function orderBonus(metrics: NoteMetric[]): number {
   for (const date of dates) {
     const orders = workOrders(metrics, date);
     for (const o of orders) if (o.done) total += o.bonus;
-    const fav = orders[hash32(date + ":favour") % orders.length];
+    const fav = favourPick(orders, date);
     if (fav?.done) total += FAVOUR_TIP;
   }
   return total;

@@ -69,8 +69,23 @@ export type GameState = {
   name: string;
   /** short-term conversation state: cooldowns and your last replies */
   talk?: Talk;
+  /** gifts bought and not yet given, by gift id */
+  giftBag?: Record<string, number>;
   updatedAt: number;
 };
+
+/** the seasonal shelf: one gift in stock per season, gone when it turns.
+ *  Gifts are for giving — they live in conversations, not on streets. */
+export type GiftDef = { id: string; cost: number; months: number[] };
+export const GIFTS: GiftDef[] = [
+  { id: "posy", cost: 40, months: [3, 4, 5] },
+  { id: "chime", cost: 40, months: [6, 7, 8] },
+  { id: "lantern", cost: 40, months: [9, 10, 11] },
+  { id: "scarf", cost: 40, months: [12, 1, 2] },
+];
+export function seasonGift(month: number): GiftDef {
+  return GIFTS.find((g) => g.months.includes(month)) ?? GIFTS[0];
+}
 
 export const EMPTY_STATE: GameState = {
   spent: 0,
@@ -164,6 +179,11 @@ function mergeStates(a: GameState, b: GameState): GameState {
     billboard: keep(newer.billboard ?? null, older.billboard ?? null, (v) => len(v?.text)),
     name: keep(newer.name ?? "", older.name ?? "", len),
     talk: mergeTalk(a.talk, b.talk),
+    giftBag: (() => {
+      const out: Record<string, number> = { ...(a.giftBag ?? {}) };
+      for (const [k, v] of Object.entries(b.giftBag ?? {})) out[k] = Math.max(out[k] ?? 0, v);
+      return out;
+    })(),
     updatedAt: Math.max(a.updatedAt, b.updatedAt),
   };
 }
@@ -214,6 +234,7 @@ export function decideVaultWrite(
         billboard: remote.billboard ?? null,
         name: remote.name ?? "",
       talk: remote.talk,
+      giftBag: remote.giftBag,
         updatedAt: remote.updatedAt ?? 0,
       }),
     };
@@ -253,6 +274,7 @@ async function loadLocalState(): Promise<GameState> {
                 billboard: raw.billboard ?? null,
                 name: raw.name ?? "",
                 talk: raw.talk,
+                giftBag: raw.giftBag,
                 updatedAt: raw.updatedAt ?? 0,
               }
             : EMPTY_STATE,
@@ -291,6 +313,7 @@ export async function loadGameState(client?: VaultClient | null): Promise<GameSt
       billboard: remote.billboard ?? null,
       name: remote.name ?? "",
       talk: remote.talk,
+      giftBag: remote.giftBag,
       updatedAt: remote.updatedAt ?? 0,
     });
     void saveGameState(merged); // heal the local copy
@@ -327,6 +350,7 @@ export function cachedGameState(): GameState {
       billboard: raw.billboard ?? null,
       name: raw.name ?? "",
       talk: raw.talk,
+      giftBag: raw.giftBag,
       updatedAt: raw.updatedAt ?? 0,
     };
   } catch {

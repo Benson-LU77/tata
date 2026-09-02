@@ -80,20 +80,32 @@ async function fromDrafts(): Promise<NoteMetric[]> {
 
 /** Deterministic synthetic city for density review (?demo=N). Dev aid only. */
 export function demoMetrics(count: number, now: number): NoteMetric[] {
+  void count; // the showcase always spans a full year — twelve islands
   const r = rngSimple(0x9e3779b9);
   const metrics: NoteMetric[] = [];
   const pad = (n: number) => String(n).padStart(2, "0");
-  let daysAgo = Math.floor(count * 1.5);
-  for (let i = 0; i < count; i += 1) {
-    daysAgo -= r() < 0.55 ? 0 : 1 + Math.floor(r() * 3);
-    daysAgo = Math.max(0, daysAgo);
-    const date = new Date(now - daysAgo * 86400000);
-    metrics.push({
-      file: `demo/${i}.md`,
-      date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-      words: Math.floor(30 + r() * 900),
-      mtime: now - daysAgo * 86400000 - Math.floor(r() * 43200000),
-    });
+  // ~14 written nights in each of the last 12 months: every month-island
+  // exists, none is packed solid — a lived-in year, not a spreadsheet
+  let i = 0;
+  for (let m = 11; m >= 0; m -= 1) {
+    const anchor = new Date(now);
+    anchor.setDate(1);
+    anchor.setMonth(anchor.getMonth() - m);
+    const inMonth = m === 0 ? new Date(now).getDate() : new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate();
+    const picked = new Set<number>();
+    const nights = Math.min(inMonth, 12 + Math.floor(r() * 5));
+    while (picked.size < nights) picked.add(1 + Math.floor(r() * inMonth));
+    for (const dayN of [...picked].sort((a, b) => a - b)) {
+      const d = new Date(anchor.getFullYear(), anchor.getMonth(), dayN, 21, 30);
+      if (d.getTime() > now) continue;
+      metrics.push({
+        file: `demo/${i}.md`,
+        date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+        words: Math.floor(30 + r() * 900),
+        mtime: d.getTime() - Math.floor(r() * 43200000),
+      });
+      i += 1;
+    }
   }
   // the showcase skyline earns all three archetypes, deterministically:
   // a lighthouse needs a long silence before it, a bridge needs a

@@ -54,7 +54,7 @@ The desktop version at tata.page can connect straight to an Obsidian vault.
 
 Tata is a fully interactive pixel-art journaling game, not a website wrapper: the entire experience (isometric city rendering, notebook, day/night cycle, in-game economy) runs offline from bundled assets, and all writing is stored as plain Markdown files in the app's own Documents directory via a native file plugin (visible in the Files app). No account, no network requests, no data collection. The web version at tata.page is a companion, not the content source.
 
-## 截圖(已完成,在 ~/Claude/Tata-appstore/6.9-inch/)
+## 截圖(已完成,在 appstore/6.9-inch/)
 
 1320×2868、無 alpha 通道(帶 alpha 會被 App Store Connect 退件)。依檔名順序上傳,
 前三張會出現在搜尋結果裡,所以放最會說話的三張。原始檔留在 `_originals/`。

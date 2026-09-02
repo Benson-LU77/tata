@@ -332,8 +332,6 @@ const SLASH_DEFS: { label: string; en: string; zh: string; preview: string }[] =
   { label: "/h2", en: "section heading", zh: "大標題", preview: "## …" },
   { label: "/h3", en: "small heading", zh: "小標題", preview: "### …" },
   { label: "/quote", en: "quote block", zh: "引言區塊", preview: "> …" },
-  { label: "/divider", en: "horizontal divider", zh: "分隔線", preview: "———" },
-  { label: "/now", en: "current time stamp", zh: "現在時間戳記", preview: "> 21:30" },
   { label: "/stamp", en: "pixel stamp picker", zh: "像素印章（也可直接輸入 ::）", preview: "::貓:: → 🐱" },
 ];
 
@@ -393,40 +391,12 @@ function slashSource(
           window.setTimeout(() => startCompletion(view), 30);
         },
       },
-      {
-        label: "/divider",
-        ...meta("/divider"),
-        boost: 3,
-        // markdown trap: "---" straight under text turns that text into a
-        // setext heading — pad a blank line so it stays a divider
-        apply: (view, _completion, from, to) => {
-          const line = view.state.doc.lineAt(from);
-          const prevFilled = line.number > 1 && view.state.doc.line(line.number - 1).text.trim() !== "";
-          const text = (prevFilled ? "\n" : "") + "---\n";
-          view.dispatch({
-            changes: { from, to, insert: text },
-            selection: { anchor: from + text.length },
-          });
-        },
-      },
       ...getTemplates().map((tpl) => ({
         label: `/${tpl.name}`,
         detail: lang === "zh" ? "自訂模板" : "your template",
         info: tpl.content.split("\n")[0] || tpl.name,
         apply: insert(tpl.content),
       })),
-      {
-        label: "/now",
-        ...meta("/now"),
-        boost: 2,
-        apply: (view, _completion, from, to) => {
-          const text = stamp();
-          view.dispatch({
-            changes: { from, to, insert: text },
-            selection: { anchor: from + text.length },
-          });
-        },
-      },
     ];
     return { from: match.from, options, validFor: /^\/\w*$/ };
   };

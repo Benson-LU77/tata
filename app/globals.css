@@ -649,24 +649,24 @@ a.panel-export { display: block; text-align: center; text-decoration: none; }
    guide hands the city over, no corner chrome exists — only the star
    may appear, and only when it is being pointed at */
 .tour-clean .topbar { display: none; }
+.tour-clean .month-dock,
+.tour-clean .night-clock { display: none; }
 .tour-clean .dpad-summon { visibility: hidden; pointer-events: none; }
 .tour-clean .dpad-summon.tour-glow { visibility: visible; pointer-events: auto !important; }
 .tour-clean .dpad:not(.dpad--tour) { display: none; }
 
 /* the guide's show: the star pulses when pointed at; the compass takes
    centre stage; the point being named leans forward into the light */
-.tour-glow {
-  animation: star-glow 1.1s ease-in-out infinite;
+.tour-glow .depot-thumb {
+  animation: star-in .45s ease both, star-glow 1.1s ease-in-out infinite;
 }
-.tour-glow .depot-thumb { animation: star-in .45s ease both; }
 @keyframes star-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 @keyframes star-glow {
-  /* the summon centres itself with translateX — the pulse must carry it */
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(224, 168, 79, .5)); transform: translateX(-50%) scale(1); }
-  50% { filter: drop-shadow(0 0 14px rgba(224, 168, 79, .95)); transform: translateX(-50%) scale(1.4); }
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(224, 168, 79, .5)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 14px rgba(224, 168, 79, .95)); transform: scale(1.4); }
 }
 /* while the guide points at the star, the talking-state must not put
    it to sleep — it is the one thing on stage */
@@ -689,6 +689,16 @@ a.panel-export { display: block; text-align: center; text-decoration: none; }
 }
 /* the city dims so the compass lesson owns the stage; the bubble (z6)
    must stay above it, so the veil slips just underneath */
+/* the ceremony's glass: covers the city so gestures can't move it —
+   taps fall through to nothing but the talk (bubble z6, star z10 float
+   above; the canvas below never hears a thing) */
+.ceremony-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  background: transparent;
+}
+
 .tour-veil {
   position: fixed;
   inset: 0;
@@ -1783,12 +1793,14 @@ label.panel-export {
 /* level-up: one quiet line over the city, then gone */
 .levelup-toast {
   position: fixed;
+  /* above the notebook (z22): pin receipts and hints read over the
+     night-sky backdrop instead of hiding behind the book */
   left: 50%;
   /* dead centre of the screen — the 18% band kept colliding with the
      demo-exit bar and the corner block */
   top: 50%;
   transform: translate(-50%, -50%);
-  z-index: 7;
+  z-index: 44;
   /* left:50% centring leaves only half the screen to size against —
      without nowrap the line folds exactly on phone widths */
   white-space: nowrap;
@@ -3543,7 +3555,68 @@ label.panel-export {
   .talking .dpad { opacity: .12; pointer-events: none; }
 }
 
+/* the star is universal now: on desktop it keeps the compass corner
+   (bottom-left); the ring only exists while summoned. The phone block
+   below re-centres it — order matters, base first. */
+.dpad-summon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  z-index: 10;
+  left: clamp(28px, 4vw, 56px);
+  bottom: calc(clamp(24px, 4.5vh, 44px) + env(safe-area-inset-bottom, 0px));
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.compass-open .dpad-summon { display: none; }
+.city-app:not(.compass-open) .dpad { display: none; }
+.talking .dpad-summon { opacity: .12; pointer-events: none; }
+
+/* the seasonal shelf: one dashed card, quietly for sale */
+.depot-gift {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  text-align: left;
+  background: transparent;
+  border: 1px dashed var(--p3);
+  color: var(--p6);
+  cursor: pointer;
+}
+.depot-gift strong { color: var(--p7); }
+.depot-gift span { font-size: 12px; color: var(--p5); }
+.depot-gift.locked { opacity: .45; cursor: default; }
+
+/* while the book is open, toasts float in the night sky above it */
+.writing .levelup-toast { top: 13%; }
+
+/* D8: the docked talk sits clear of the month dock on desktop
+   (the phone block re-pins it higher still) */
+.city-bubble--docked { bottom: 220px; }
+
+/* D9: chosen words must look chosen — amber under the selection */
+.note-cm .cm-content ::selection { background: rgba(224, 168, 79, .35); }
+.note-cm .cm-selectionBackground { background: rgba(224, 168, 79, .28) !important; }
+
 @keyframes sheet-rise {
   from { transform: translateY(103%); }
   to { transform: translateY(0); }
+}
+
+/* the phone's star is centre-stage; the desktop base above puts it in
+   the compass corner — this override must stay at the end of the file */
+@media (max-width: 900px) {
+  .dpad-summon {
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
 }

@@ -95,6 +95,7 @@ export function NotesPanel({
   requestSetup,
   recent,
   plusDisabled,
+  lockAll,
   pages,
   onConnected,
   cityLive,
@@ -124,6 +125,8 @@ export function NotesPanel({
   recent?: string[];
   /** two pages already written tonight — the plus goes quiet */
   plusDisabled?: boolean;
+  /** the demo's museum glass: everything opens, nothing edits */
+  lockAll?: boolean;
   /** every vault page, for [[wikilink]] autocomplete */
   pages?: string[];
   /** fired after a successful connect so the city adopts the client too */
@@ -529,11 +532,11 @@ export function NotesPanel({
   }, [store]);
 
   const newPage = useCallback(() => {
-    if (plusDisabled) return;
+    if (plusDisabled || lockAll) return;
     store.newPage();
     setView("edit");
     cursorSoon(150);
-  }, [store, cursorSoon, plusDisabled]);
+  }, [store, cursorSoon, plusDisabled, lockAll]);
 
   const handleClose = useCallback(() => {
     void store.flush();
@@ -624,7 +627,7 @@ export function NotesPanel({
 
   /* past days are the record, not the draft: sealed here, editable only
      in Obsidian itself */
-  const sealed = notebookSkin && isSealed(activeFile, todayStamp());
+  const sealed = Boolean(lockAll) || (notebookSkin && isSealed(activeFile, todayStamp()));
 
   return (
     <aside

@@ -887,9 +887,34 @@ export function City3D({
     // stood instead of hurrying back to where time says they should be.
     const shifts = shiftRef.current;
     const poses = h.creatures.map((c) => poseAt(c, pl, t + (shifts.get(c.key) ?? 0)));
+    // the ceremony's opening mark: your ring anchors to the city's
+    // centre the first frame the cast exists — the crane lands on you
+    if (centreAnchorRef.current) {
+      const you0 = h.creatures.find((cc) => cc.kind === "you");
+      if (you0) {
+        centreAnchorRef.current = false;
+        // aim a step towards the camera from centre, and stay ON the
+        // ring: streets are walkable and never hide behind towers —
+        // an exact-centre offset once parked you inside a building
+        const cx = centerRef.current.x + Math.sin(camYaw) * 4;
+        const cz = centerRef.current.z + Math.cos(camYaw) * 4;
+        let bestS = 0;
+        let bestD = Infinity;
+        for (let s2 = 0; s2 < 130; s2 += 0.25) {
+          const p = poseAt(you0, pl, t + s2);
+          const d = (p.x - cx) ** 2 + (p.z - cz) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            bestS = s2;
+          }
+        }
+        shiftRef.current.set(you0.key, bestS);
+      }
+    }
     const offs = offsetRef.current;
     if (offs.size > 0) {
-      const dtOff = Math.max(0, Math.min(0.25, t - offsetPrevTRef.current));
+      const still = wonderRef.current || encRef.current !== null || overtureTweenRef.current !== null || overtureHoldRef.current;
+      const dtOff = still ? 0 : Math.max(0, Math.min(0.25, t - offsetPrevTRef.current));
       const decay = Math.exp(-dtOff / 45);
       h.creatures.forEach((c, i) => {
         const o = offs.get(c.key);
@@ -1549,6 +1574,7 @@ export function City3D({
      ease spent itself behind the veil and nobody ever saw it */
   const overtureDoneRef = useRef(false);
   const overtureHoldRef = useRef(false);
+  const centreAnchorRef = useRef(false);
   const overtureTweenRef = useRef<{ t0: number; from: number; to: number; dur: number } | null>(null);
   /* the wonder beat: you stop, face the lens, look around — the camera
      steps in close, and your frozen spot is where the guide finds you */
@@ -1578,6 +1604,9 @@ export function City3D({
       viewRef.current = clampView(VIEW_STOPS[0] * 1.5);
       viewGoalRef.current = null;
       overtureHoldRef.current = true;
+      // the crane shot lands at the city's centre — so should you.
+      // The cast may not exist yet: flag it, the loop captures it.
+      centreAnchorRef.current = true;
       loopRef.current?.();
     }
     if (overtureGo && overtureHoldRef.current) {

@@ -15,9 +15,9 @@ import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
 import { logDebug } from "./lib/debuglog";
 import type { VaultBridge } from "./lib/bridge/types";
 import { cityCache } from "./lib/drafts";
-import { bestStreakOf, earnedWatts, levelFromWatts, levelProgress, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
+import { bestStreakOf, earnedWatts, favourPick, levelFromWatts, levelProgress, orderBonus, skylineCap, streakBonus, streakOf, workOrders } from "./lib/game/watts";
 import { dateAtCell, floorsOf } from "./lib/city/plan";
-import { CATALOG, EMPTY_STATE, cachedGameState, demoGameState, loadGameState, saveGameState } from "./lib/game/shop";
+import { CATALOG, EMPTY_STATE, cachedGameState, demoGameState, loadGameState, saveGameState, seasonGift } from "./lib/game/shop";
 import type { GameState } from "./lib/game/shop";
 import { greet, tierOf, nameOf, lineFor, lineId, markSaid, tierName, type Tier, type Topic } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
@@ -169,6 +169,28 @@ export default function Home() {
   const [demoParam] = useState(
     () => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("demo"),
   );
+  /* replay entry from settings: straight to free roam, no ceremony */
+  const [demoRoam] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("roam"),
+  );
+  /* the stage opens clean: server HTML and the first client paint both
+     carry tour-clean, chrome appears only after mount — this is what
+     keeps hydration honest AND the corners from flashing */
+  const [booted, setBooted] = useState(false);
+  useEffect(() => {
+    // one macrotask later, on purpose: the mounted frame must still
+    // match the server's clean stage before chrome is allowed in
+    const id = window.setTimeout(() => setBooted(true), 0);
+    return () => window.clearTimeout(id);
+  }, []);
+  /* a first visit is knowable at the very first paint — the letter
+     ceremony must never flash the corners before the veil settles */
+  const [freshVisit] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      !window.localStorage.getItem("tata.visited") &&
+      !new URLSearchParams(window.location.search).has("demo"),
+  );
   const [foundToast, setFoundToast] = useState(false);
   const [swApply, setSwApply] = useState<(() => void) | null>(null);
   const [touchPick, setTouchPick] = useState<string | null>(null);
@@ -277,28 +299,6 @@ export default function Home() {
   }, []);
 
   /* the way back in: pages from a zip settle only where no page stands */
-  const importPages = useCallback(async (file: File) => {
-    const client = clientRef.current;
-    if (!client) return;
-    try {
-      const files = unzipSync(new Uint8Array(await file.arrayBuffer()));
-      const have = new Set(await client.list());
-      let landed = 0;
-      for (const [name, data] of Object.entries(files)) {
-        if (!name.toLowerCase().endsWith(".md") || name.includes("..")) continue;
-        if (have.has(name)) continue; // nothing standing is ever replaced
-        const text = strFromU8(data);
-        if (text.trim() === "") continue;
-        await client.writeOwn(name, text);
-        landed += 1;
-      }
-      logDebug("import", `${landed} pages landed`);
-      if (landed > 0) resync();
-    } catch (err) {
-      logDebug("import", String(err).slice(0, 60));
-    }
-  }, [resync]);
-
 
   /* returning to the app (PWA re-open, tab re-focus) reconnects Obsidian */
   useEffect(() => {
@@ -578,8 +578,23 @@ export default function Home() {
     return entries;
   }, [cityPlan.lots, game.owned, game.commissions, nowTs, level, t]);
 
+  const buyGift = useCallback(() => {
+    if (demoRef.current) return;
+    const gift = seasonGift(new Date().getMonth() + 1);
+    setGame((prev) => {
+      if (earned - prev.spent < gift.cost) return prev;
+      const bag = { ...(prev.giftBag ?? {}) };
+      bag[gift.id] = (bag[gift.id] ?? 0) + 1;
+      const next: GameState = { ...prev, spent: prev.spent + gift.cost, giftBag: bag, updatedAt: Date.now() };
+      void saveGameState(next, clientRef.current);
+      hum().settle();
+      return next;
+    });
+  }, [earned, hum]);
+
   const buy = useCallback(
     (id: string) => {
+      if (demoRef.current) return; // museum glass: look, don't buy
       const item = CATALOG.find((i) => i.id === id);
       if (!item) return;
       setGame((prev) => {
@@ -804,7 +819,8 @@ export default function Home() {
           tourPhaseRef.current = "star";
           setTourStar(true);
           setUiVisible(true);
-          gSay(t("tour.star"));
+          const phone = typeof window !== "undefined" && window.matchMedia("(max-width: 900px)").matches;
+          gSay(t(phone ? "tour.star" : "tour.star.desktop"));
         };
         const g2 = () =>
           gSay(t("tour.2"), [{ label: t("tour.2.r"), pick: () => { hum().click(); gStar(); } }]);
@@ -854,6 +870,14 @@ export default function Home() {
           daysSinceGreet: Math.max(0, sinceGreet),
           name: game.name || undefined,
           echo: weekEchoRef.current ?? undefined,
+          gift: (() => {
+            const gg = game.bonds[hit.key]?.g;
+            if (!gg) return undefined;
+            const days = Math.round(
+              (new Date(today + "T00:00:00").getTime() - new Date(gg.at + "T00:00:00").getTime()) / 86400000,
+            );
+            return { id: gg.id, daysAgo: Math.max(0, days) };
+          })(),
           said: game.talk?.said,
           today,
           lastReply: (() => {
@@ -915,10 +939,55 @@ export default function Home() {
           },
         }));
       } else {
-        // the replies answer the topic that was just raised, and only the
-        // warmth this friendship has earned is on the table (the nod is
-        // gone: tapping away has always been the graceful exit)
-        choices = replyChoices(repliesFor(spoken.topic, tierAfter, Math.random()));
+        // bespoke first: a line with its own written answers offers
+        // those — the reply answers the sentence, not just the topic.
+        // The topic pool covers lines the script hasn't reached yet,
+        // and tops up when only one bespoke answer fits this tier.
+        const bespoke = (spoken.answers ?? []).filter((a) => (a.tier ?? 0) <= tierAfter);
+        if (bespoke.length >= 2) {
+          const shuffled = [...bespoke].sort(() => Math.random() - 0.5).slice(0, 2);
+          choices = replyChoices(shuffled);
+        } else {
+          const pool = repliesFor(spoken.topic, tierAfter, Math.random());
+          choices = replyChoices([...bespoke, ...pool].slice(0, 2));
+        }
+      }
+      // a friend can be given this season's gift — once per season each
+      if (kind === "person" && tierAfter >= 3 && !demoRef.current) {
+        const gift = seasonGift(new Date(now).getMonth() + 1);
+        const inBag = game.giftBag?.[gift.id] ?? 0;
+        const alreadyHas = game.bonds[hit.key]?.g?.id === gift.id;
+        if (inBag > 0 && !alreadyHas) {
+          choices = [
+            ...choices,
+            {
+              label: t("gift.give." + gift.id),
+              pick: () => {
+                encStageRef.current = "closer";
+                encCloserRef.current = null;
+                hum().settle();
+                setGame((prev) => {
+                  const bag = { ...(prev.giftBag ?? {}) };
+                  bag[gift.id] = Math.max(0, (bag[gift.id] ?? 0) - 1);
+                  const b = prev.bonds[hit.key];
+                  const bonds2 = b
+                    ? { ...prev.bonds, [hit.key]: { ...b, g: { id: gift.id, at: today } } }
+                    : prev.bonds;
+                  const next: GameState = { ...prev, giftBag: bag, bonds: bonds2, updatedAt: Date.now() };
+                  if (!demoRef.current) void saveGameState(next, clientRef.current);
+                  return next;
+                });
+                setEmote({ key: hit.key, icon: "emote_heart", until: Date.now() + 3000 });
+                setBubble({
+                  key: hit.key,
+                  name: shownName,
+                  text: t("gift.thanks." + gift.id),
+                  until: Date.now() + 30000,
+                });
+              },
+            },
+          ];
+        }
       }
       setBubble({ key: hit.key, name: shownName, text: line, until: now + 30000, choices });
       setEmote({
@@ -956,6 +1025,7 @@ export default function Home() {
   /** unlock a wardrobe part with Watts, or wear a look — the Mirror's two verbs */
   const unlockPart = useCallback(
     (id: string, cost: number) => {
+      if (demoRef.current) return;
       setGame((prev) => {
         if (prev.owned.includes(id) || earned - prev.spent < cost) return prev;
         const next: GameState = {
@@ -972,6 +1042,7 @@ export default function Home() {
     [earned, hum],
   );
   const wearLook = useCallback((look: GameState["look"]) => {
+    if (demoRef.current) return;
     setGame((prev) => {
       const next: GameState = { ...prev, look, updatedAt: Date.now() };
       if (!demoRef.current) void saveGameState(next, clientRef.current);
@@ -1104,6 +1175,7 @@ export default function Home() {
 
   const orderCommission = useCallback(
     (id: string) => {
+      if (demoRef.current) return;
       const def = commissionDef(id);
       if (!def) return;
       setGame((prev) => {
@@ -1186,8 +1258,8 @@ export default function Home() {
   const quest = useMemo(() => {
     if (!today || cityPlan.lots.length === 0) return null;
     const orders = workOrders(metrics, today);
-    if (orders.length === 0) return null;
-    const order = orders[hash32(today + ":favour") % orders.length];
+    const order = favourPick(orders, today);
+    if (!order) return null;
     const persons = creaturesFor(cityPlan, cityPlan.lots.length, extras).filter(
       (c) => c.kind === "person",
     );
@@ -1259,7 +1331,14 @@ export default function Home() {
   /* star → compass → done: where the walk-through stands */
   const tourPhaseRef = useRef<"idle" | "star" | "compass" | "done">("idle");
   useEffect(() => {
-    if (!isDemoCity || !introDone || tourRef.current || metrics.length === 0) return;
+    if (!demoRoam || !isDemoCity) return;
+    // a timeout keeps the reveal out of the render commit
+    const id = window.setTimeout(() => setDemoExitVisible(true), 0);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoCity]);
+  useEffect(() => {
+    if (!isDemoCity || demoRoam || !introDone || tourRef.current || metrics.length === 0) return;
     const ids: number[] = [];
     // the clock starts when the veil lifts: the crane shot descends for
     // 5s; then you stop, the camera steps in, and you look around for a
@@ -1292,7 +1371,7 @@ export default function Home() {
     return () => {
       for (const id of ids) window.clearTimeout(id);
     };
-  }, [isDemoCity, introDone, metrics, t]);
+  }, [isDemoCity, demoRoam, introDone, metrics, t]);
 
   /* the favour's receipt: the moment tonight's asked-for order lands,
      say so once — otherwise the tip arrives in silence */
@@ -1664,6 +1743,7 @@ export default function Home() {
 
   const pinSentence = useCallback(
     (text: string) => {
+      if (demoRef.current) return;
       const clean = text.trim().replace(/\s+/g, " ").slice(0, 120);
       if (!clean) {
         setMoveToast(t("board.empty"));
@@ -1687,7 +1767,9 @@ export default function Home() {
   );
 
   const openWrite = useCallback((file?: string) => {
-    if (demoRef.current && tourRef.current && tourPhaseRef.current !== "done") return;
+    // the museum's notebook opens (today's blank, read-only) — a fake
+    // demo file must never reach the bridge
+    if (demoRef.current) file = undefined;
     clearEncounterTimers();
     setEncounterKey(null);
     setBubble(null);
@@ -1976,7 +2058,7 @@ export default function Home() {
     "city-app",
     // the ceremony clears the stage: no chrome from the sealed letter
     // until the guide hands the city over
-    welcomeOpen || ((demoParam || isDemoCity) && !demoExitVisible) ? "tour-clean" : "",
+    !booted || welcomeOpen || freshVisit || ((demoParam || isDemoCity) && !demoExitVisible) ? "tour-clean" : "",
     writeOpen ? "writing" : "",
     bubble ? "talking" : "",
     compassOpen ? "compass-open" : "",
@@ -2083,7 +2165,11 @@ export default function Home() {
         )}
         {replayOn && replayDate && (
           <div className="move-banner" role="status">
-            <span>{t("rings.watching")} {replayDate}</span>
+            <span>
+              {t("rings.watching")}
+              <br />
+              {replayDate}
+            </span>
             <button
               type="button"
               onClick={() => {
@@ -2384,6 +2470,19 @@ export default function Home() {
         >
           <PixelIcon rows={COMPASS_ROSE} size={22} />
         </button>
+        {isDemoCity && !demoExitVisible && (
+          <div
+            className="ceremony-lock"
+            onClick={() => {
+              // during the ceremony a tap can only move the talk along
+              if (tourNextRef.current) {
+                tourNextRef.current();
+                return;
+              }
+              if (encounterKey) advanceEncounter();
+            }}
+          />
+        )}
         {tourShowcase && (
           <div
             className={"tour-veil" + (tourFold ? " tour-veil--out" : "")}
@@ -2646,6 +2745,7 @@ export default function Home() {
         requestSetup={requestSetup}
         recent={recent}
         plusDisabled={metrics.filter((m) => m.date === today && !m.file.startsWith("__")).length >= 2}
+        lockAll={isDemoCity}
         pages={allPages}
         onConnected={onConnected}
         cityLive={synced === "live"}
@@ -2809,6 +2909,7 @@ export default function Home() {
         onWear={wearLook}
         name={game.name ?? ""}
         onName={(next) => {
+          if (demoRef.current) return;
           setGame((prev) => {
             const g2: GameState = { ...prev, name: next, updatedAt: Date.now() };
             if (!demoRef.current) void saveGameState(g2, clientRef.current);
@@ -2846,6 +2947,24 @@ export default function Home() {
             </span>
           ))}
         </div>
+        {(() => {
+          const gift = seasonGift(new Date().getMonth() + 1);
+          const inBag = game.giftBag?.[gift.id] ?? 0;
+          const affordable = balance >= gift.cost;
+          return (
+            <button
+              type="button"
+              className={"depot-gift" + (affordable ? "" : " locked")}
+              onClick={buyGift}
+            >
+              <strong>{t("gift." + gift.id)}</strong>
+              <span>
+                {t("gifts.season")}
+                {inBag > 0 ? ` · ${t("gifts.inbag")} ${inBag}` : ""} · {gift.cost} {t("depot.unit.w")}
+              </span>
+            </button>
+          );
+        })()}
         <div className="depot-items">
           {CATALOG.map((item) => {
             const owned = game.owned.includes(item.id);
@@ -2994,7 +3113,7 @@ export default function Home() {
                     className="move-chip"
                     onClick={() => {
                       hum().click();
-                      setMoveMode(cat.id);
+                      if (!demoRef.current) setMoveMode(cat.id);
                       setShopOpen(false);
                     }}
                   >
@@ -3034,7 +3153,7 @@ export default function Home() {
                     className="move-chip"
                     onClick={() => {
                       hum().click();
-                      setMoveMode(def.id);
+                      if (!demoRef.current) setMoveMode(def.id);
                       setShopOpen(false);
                     }}
                   >
@@ -3135,6 +3254,15 @@ export default function Home() {
               </button>
             </span>
           </label>
+          <button
+            type="button"
+            className="panel-export"
+            onClick={() => {
+              window.location.search = "?demo=year&roam=1";
+            }}
+          >
+            {t("settings.demo.replay")}
+          </button>
           <p className="settings-sec">{t("settings.sec.pages")}</p>
           {nativeAvailable() && (
             // the fact, where a person looks for it: every page is a real
@@ -3144,19 +3272,6 @@ export default function Home() {
           <button type="button" className="panel-export" onClick={() => void exportPages()}>
             {t("settings.export")}
           </button>
-          <label className="panel-export">
-            {t("settings.import")}
-            <input
-              type="file"
-              accept=".zip"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (f) void importPages(f);
-              }}
-            />
-          </label>
           <p className="settings-sec">{t("settings.sec.about")}</p>
           <button
             type="button"

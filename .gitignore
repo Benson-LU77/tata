@@ -53,3 +53,4 @@ ios/App/DerivedData*
 
 # App Store deliverables live beside the repo, not in it
 Tata-appstore/
+appstore/
