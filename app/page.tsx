@@ -2257,15 +2257,6 @@ export default function Home() {
           <div className="welcome-card" role="dialog" aria-label="Tata">
             <p>{t("welcome.l1")}</p>
             <p>{t("welcome.l2")}</p>
-            {(() => {
-              // the welcome is a ritual, not a manifest: where the words
-              // live is stated in Settings, under "your pages". Only the
-              // desktop keeps its Obsidian line — the one place it's true
-              // and actionable right now.
-              if (nativeAvailable()) return null;
-              if (window.matchMedia("(max-width: 720px)").matches) return null;
-              return <p>{t("welcome.l3")}</p>;
-            })()}
             <div className="welcome-actions">
               {/* one road in: the city shows itself first, and the guide
                   hands over the pen at the end of the walk */}

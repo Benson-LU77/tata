@@ -902,7 +902,7 @@ export function NotesPanel({
                 <button
                   type="button"
                   className="tab-plus"
-                  disabled={plusDisabled}
+                  disabled={plusDisabled || lockAll}
                   onClick={newPage}
                   aria-label={t("notes.newpage")}
                   title={t("notes.newpage")}

@@ -1045,12 +1045,19 @@ export function City3D({
       };
       if (yIdx >= 0) {
         if (enc.phase === "walk" && tIdx >= 0 && enc.approach) {
-          // the guide crosses the street to YOU — you stand and watch
+          // the guide crosses the street to YOU — you stand and watch.
+          // He aims at your LEFT side, not at you: stopping on the walk
+          // line put him behind your sprite and the speaker disappeared
           const gap = 1.0;
           const wp = wonderPosRef.current;
           const yp = wp ? { ...poses[yIdx], x: wp.x, z: wp.z } : poses[yIdx];
+          const sideYaw = settledYawRef.current;
+          const side = {
+            x: yp.x + -Math.cos(sideYaw) * 1.3,
+            z: yp.z + Math.sin(sideYaw) * 1.3,
+          };
           enc.you = { x: yp.x, z: yp.z };
-          const d0 = Math.hypot(enc.target.x - yp.x, enc.target.z - yp.z);
+          const d0 = Math.hypot(enc.target.x - side.x, enc.target.z - side.z);
           if (d0 <= gap + 0.05) {
             enc.phase = "meet";
             enc.meetAt = { ...enc.you };
@@ -1060,7 +1067,7 @@ export function City3D({
               onMeetRef.current({ key: tc.key, kind: tc.kind, seed: tc.seed });
             }
           } else {
-            const mv = step(enc.target, { x: yp.x, z: yp.z }, 2.2);
+            const mv = step(enc.target, side, 2.2);
             enc.target = { x: mv.x, z: mv.z };
             poses[tIdx] = { x: mv.x, y: poses[tIdx].y, z: mv.z, facing: mv.facing, moving: true, phase: t * 6.5 };
           }
