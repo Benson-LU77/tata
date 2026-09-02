@@ -893,22 +893,55 @@ export function City3D({
       const you0 = h.creatures.find((cc) => cc.kind === "you");
       if (you0) {
         centreAnchorRef.current = false;
-        // aim a step towards the camera from centre, and stay ON the
-        // ring: streets are walkable and never hide behind towers —
-        // an exact-centre offset once parked you inside a building
-        const cx = centerRef.current.x + Math.sin(camYaw) * 4;
-        const cz = centerRef.current.z + Math.cos(camYaw) * 4;
+        // the ceremony lands mid-CROSSROADS: a spot in a street gap on
+        // BOTH axes (a corridor between towers still hides you — the
+        // sliver-behind-a-tower lesson), scored to sit dead centre of
+        // the intersection square, then as near the city's heart as fits
+        const cx0 = centerRef.current.x;
+        const cz0 = centerRef.current.z;
+        const bl = pl.blocks;
+        const open = (x: number, z: number) =>
+          !bl.some((b) => x > b.x - 1.5 && x < b.x + 21 + 1.5) &&
+          !bl.some((b) => z > b.z - 1.5 && z < b.z + 18 + 1.5);
+        const clr = (x: number, z: number) => {
+          let cxm = Infinity;
+          let czm = Infinity;
+          for (const b of bl) {
+            cxm = Math.min(cxm, Math.max(0, x <= b.x ? b.x - x : x - (b.x + 21)));
+            czm = Math.min(czm, Math.max(0, z <= b.z ? b.z - z : z - (b.z + 18)));
+          }
+          return Math.min(cxm, czm);
+        };
+        let tx = cx0;
+        let tz = cz0;
+        let bestT = Infinity;
+        for (let gx = -24; gx <= 24; gx += 1) {
+          for (let gz = -24; gz <= 24; gz += 1) {
+            const x = cx0 + gx;
+            const z = cz0 + gz;
+            if (!open(x, z)) continue;
+            const score = Math.sqrt(gx * gx + gz * gz) - clr(x, z) * 6;
+            if (score < bestT) {
+              bestT = score;
+              tx = x;
+              tz = z;
+            }
+          }
+        }
         let bestS = 0;
         let bestD = Infinity;
         for (let s2 = 0; s2 < 130; s2 += 0.25) {
           const p = poseAt(you0, pl, t + s2);
-          const d = (p.x - cx) ** 2 + (p.z - cz) ** 2;
+          const d = (p.x - tx) ** 2 + (p.z - tz) ** 2;
           if (d < bestD) {
             bestD = d;
             bestS = s2;
           }
         }
         shiftRef.current.set(you0.key, bestS);
+        const p0 = poseAt(you0, pl, t + bestS);
+        // the leftover ride is small (a ring already runs these streets)
+        offsetRef.current.set(you0.key, { x: tx - p0.x, z: tz - p0.z });
       }
     }
     const offs = offsetRef.current;

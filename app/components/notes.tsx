@@ -1018,7 +1018,7 @@ export function NotesPanel({
               )}
             </span>
           </div>
-          <div className="notes-tools" aria-label="Formatting">
+          <div className={"notes-tools" + (lockAll ? " tools-locked" : "")} aria-label="Formatting">
             <button
               type="button"
               onClick={() => editorRef.current?.toggle("list")}
@@ -1085,6 +1085,7 @@ export function NotesPanel({
             <button
               type="button"
               className="page-gear"
+              disabled={lockAll}
               onClick={() => setView("setup")}
               aria-label={t("notes.settings.aria")}
             >
@@ -1095,6 +1096,7 @@ export function NotesPanel({
             <button
               type="button"
               className="notes-plain notes-connect"
+              disabled={lockAll}
               onClick={() => setView("setup")}
             >
               {t("notes.connectcta")}

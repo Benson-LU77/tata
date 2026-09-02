@@ -3595,6 +3595,11 @@ label.panel-export {
 .depot-gift span { font-size: 12px; color: var(--p5); }
 .depot-gift.locked { opacity: .45; cursor: default; }
 
+/* the museum's notebook: the tool row and vault card are exhibits */
+.tools-locked button { opacity: .35; pointer-events: none; }
+.page-gear:disabled,
+.notes-connect:disabled { opacity: .35; pointer-events: none; cursor: default; }
+
 /* while the book is open, toasts float in the night sky above it */
 .writing .levelup-toast { top: 13%; }
 
