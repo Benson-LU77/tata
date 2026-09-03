@@ -57,3 +57,8 @@ appstore/
 
 # portfolio handoff package (local only, never pushed)
 /handoff/
+
+# internal working docs — kept locally, not published
+/docs/上架待辦.md
+/docs/appstore-copy.md
+/docs/tata-blueprint.html
