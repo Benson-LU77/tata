@@ -6,8 +6,11 @@
 
 | 欄位 | 中文 (zh-Hant) | English |
 |---|---|---|
-| App 名稱 | Tata | Tata |
-| 副標(30 字元內) | 每天寫一頁,字會長成一座城 | Write a page. Grow a city. |
+| App 名稱 | Tata — 把日子寫成一座城 | (v1 僅送繁中;參考:Tata — Days Into a City) |
+| 副標(30 字元內) | 離線像素日記,每晚點亮一盞燈 | Offline pixel journal. One light a night. |
+
+> 2026-09-03:「Tata」單名在 App Store 已被註冊(商標),App 檔案以全名「Tata — 把日子寫成一座城」建立。
+> 副標改走互補路線(類別+差異點),不重複名稱裡「寫→城」的訊息,符合 Apple「副標勿重複名稱」準則。
 
 ## 描述(zh-Hant)
 
