@@ -7,10 +7,10 @@
 | 欄位 | 中文 (zh-Hant) | English |
 |---|---|---|
 | App 名稱 | Tata — 把日子寫成一座城 | (v1 僅送繁中;參考:Tata — Days Into a City) |
-| 副標(30 字元內) | 離線像素日記,每晚點亮一盞燈 | Offline pixel journal. One light a night. |
+| 副標(30 字元內) | 一座離線生長的像素日記城市! | A pixel journal city, grown offline. |
 
 > 2026-09-03:「Tata」單名在 App Store 已被註冊(商標),App 檔案以全名「Tata — 把日子寫成一座城」建立。
-> 副標改走互補路線(類別+差異點),不重複名稱裡「寫→城」的訊息,符合 Apple「副標勿重複名稱」準則。
+> 副標(使用者定稿):「一座離線生長的像素日記城市!」——類別+差異點一句到位。
 
 ## 描述(zh-Hant)
 
