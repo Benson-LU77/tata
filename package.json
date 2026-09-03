@@ -12,7 +12,7 @@
     "test": "npm run test:city && npm run test:notes",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-web --ignore-pattern .next",
     "build:web": "vite build --config web/vite.config.ts",
-    "deploy": "npm run build:web && gh-pages -d dist-web -m \"deploy 夜雨 FM\"",
+    "deploy": "npm run build:web && gh-pages -d dist-web -m \"deploy tata\"",
     "test:city": "node scripts/test-city.mjs",
     "test:notes": "vitest run",
     "typecheck": "tsc --noEmit -p .",
