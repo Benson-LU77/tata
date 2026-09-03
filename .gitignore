@@ -54,3 +54,6 @@ ios/App/DerivedData*
 # App Store deliverables live beside the repo, not in it
 Tata-appstore/
 appstore/
+
+# portfolio handoff package (local only, never pushed)
+/handoff/
