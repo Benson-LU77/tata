@@ -48,6 +48,7 @@ The desktop version at tata.page can connect straight to an Obsidian vault.
 - **類別**: 主要 Lifestyle,次要 Productivity
 - **年齡分級**: 4+
 - **App Privacy 問卷**: Data Not Collected(全部勾「不收集」)
+- **版權欄**: `2026 Tata`(品牌署名;開發者名稱另由帳號固定顯示 HUNG-CHI LU)
 - **價格**: 免費,無內購
 - **保管庫**: v1 只用 App 自己的文件夾(「檔案」App 看得到)。選使用者自己的
   資料夾 / iCloud 同步的功能已寫好但未上場,等真機驗證後於 v1.1 開放。
