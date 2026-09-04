@@ -1232,6 +1232,14 @@ export default function Home() {
   useEffect(() => {
     questRef.current = quest;
   }, [quest]);
+  /* the question mark means "I have something to ask you" — once he has
+     asked, it has served its purpose and comes down for the day. It is an
+     invitation, not a progress bar. */
+  const questMark = useMemo(() => {
+    if (!quest) return null;
+    const asked = game.talk?.said?.[`q:${quest.orderId}:ask`] === today;
+    return { key: quest.key, done: quest.done || asked };
+  }, [quest, game.talk, today]);
   /* the week's echo: one short line from your recent pages, carried into
      the streets — residents you know (tier 2+) quote you back. The demo
      city reads nobody's diary. */
@@ -2084,7 +2092,7 @@ export default function Home() {
             commissions={works}
             placements={placements}
             billboard={Boolean(game.billboard)}
-            quest={quest ? { key: quest.key, done: quest.done } : null}
+            quest={questMark}
             onBillboardTap={() => {
               const b = game.billboard;
               if (!b) return;
