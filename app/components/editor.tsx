@@ -40,6 +40,9 @@ const noteHighlight = HighlightStyle.define([
   { tag: tags.heading1, class: "nh1" },
   { tag: tags.heading2, class: "nh2" },
   { tag: tags.heading3, class: "nh3" },
+  /* the page's own timestamp rides on h6 — a leaf block, so the first
+     thing you write is its own paragraph and never a quotation */
+  { tag: tags.heading6, class: "nstamp" },
   { tag: tags.strong, class: "nstrong" },
   { tag: tags.emphasis, class: "nem" },
   { tag: tags.quote, class: "nquote" },

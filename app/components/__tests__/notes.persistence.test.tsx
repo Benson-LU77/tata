@@ -126,7 +126,7 @@ describe("opening today", () => {
   it("gives a blank page ONLY when the vault says 404", async () => {
     openPanel();
     await settle();
-    expect(page().value).toBe(""); // a page with nothing on it yet
+    expect(page().value).toMatch(/^###### \d{2}:\d{2}\n$/); // the stamp, and room under it
   });
 
   it("a dropped wire is an error, never a silent blank save", async () => {

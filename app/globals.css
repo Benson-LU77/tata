@@ -1138,6 +1138,7 @@ label.panel-export {
 .note-cm .nstrong { font-weight: 600; color: rgba(240, 241, 244, .98); }
 .note-cm .nem { font-style: italic; }
 .note-cm .nquote { font-family: var(--display); font-style: italic; color: rgba(var(--accent-rgb), .8); }
+.note-cm .nstamp { font-family: var(--display); font-style: italic; font-weight: 400; font-size: 1em; color: rgba(var(--accent-rgb), .8); }
 .note-cm .nmark { color: rgba(236, 238, 242, .3); }
 .note-cm .nrule { color: rgba(236, 238, 242, .3); letter-spacing: .3em; }
 .note-cm .ncode { font-family: ui-monospace, Menlo, monospace; font-size: .92em; color: rgba(226, 228, 233, .85); }
@@ -2706,6 +2707,7 @@ label.panel-export {
 .notebook .nh1, .notebook .nh2, .notebook .nh3 { color: var(--p0); }
 .notebook .nstrong { color: var(--p0); }
 .notebook .nquote { color: var(--p3); }
+.notebook .nstamp { color: var(--p3); }
 .notebook .note-cm .cm-quoteline { border-color: var(--p4); }
 .notebook .notes-backlinks { border-color: rgba(6, 7, 10, .18); }
 .notebook .notes-backlinks span { color: var(--p4); }

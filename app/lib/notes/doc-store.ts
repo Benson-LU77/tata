@@ -300,7 +300,7 @@ export function createDocStore() {
         } catch {}
       }
     }
-    const freshSeed = "";
+    const freshSeed = `###### ${timeStamp()}\n`;
     seed = freshSeed;
     conflict = null;
     emit();
@@ -421,7 +421,7 @@ export function createDocStore() {
   }
 
   function newPage() {
-    const freshSeed = "";
+    const freshSeed = `###### ${timeStamp()}\n`;
     seed = freshSeed;
     conflict = null;
     // the name is claimed on the first keystroke, but the base must be
