@@ -158,6 +158,36 @@ export function markSaid(talk: Talk | undefined, id: string, today: string): Tal
   return { said, replies: { ...(talk?.replies ?? {}) } };
 }
 
+/* ---------------- the errand: an event, not a script ---------------- */
+
+/** the ledger key for tonight's ask / thanks. ONE place — so the spoken
+ *  line and the question mark can never disagree about what was said */
+export function errandId(orderId: string, phase: "ask" | "thanks"): string {
+  return `q:${orderId}:${phase}`;
+}
+
+/** has this phase of the errand already been spoken today? */
+export function errandSaid(
+  talk: Talk | undefined,
+  orderId: string,
+  phase: "ask" | "thanks",
+  today: string,
+): boolean {
+  return talk?.said?.[errandId(orderId, phase)] === today;
+}
+
+/** the mark over the giver's head is an invitation, spent once accepted:
+ *  down when the errand is done, and down once the ask has been heard.
+ *  It is not a progress bar — the board in the depot is. */
+export function errandMark(
+  quest: { key: string; orderId: string; done: boolean } | null,
+  talk: Talk | undefined,
+  today: string,
+): { key: string; done: boolean } | null {
+  if (!quest) return null;
+  return { key: quest.key, done: quest.done || errandSaid(talk, quest.orderId, "ask", today) };
+}
+
 /* ---------------- names — seeded, revealed on first meeting ----------- */
 
 const PERSON_NAMES = [

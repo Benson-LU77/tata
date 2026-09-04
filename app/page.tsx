@@ -20,7 +20,7 @@ import { dateAtCell, floorsOf } from "./lib/city/plan";
 import { CATALOG, EMPTY_STATE, cachedGameState, dailyOrnament, demoGameState, loadGameState, saveGameState } from "./lib/game/shop";
 import { ORNAMENTS_PX } from "./lib/city/sprites/data";
 import type { GameState } from "./lib/game/shop";
-import { greet, tierOf, nameOf, lineFor, lineId, markSaid, tierName, type Tier, type Topic } from "./lib/game/bonds";
+import { greet, tierOf, nameOf, lineFor, lineId, markSaid, tierName, errandId, errandSaid, errandMark, type Tier, type Topic } from "./lib/game/bonds";
 import type { CreatureKind } from "./lib/city/residents";
 import { creaturesFor } from "./lib/city/residents";
 import { hash32 } from "./lib/city/layout";
@@ -839,8 +839,9 @@ export default function Home() {
       const isGiver = quest !== null && hit.key === quest.key;
       // the favour is an event, not a script: the ask lands once, the thanks
       // lands once, and afterwards the giver is just a neighbour again
-      const questId = quest ? `q:${quest.orderId}:${quest.done ? "thanks" : "ask"}` : null;
-      const questSaid = questId ? game.talk?.said?.[questId] === today : false;
+      const questPhase = quest?.done ? "thanks" : "ask";
+      const questId = quest ? errandId(quest.orderId, questPhase) : null;
+      const questSaid = quest ? errandSaid(game.talk, quest.orderId, questPhase, today) : false;
       const questText =
         isGiver && !questSaid
           ? (quest.done ? QUEST_LINES[quest.orderId]?.thanks : QUEST_LINES[quest.orderId]?.ask)
@@ -1215,7 +1216,7 @@ export default function Home() {
   const quest = useMemo(() => {
     if (!today || cityPlan.lots.length === 0) return null;
     const orders = workOrders(metrics, today);
-    const order = favourPick(orders, today);
+    const order = favourPick(orders);
     if (!order) return null;
     const persons = creaturesFor(cityPlan, cityPlan.lots.length, extras).filter(
       (c) => c.kind === "person",
@@ -1235,11 +1236,7 @@ export default function Home() {
   /* the question mark means "I have something to ask you" — once he has
      asked, it has served its purpose and comes down for the day. It is an
      invitation, not a progress bar. */
-  const questMark = useMemo(() => {
-    if (!quest) return null;
-    const asked = game.talk?.said?.[`q:${quest.orderId}:ask`] === today;
-    return { key: quest.key, done: quest.done || asked };
-  }, [quest, game.talk, today]);
+  const questMark = useMemo(() => errandMark(quest, game.talk, today), [quest, game.talk, today]);
   /* the week's echo: one short line from your recent pages, carried into
      the streets — residents you know (tier 2+) quote you back. The demo
      city reads nobody's diary. */

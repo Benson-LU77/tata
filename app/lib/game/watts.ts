@@ -5,7 +5,7 @@
  * watts are log-compressed with a daily cap — padding earns nothing.
  */
 
-import { hash32, type NoteMetric } from "../city/layout";
+import type { NoteMetric } from "../city/layout";
 
 // rebalanced when work orders became historical (kept roughly neutral
 // for existing vaults: 300-word night ≈ 110 W before and after)
@@ -152,19 +152,19 @@ export function workOrders(metrics: NoteMetric[], date: string): WorkOrder[] {
  *  top of the order itself — same daily draw the quest giver uses */
 export const FAVOUR_TIP = 6;
 
-/** orders a neighbour may claim in person: never the 2-4am window, never
- *  backfill — a resident asking for the impossible breaks the one promise
- *  this city makes. Those stay on the board as bonuses only. */
-export function favourPick(orders: WorkOrder[], date: string): WorkOrder | null {
-  if (orders.length === 0) return null;
-  const askable = orders.filter((o) => o.id !== "small" && o.id !== "backfill");
-  const pool = askable.length > 0 ? askable : orders;
-  return pool[hash32(date + ":favour") % pool.length];
+/** The neighbour only ever asks for tonight's page.
+ *
+ *  Everything else on the board can be out of reach by the time she asks:
+ *  a streak needs yesterday, backfill needs a past empty day, the small
+ *  hours need 2am. A favour you cannot do is not a favour — so the ask is
+ *  always the one thing still within reach. The rest stay bonuses. */
+export function favourPick(orders: WorkOrder[]): WorkOrder | null {
+  return orders.find((o) => o.id === "write") ?? null;
 }
 
 export function favourOrderId(metrics: NoteMetric[], date: string): string | null {
   const orders = workOrders(metrics, date);
-  return favourPick(orders, date)?.id ?? null;
+  return favourPick(orders)?.id ?? null;
 }
 
 export function orderBonus(metrics: NoteMetric[]): number {
@@ -173,7 +173,7 @@ export function orderBonus(metrics: NoteMetric[]): number {
   for (const date of dates) {
     const orders = workOrders(metrics, date);
     for (const o of orders) if (o.done) total += o.bonus;
-    const fav = favourPick(orders, date);
+    const fav = favourPick(orders);
     if (fav?.done) total += FAVOUR_TIP;
   }
   return total;
