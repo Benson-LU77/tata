@@ -163,6 +163,10 @@ export default function Home() {
   const [tourHi, setTourHi] = useState(-1);
   /* the showcase advances on a tap, not a clock */
   const tourNextRef = useRef<(() => void) | null>(null);
+  /* the opening plays itself: descent, looking around, the line said
+     aloud. A tap during it can only interrupt, never advance — so the
+     screen is deaf until the neighbour is on her way. */
+  const tourHoldRef = useRef(false);
   /* the way home appears only once the guided part is over */
   const [demoExitVisible, setDemoExitVisible] = useState(false);
   /* read synchronously: isDemoCity flips in an async effect, and the
@@ -1288,7 +1292,11 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemoCity]);
   useEffect(() => {
-    if (!isDemoCity || demoRoam || !introDone || tourRef.current || metrics.length === 0) return;
+    if (!isDemoCity || demoRoam || !introDone || tourRef.current || metrics.length === 0) {
+      tourHoldRef.current = false;
+      return;
+    }
+    tourHoldRef.current = true;
     const ids: number[] = [];
     // the clock starts when the veil lifts: the crane shot descends for
     // 5s; then you stop, the camera steps in, and you look around for a
@@ -1310,6 +1318,7 @@ export default function Home() {
         // marked NOW, not at scheduling: a dep change inside the wait
         // would cancel the timer with the flag already burnt
         tourRef.current = true;
+        tourHoldRef.current = false; // she is walking over — taps mean something again
         setTourWonder(false);
         setTourApproach(true);
         setEncounterKey("person:0");
@@ -1319,6 +1328,7 @@ export default function Home() {
     // but never mid-ceremony over a conversation that IS happening
     ids.push(window.setTimeout(() => { if (!tourTalkedRef.current) setDemoExitVisible(true); }, 90000));
     return () => {
+      tourHoldRef.current = false;
       for (const id of ids) window.clearTimeout(id);
     };
   }, [isDemoCity, demoRoam, introDone, metrics, t]);
@@ -2205,6 +2215,7 @@ export default function Home() {
             className="city-bubble city-bubble--docked"
             aria-live="polite"
             onClick={() => {
+              if (tourHoldRef.current) return; // the opening is not skippable
               // during the compass lesson, any tap is "next"
               if (tourNextRef.current) {
                 tourNextRef.current();
@@ -2444,6 +2455,7 @@ export default function Home() {
           <div
             className="ceremony-lock"
             onClick={() => {
+              if (tourHoldRef.current) return; // the opening is not skippable
               // during the ceremony a tap can only move the talk along
               if (tourNextRef.current) {
                 tourNextRef.current();
