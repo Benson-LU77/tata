@@ -833,9 +833,14 @@ export default function Home() {
         : 0;
       const quest = questRef.current;
       const isGiver = quest !== null && hit.key === quest.key;
-      const questText = isGiver
-        ? (quest.done ? QUEST_LINES[quest.orderId]?.thanks : QUEST_LINES[quest.orderId]?.ask)
-        : undefined;
+      // the favour is an event, not a script: the ask lands once, the thanks
+      // lands once, and afterwards the giver is just a neighbour again
+      const questId = quest ? `q:${quest.orderId}:${quest.done ? "thanks" : "ask"}` : null;
+      const questSaid = questId ? game.talk?.said?.[questId] === today : false;
+      const questText =
+        isGiver && !questSaid
+          ? (quest.done ? QUEST_LINES[quest.orderId]?.thanks : QUEST_LINES[quest.orderId]?.ask)
+          : undefined;
       const addressed = questText
         ? (game.name ? `${game.name}\uff0c` : "") + (lang === "zh" ? questText.zh : questText.en)
         : null;
@@ -876,6 +881,8 @@ export default function Home() {
       // and a delivered callback is consumed. What YOU said is recorded
       // only at the moment you actually pick a reply — never here.
       let talk2 = spoken.id ? markSaid(game.talk, spoken.id, today) : game.talk;
+      // the errand line has no lineId of its own — record it by hand
+      if (addressed && questId) talk2 = markSaid(talk2, questId, today);
       if (spoken.callback && talk2 && talk2.replies[hit.key]) {
         const rest = { ...talk2.replies };
         delete rest[hit.key];
