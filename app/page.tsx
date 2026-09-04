@@ -943,6 +943,9 @@ export default function Home() {
           choices = replyChoices([...bespoke, ...pool].slice(0, 2));
         }
       }
+      // the opening ends where the conversation begins: only now does a
+      // tap mean "next" again — one during her walk used to end it early
+      tourHoldRef.current = false;
       setBubble({ key: hit.key, name: shownName, text: line, until: now + 30000, choices });
       setEmote({
         key: hit.key,
@@ -1318,7 +1321,6 @@ export default function Home() {
         // marked NOW, not at scheduling: a dep change inside the wait
         // would cancel the timer with the flag already burnt
         tourRef.current = true;
-        tourHoldRef.current = false; // she is walking over — taps mean something again
         setTourWonder(false);
         setTourApproach(true);
         setEncounterKey("person:0");
@@ -1326,7 +1328,10 @@ export default function Home() {
     );
     // failsafe: if the guide never reached you, the way home shows up —
     // but never mid-ceremony over a conversation that IS happening
-    ids.push(window.setTimeout(() => { if (!tourTalkedRef.current) setDemoExitVisible(true); }, 90000));
+    ids.push(window.setTimeout(() => {
+      tourHoldRef.current = false; // she never came — do not hold the screen hostage
+      if (!tourTalkedRef.current) setDemoExitVisible(true);
+    }, 90000));
     return () => {
       tourHoldRef.current = false;
       for (const id of ids) window.clearTimeout(id);
