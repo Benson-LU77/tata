@@ -3285,9 +3285,16 @@ export default function Home() {
             // file on this device, reachable without us
             <p className="settings-where">{t("settings.where.native")}</p>
           )}
-          <button type="button" className="panel-export" onClick={() => void exportPages()}>
-            {t("settings.export")}
-          </button>
+          {/* the zip travels through a browser download, which the iOS shell
+              has no room for — and does not need: every page is already a
+              real file in the Files app, where the whole folder can be
+              shared at once. A door that opens onto nothing is worse than
+              no door. */}
+          {!nativeAvailable() && (
+            <button type="button" className="panel-export" onClick={() => void exportPages()}>
+              {t("settings.export")}
+            </button>
+          )}
           <p className="settings-sec">{t("settings.sec.about")}</p>
           <button
             type="button"
