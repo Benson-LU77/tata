@@ -728,6 +728,8 @@ export function City3D({
   const growLastRef = useRef(0);
   const buildingsDirtyRef = useRef(true);
   const weatherSeedsRef = useRef<Float32Array | null>(null);
+  /** where the camera is looking, on the ground — weather falls around it */
+  const viewCenterRef = useRef({ x: 0, z: 0 });
   const ceremonyRef = useRef<{ x: number; z: number; start: number } | null>(null);
   /* a settling is a moment, not a state: replaying it every time the plan
      changes would relight a building you finished with days ago */
@@ -1347,27 +1349,40 @@ export function City3D({
       weatherSeedsRef.current = s;
     }
     const seeds = weatherSeedsRef.current;
-    const b = stateRef.current.plan.bounds;
     const t = now / 1000;
     const H = 15;
     const m = new THREE.Matrix4();
-    const spanX = b.maxX - b.minX + 20;
-    const spanZ = b.maxZ - b.minZ + 20;
+    // Weather falls around the camera, not over the whole city. Spread over
+    // the city's bounds, 480 drops thin out as the months pile up — a decade
+    // in is six drops an island — and because the seeds never change, the
+    // few islands that won the draw rain forever while their neighbours stay
+    // dry. So: a window sized to the view, centred on where the camera looks.
+    // Each drop keeps a fixed world column and wraps at the window's edge,
+    // so panning slides the window across the rain rather than the rain
+    // across the ground.
+    const cam = h.camera;
+    const viewW = cam.right - cam.left;
+    const viewD = (cam.top - cam.bottom) / Math.sin(ELEVATION);
+    const side = Math.min(90, Math.max(36, Math.hypot(viewW, viewD) * 1.05));
+    const half = side / 2;
+    const x0 = viewCenterRef.current.x - half;
+    const z0 = viewCenterRef.current.z - half;
+    const wrap = (v: number, lo: number) => lo + ((((v - lo) % side) + side) % side);
     for (let i = 0; i < WEATHER_N; i += 1) {
-      const sx = seeds[i * 3];
-      const sz = seeds[i * 3 + 1];
+      const sx = seeds[i * 3] * 1024;
+      const sz = seeds[i * 3 + 1] * 1024;
       const ph = seeds[i * 3 + 2];
       if (w === "rain") {
         const y = H - ((t * 11 + ph * H * 5) % H);
         m.makeScale(0.03, 0.5, 0.03);
-        m.setPosition(b.minX - 10 + sx * spanX + y * 0.06, y, b.minZ - 10 + sz * spanZ);
+        m.setPosition(wrap(sx + y * 0.06, x0), y, wrap(sz, z0));
       } else {
         const y = H - ((t * 1.3 + ph * H * 2) % H);
         m.makeScale(0.09, 0.09, 0.09);
         m.setPosition(
-          b.minX - 10 + sx * spanX + Math.sin(t * 0.8 + ph * 6.28) * 0.6,
+          wrap(sx + Math.sin(t * 0.8 + ph * 6.28) * 0.6, x0),
           y,
-          b.minZ - 10 + sz * spanZ + Math.cos(t * 0.6 + ph * 6.28) * 0.6,
+          wrap(sz + Math.cos(t * 0.6 + ph * 6.28) * 0.6, z0),
         );
       }
       h.weatherMesh.setMatrixAt(i, m);
@@ -1510,6 +1525,8 @@ export function City3D({
       );
       h.camera.lookAt(cx, 0, cz);
       h.camera.updateProjectionMatrix();
+      viewCenterRef.current.x = cx;
+      viewCenterRef.current.z = cz;
 
       // sub-pixel snap: cancel the fractional part of the camera centre in
       // virtual-pixel space via the projection matrix (the camera itself
