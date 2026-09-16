@@ -3,6 +3,10 @@
  * `::cat::` (or `::貓::`) in a note renders as a small pixel drawing in
  * the editor; the vault only ever stores the plain text, so Obsidian
  * stays clean and readable. Same ASCII dialect as every sprite.
+ *
+ * One rule the city does not have: a stamp is read on paper, so its ink must
+ * stay in steps 0–4. Steps 5 and up fall below 3:1 against the page and the
+ * drawing quietly disappears.
  */
 
 import { SPRITES } from "./data";
@@ -17,62 +21,68 @@ const DRAWN: Record<string, string[]> = {
     "...2...",
   ],
   star: [
-    "...6...",
-    "..666..",
-    "6666666",
-    ".66666.",
-    "..6.6..",
-    ".6...6.",
+    "...1...",
+    "..111..",
+    "1111111",
+    ".11111.",
+    "..1.1..",
+    ".1...1.",
   ],
   moon: [
-    "..555..",
-    ".55....",
-    "555....",
-    "555....",
-    ".55....",
-    "..555..",
+    "..111..",
+    ".11....",
+    "111....",
+    "111....",
+    ".11....",
+    "..111..",
   ],
   sun: [
-    "6..6..6",
-    ".66666.",
-    ".65556.",
-    "6655566",
-    ".65556.",
-    ".66666.",
-    "6..6..6",
+    "1..1..1",
+    ".11111.",
+    ".14441.",
+    "1144411",
+    ".14441.",
+    ".11111.",
+    "1..1..1",
   ],
   book: [
-    "0000000",
-    "0555550",
-    "0505050",
-    "0505050",
-    "0555550",
-    "0000000",
+    "1111111",
+    "1444441",
+    "1414141",
+    "1414141",
+    "1444441",
+    "1111111",
   ],
   dumbbell: [
     "22...22",
-    "2255522",
-    "2255522",
+    "2244422",
+    "2244422",
     "22...22",
   ],
   pen: [
-    "....55",
-    "...550",
-    "..550.",
-    ".550..",
-    "0500..",
-    "00....",
+    "....11",
+    "...114",
+    "..114.",
+    ".114..",
+    "4140..",
+    "44....",
   ],
   check: [
-    ".....6",
-    "....66",
-    "6..66.",
-    "66666.",
-    ".666..",
-    "..6...",
+    ".....1",
+    "....11",
+    "1..11.",
+    "11111.",
+    ".111..",
+    "..1...",
   ],
 };
 
+/*
+ * The six borrowed from the city need no translation: each one is outlined in
+ * the bottom steps, which read as ink on paper as readily as they read as
+ * shadow at night. Flipping them was tried and thrown away — it buys contrast
+ * the drawings already had, and spends every highlight to get it.
+ */
 /** canonical stamp id → sprite rows */
 export const STAMPS: Record<string, string[]> = {
   cat: SPRITES.cat_S_i,
